@@ -1,0 +1,370 @@
+html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+  .wrap {
+    display: flex;
+    height: 100%;
+  }
+  .thHeight {
+      height: 105px !important;
+  }
+  .tableHeight {
+      height: 100%;  
+  }
+  .toolbar {
+      height: 35px;
+  }
+  /* .k-no-data{
+    display: table;
+    width: 100%;
+    padding-top: 20px;
+  } */
+  .k-form .k-form-error.k-invalid-msg {
+    display: none;
+  }
+  .k-form-horizontal .k-form-field-wrap {
+    max-width: none;
+  }
+  .k-wizard .k-wizard-content {
+    overflow-y: unset;
+  }
+.campaignPanel {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  justify-content: space-around;
+}
+/*
+.campaignMenu {
+  margin-top: 15px;
+}
+*/
+.campaignMenuClass {
+  margin-left: 18px;
+}
+.expansionPanelClass {
+  display: flex;
+  justify-content: space-between;
+  flex-direction: column;
+}
+.k-expander.k-state-focus {
+  box-shadow: none;
+}
+.k-expander + .k-expander.k-expanded, .k-expander.k-expanded + .k-expander {
+  margin-top: 0;
+  border-top: none;
+}
+.k-expander-header:hover, .k-expander.k-expanded .k-expander-header {
+  background: rgba(0, 0, 0, 0.08);
+}
+.k-expander-title {
+  color:#424242;
+}
+.k-expander-content {
+  padding: 0 16px;
+}
+.btnClass {
+  width: 73px;
+} 
+/* .k-widget .k-form {
+  width: 40%;
+} */
+/* .k-wizard-buttons {
+  width: 40%;
+} */
+/*
+.k-wizard {
+  width: 40%;
+}
+.k-form .k-form-field {
+  margin-top: 15px;
+}
+*/
+/*
+.k-form .k-form-buttons {
+  border-top: 0 !important;
+}
+*/
+.k-grid-cols-4 {
+  grid-template-columns: none;
+}
+.editForm {
+  display: flex;
+  justify-content: space-between;
+}
+/* #message-form {
+  min-width: 400px;
+} */
+.textAreaEditForm {
+  margin-top: 15px;
+  /* width: 40%; */
+}
+.hideEditForm {
+  display: none;
+  margin-top: 0;
+}
+.showEditForm {
+  display: block;
+  /*margin-top: 15px*/;
+}
+.k-picker {
+  /* width: 40%; */
+  box-shadow: none;
+}
+.k-picker:focus, .k-picker.k-focus {
+  box-shadow: none;
+}
+.k-upload {
+  /* margin-top: 15px; */
+  /* width: 40%; */
+}
+/* .rowsSkipped {
+  margin-top: 15px;
+  width: 40%;
+} */
+/* .messageBlock {
+  display: flex;
+  justify-content: space-between;
+  width: 80%;
+} */
+.toolbarBlock {
+  display: flex;
+  justify-content: space-between;
+  width: 170px;
+}
+.flexBlock {
+  display: flex;
+  justify-content: flex-start;
+}
+.blockLeft {
+  padding-left: 10px;
+}
+.nextRow {
+  margin-top: 15px;
+}
+/*
+.k-form .k-form-fieldset {
+  margin: 0;
+}
+.k-form .k-form-legend {
+  border-width: 0;
+  border-style: none;
+}
+.k-form .k-form-fieldset .k-form-legend {
+  border: 0;
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+  margin:0
+}
+*/
+/* 
+.k-toolbar {
+  display: none;
+}
+.stepper {
+  max-width: 650px;
+}
+*/
+.lastInput {
+  margin-bottom: 30px;
+}
+/* .hideCampaignInputs {
+  display: none
+} */
+.blockSaveClass {
+  display: flex;
+  justify-content: flex-end;
+}
+.leftbutton {
+  margin-right: 20px;
+}
+
+.k-listview-content {
+  background: rgba(0,0,0,0.02);
+}
+
+#campaignToolbar {
+  border: none !important;
+  background: rgba(0,0,0,0.04);
+}
+/*
+#campaignToolbar .k-button-md, #campaign-toolbar .k-button-md {
+  padding: 2px 8px 2px 6px;
+}
+
+#campaignToolbar .k-icon-button.k-button-md, #campaign-toolbar .k-icon-button.k-button-md {
+  padding: 2px;
+}
+*/
+.k-toolbar .k-icon {
+  /*color: #666;*/
+}
+
+.k-toolbar .k-i-arrow-60-right {
+  color:#00a100;
+}
+
+.k-toolbar .k-i-plus-sm {
+  margin: 0 -2px;
+}
+
+.k-toolbar .k-i-stop::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  /*background: rgba(255,255,255,0.75);*/
+  background:#e30611;
+}
+
+.k-toolbar .k-i-plus-sm::before {
+  position: relative;
+  left:1px;
+  content: '';
+  display: block;
+  width: 8px;
+  height: 2px;
+  /*background: rgba(255,255,255,0.75);*/
+  background:#3597d3;
+}
+
+.k-toolbar .k-i-plus-sm::after {
+  position: relative;
+  left: -4px;
+  content: '';
+  display: block;
+  width: 2px;
+  height: 8px;
+  /*background: rgba(255,255,255,0.75);*/
+  background:#3597d3;
+}
+
+.separator {height:0;border-top: 1px solid rgba(0, 0, 0, 0.1);border-bottom: 1px solid #fff;}
+
+#campaigner-window .k-toolbar::before {
+  height: 24px;
+}
+
+/*
+#campaigner-window .left_pane, #campaigner-window .k-expander, .k-toolbar .k-button-text {
+  font-size: 12px;
+}
+*/
+
+#campaigner-window .k-splitter {
+  border: none;
+}
+
+#campaigner-window .k-toolbar {
+  border-top: none;
+}
+/*
+.k-readonly {
+  background: rgba(255,255,255,0.25);
+}
+*/
+
+.k-animation-container {
+  z-index: 999999 !important;
+}
+
+.k-ghost-splitbar-vertical, .k-splitbar-vertical {
+  height: 10px;
+  border-top: 1px solid rgba(0,0,0,0.04);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+
+.k-progressbar-horizontal {
+  width: 100%;
+}
+
+.k-wizard {
+  padding: 25px 0 0 0;
+}
+
+.k-wizard .k-wizard-step {
+  padding: 0 15px;
+}
+
+.k-wizard-step:focus, .k-wizard-step.k-state-focused {
+  outline: none !important;
+}
+
+.k-wizard-buttons {
+  margin: 0 !important;
+  padding: 15px 0;
+}
+
+.k-wizard-horizontal .k-wizard-steps {
+  margin-top: 20px;
+}
+
+.k-wizard .k-form-buttons {
+  display: none;
+}
+
+.k-form-field  {
+  position: relative;
+}
+
+.k-label.k-form-label[for='status'] {
+  position: relative;
+  top: 6px;
+  /*float: left;*/
+}
+
+.k-form-field-wrap[data-container-for='status'] {
+  position: absolute;
+  top: 0;
+  right: 0;
+  /*float: right;*/
+}
+
+.scheduler, .scheduler tr, .scheduler th, .scheduler td {
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+.scheduler th {
+  background: rgba(0,0,0,0.04);
+  font-weight: normal;
+}
+
+.scheduler td {
+  /*background: rgba(255,255,255,0.2);*/
+}
+
+.scheduler tfoot td {
+  background: rgba(0,0,0,0.04);
+}
+
+.scheduler tbody td:first-child {
+  background: rgba(0,0,0,0.08);
+}
+
+.scheduler td.scheduler-active {
+  background: rgba(53, 151, 211, 0.5);
+}
+
+.scheduler .scheduler-hour-toggle, .scheduler .scheduler-hour {
+  width: 28px;
+}
+
+.scheduler .slash {
+  width: 60px;
+  height: 55px;
+}
+
+#final-template-area {
+  height: 208px;
+}
+
+.left_pane {
+  border-right: 1px solid rgba(0,0,0,0.08);
+  background: rgba(0, 0, 0, 0.04);
+}
+.long_text {
+  max-width: 640px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

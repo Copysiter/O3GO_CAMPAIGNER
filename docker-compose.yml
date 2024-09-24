@@ -1,0 +1,81 @@
+version: '3.11'
+
+services:
+
+  db:
+    image: postgres:12
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - ./.env
+    ports:
+      - '5432:5432'
+
+  # redis:
+  #   image: redis:7
+  #   restart: always
+  #   ports:
+  #     - '6379:6379'
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python main.py
+    volumes:
+      - ./src/:/app/
+    env_file:
+      - ./.env
+    tty: true
+    links:
+      - 'db'
+    depends_on:
+      - db
+    ports:
+      - '8000:8000'
+
+  # worker:
+  #   build: .
+  #   command: celery -A tasks.celery worker --loglevel=info
+  #   volumes:
+  #     - ./src/:/app/
+  #   env_file:
+  #     - ./.env
+  #   depends_on:
+  #     - db
+  #     - api
+  #     - redis
+
+  # flower:
+  #   image: mher/flower
+  #   restart: always
+  #   env_file:
+  #     - ./.env
+  #   environment:
+  #     - CELERY_BROKER_URL=redis://redis:6379/0
+  #     - FLOWER_PORT=5555
+  #     - FLOWER_PERSISTENT=True
+  #     - FLOWER_STATE_SAVE_INTERVAL=10000
+  #     - FLOWER_DB=/data/flower.db
+  #   volumes:
+  #     - flower_data:/data/
+  #   depends_on:
+  #     - redis
+  #     - api
+  #     - worker
+  #   ports:
+  #     - '5555:5555'
+
+  web:
+    image: nginx
+    ports:
+      - '8080:8888'
+    volumes:
+      - ./html/:/usr/share/nginx/html/
+      - ./services/nginx.conf:/etc/nginx/conf.d/nginx.conf
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  flower_data:

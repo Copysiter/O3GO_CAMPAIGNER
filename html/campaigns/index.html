@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html prefix="og: http://ogp.me/ns#" lang="en">
+    <head>
+        <title>O3GO Team</title>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" type="image/x-icon" href="../static/favicon.ico" />
+        <link href="../static/lib/bootstrap/css/bootstrap.css" rel="stylesheet" />
+        <link href="../static/lib/kendo/css/base.css" rel="stylesheet" />
+        <link href="../static/lib/kendo/css/kendo.r2.css" rel="stylesheet" />
+        <link href="../static/lib/material/style.css" rel="stylesheet" />
+        <link href="../static/lib/silk/famfamfam-silk.min.css" rel="stylesheet" />
+        <link href="../static/style.css" rel="stylesheet" />
+        <link href="css/scheduler.css" rel="stylesheet" />
+        <link href="css/style.css" rel="stylesheet" />
+        <script src="../static/lib/jquery.min.js"></script>
+        <script src="../static/lib/kendo/js/kendo.all.min.js"></script>
+        <script src="../static/auth.js"></script>
+        <script src="../static/script.js"></script>
+    </head>
+    <body class="d-flex flex-column position-relative" data-id="campaigns">
+        <div id="appbar"></div>
+        <div class="flex-grow-1" id="app-root">
+            <div id="drawer">
+                <div class="p-8 h-100">
+                    <div id="content" class="position-relative d-flex flex-column h-100">
+
+                        <div id="campaign-toolbar" class="position-relative"></div>
+                        <div class="position-relative flex-grow-1">
+                            <div
+                                id="campaign-grid"
+                                class="position-absolute h-100 w-100 d-flex flex-column border-top-0"
+                            ></div>
+                            <div id="campaign-menu"></div>
+                        </div>
+
+                        <div id="campaign-window" class="p-0" style="display:none;">
+                            <div id="campaign-splitter" class="h-100 border-top-0">
+                                <div id="left-pane" class="pane left_pane">
+                                    <div class="p-15">
+                                        <div class="">
+                                            <div class="mb-3">Messages sent:</div>
+                                            <div id="campaign-sent-progress"></div>
+                                        </div>
+                                        <div class="mt-15">
+                                            <div class="mb-3">Messages delivered:</div>
+                                            <div id="campaign-delivered-progress"></div>
+                                        </div>
+                                        <div class="mt-15">
+                                            <div class="mb-3">Messages failed:</div>
+                                            <div id="campaign-failed-progress"></div>
+                                        </div>
+                                    </div>
+                                    <div class="separator"></div>
+                                    <div class="p-15">
+                                        <div class="">
+                                            <div class="expansion-panel" data-title="Message Stats">
+                                                <div class="d-flex justify-content-between py-10"><span>Messages total:</span><span id="campaign-msg-total">0</span></div>
+                                                <div class="d-flex justify-content-between py-10 border-top"><span>Messages sent:</span><span id="campaign-msg-sent">0</span></div>
+                                                <div class="d-flex justify-content-between py-10 border-top"><span>Messages delivered:</span><span id="campaign-msg-delivered">0</span></div>
+                                                <div class="d-flex justify-content-between py-10 border-top"><span>Messages failed:</span><span id="campaign-msg-failed">0</span></div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-15">
+                                            <div class="expansion-panel" data-title="Datetimes">
+                                                <div class="d-flex justify-content-between py-10"><span>Created:</span><span id="campaign-created">0</span></div>
+                                                <div class="d-flex justify-content-between py-10 border-top"><span>Started:</span><span id="campaign-started">0</span></div>
+                                                <div class="d-flex justify-content-between py-10 border-top"><span>Stopped:</span><span id="campaign-stopped">0</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="right-pane" class="pane d-block">
+                                    <div class="h-100 d-flex flex-column align-items-stretch">
+                                        <div><div id="campaign-detail-toolbar" class="border-top-0"></div></div>
+                                        <div class="position-relative flex-grow-1"><div id="message-grid" class="position-absolute h-100 w-100 d-flex flex-column"></div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div id="campaign-edit-window">
+                            <form id="campaign-edit-form" class="p-0"></form>
+                        </div>
+
+                        <div id="campaign-create-window" class="p-0">
+                            <form id="wizard"></form>
+                        </div>
+
+                        <span id="campaign-notification"></span>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="confirm-logout"></div>
+        <!-- <div id="campaign-window"><div id="campaign-form"></div></div> -->
+        <script type="text/javascript" src="js/scheduler/js/scheduler.js"></script>
+        <script type="text/javascript" src="js/campaign.js"></script>
+        <script type="text/javascript" src="js/campaign-stat.js"></script>
+        <script type="text/javascript" src="js/campaign-grid.js"></script>
+        <script type="text/javascript" src="js/message-grid.js"></script>
+        <script type="text/javascript" src="js/form.js"></script>
+        <script type="text/javascript" src="js/menu.js"></script>
+        <script type="text/javascript" src="js/sender.js"></script>
+        <script type="text/javascript" src="js/toolbar.js"></script>
+        <script type="text/javascript" src="js/window.js"></script>
+        <script type="text/javascript" src="js/wizard.js"></script>
+        <script
+            id="campaigns-popup-editor"
+            type="text/x-kendo-template"
+            data-role="window"
+        >
+            <form id="form-edit-campaigns">
+            </form>
+        </script>
+
+        <script type="text/javascript">
+        try {
+            let { access_token, token_type } = window.isAuth;
+            window.access_token = access_token;
+            window.token_type = token_type;
+
+            window.campaigner_api_addr = "";
+
+            kendo.timezone.apply(new Date(), 0);
+
+            window.timeConverter = function(el) {
+                let a = new Date(el * 1000)
+                let months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                var year = a.getFullYear();
+                var month = months[a.getMonth()];
+                var date = a.getDate();
+                var hour = (a.getHours()  < 10 ? '0' : '') + a.getHours();
+                var min = (a.getMinutes() < 10 ? '0' : '') + a.getMinutes();
+                var sec = (a.getSeconds() < 10 ? '0' : '') + a.getSeconds();
+                var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
+                return time;
+            }
+
+            $(function() {
+                $("#root-splitter").kendoSplitter({
+                    panes: [
+                        {
+                            collapsible: true,
+                            scrollable: false,
+                            size: 320,
+                            min: 320
+                        },
+                        {
+                            collapsible: false
+                        },
+                    ]
+                });
+                $("#root-left-pane").kendoSplitter({
+                    orientation: "vertical",
+                    panes: [
+                        { collapsible: false, size: "50%", max: "50%" },
+                        { collapsible: false, size: "50%", max: "50%" }
+                    ],
+                    /*
+                    layoutChange: function(e) {
+                        $("#customer-grid").data("kendoGrid").resize();
+                        $("#peer-grid").data("kendoGrid").resize();
+                    }
+                    */
+                });
+                $("#campaign-splitter").kendoSplitter({
+                    panes: [
+                        {
+                            collapsible: true,
+                            size: 320,
+                            min: 320
+                        },
+                        {
+                            collapsible: false
+                        },
+                    ]
+                });
+                initSender();
+                initCampaignGrid();
+                initWindow();
+                initForm();
+                initWizard();
+                initCampaignStat();
+                initToolbar();
+                initContextMenu();
+            });
+        } catch (error) {
+            console.warn(error);
+        }
+
+    </script>
+
+    </body>
+</html>
