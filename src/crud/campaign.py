@@ -47,7 +47,8 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         for field in obj_data:
             if field in update_data:
                 setattr(db_obj, field, update_data[field])
-        db_obj.keys = [CampaignApiKeys(api_key=key) for key in update_data['api_keys']]
+        if 'api_keys' in update_data:
+            db_obj.keys = [CampaignApiKeys(api_key=key) for key in update_data['api_keys']]
         db.add(db_obj)
         await db.commit()
         await db.refresh(db_obj)

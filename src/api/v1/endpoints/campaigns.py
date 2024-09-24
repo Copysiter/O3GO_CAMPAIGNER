@@ -134,22 +134,20 @@ async def update_campaign(
     '''
     Start an campaign.
     '''
-    ts = datetime.utcnow()
     campaign = await crud.campaign.get(db=db, id=id)
     if not campaign:
         raise HTTPException(status_code=404, detail='Campaign not found')
+    start_ts = campaign.start_ts if campaign.start_ts else datetime.utcnow()
     campaign_in = schemas.CampaignUpdate(
         name = campaign.name,
         user_id = campaign.user_id,
-        src_addr = campaign.src_addr,
         msg_template = campaign.msg_template,
         msg_total = campaign.msg_total,
-        start_ts = ts,
+        start_ts = start_ts,
         status_id = 1
     )
-    campaign = await crud.campaign.update(db=db, db_obj=campaign, obj_in=campaign_in)
-    if campaign.id not in campaigner.campaigns:
-        campaigner.campaigns[campaign.id] = campaign
+    campaign = await crud.campaign.update(
+        db=db, db_obj=campaign, obj_in=campaign_in)
     return campaign
 
 
@@ -167,18 +165,17 @@ async def update_campaign(
     campaign = await crud.campaign.get(db=db, id=id)
     if not campaign:
         raise HTTPException(status_code=404, detail='Campaign not found')
+    stop_ts = campaign.stop_ts if campaign.stop_ts else datetime.utcnow()
     campaign_in = schemas.CampaignUpdate(
         name = campaign.name,
         user_id = campaign.user_id,
-        src_addr = campaign.src_addr,
         msg_template = campaign.msg_template,
         msg_total = campaign.msg_total,
-        stop_ts = ts,
+        stop_ts = stop_ts,
         status_id = 2
     )
-    campaign = await crud.campaign.update(db=db, db_obj=campaign, obj_in=campaign_in)
-    if campaign.id in campaigner.campaigns:
-        del campaigner.campaigns[campaign.id]
+    campaign = await crud.campaign.update(
+        db=db, db_obj=campaign, obj_in=campaign_in)
     return campaign
 
 
