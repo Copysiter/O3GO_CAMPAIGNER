@@ -26,7 +26,7 @@ $(document).ready(function () {
     </a>
     </li>
     <li>
-    <a href='/connections' data-role='drawer-item' class='${
+    <a href='/connections/' data-role='drawer-item' class='${
         $('body').attr('data-id') == 'connections' ? 'k-selected ' : ''
     }d-flex align-items-center text-decoration-none p-0' id='peers-icon'>
     <span><i class='mdi mdi-api fs-24'></i></span>
@@ -37,35 +37,11 @@ $(document).ready(function () {
 
     const drawerUserTemplate = `<ul>
     <li>
-    <a href='/report/' data-role='drawer-item' class='${
-        $('body').attr('data-id') == 'report' ? 'k-selected ' : ''
-    }d-flex align-items-center text-decoration-none p-0' id='routing-icon'>
-    <span><i class='mdi mdi-poll fs-20'></i></span>
-    <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='report'>Report</span>
-    </a>
-    </li>
-    <li>
-    <a href='/devices/' data-role='drawer-item' class='${
-        $('body').attr('data-id') == 'devices' ? 'k-selected ' : ''
-    }d-flex align-items-center text-decoration-none p-0' id='routing-icon'>
-    <span><i class='mdi mdi-deskphone fs-20'></i></span>
-    <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='devices'>Devices</span>
-    </a>
-    </li>
-    <li>
-    <a href='/proxies/' data-role='drawer-item' class='${
-        $('body').attr('data-id') == 'proxies' ? 'k-selected ' : ''
-    }d-flex align-items-center text-decoration-none p-0' id='peers-icon'>
-    <span><i class='mdi mdi-server-network fs-20'></i></span>
-    <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='proxies'>Proxies</span>
-    </a>
-    </li>
-    <li>
-    <a href='/numbers/' data-role='drawer-item' class='${
-        $('body').attr('data-id') == 'numbers' ? 'k-selected ' : ''
+    <a href='/campaigns/' data-role='drawer-item' class='${
+        $('body').attr('data-id') == 'campaigns' ? 'k-selected ' : ''
     }d-flex align-items-center text-decoration-none p-0' id='reports-icon'>
-    <span><i class='mdi mdi-checkbox-marked-outline fs-20'></i></span>
-    <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='numbers'>Numbers</span>
+    <span><i class='mdi mdi-cube fs-24'></i></span>
+    <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='campaigns'>Campaigns</span>
     </a>
     </li>
     </ul>`;
