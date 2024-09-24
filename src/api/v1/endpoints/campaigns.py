@@ -231,6 +231,8 @@ async def read_campaign_campaign_dsts(
     campaign = await crud.campaign.get(db=db, id=id)
     if not campaign:
         raise HTTPException(status_code=404, detail='Campaign not found')
+    if not orders:
+        orders = [{'field': 'id', 'dir': 'asc'}]
     filters.append({'field': 'campaign_id', 'operator': 'eq', 'value': id})
     campaign_dsts = jsonable_encoder(await crud.campaign_dst.get_rows(db=db, skip=skip, limit=limit, filters=filters, orders=orders))
     for i in range(len(campaign_dsts)):

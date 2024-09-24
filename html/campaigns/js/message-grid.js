@@ -184,10 +184,10 @@ window.initMessageGrid = function(id) {
                         return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-dark'>CREATED</span>"
                     }
                     else if(item.status_id == 1) {
-                        return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-warning'>USED</span>"
+                        return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-warning'>SENT</span>"
                     }
                     else if(item.status_id == 2) {
-                        return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-success'>SENT</span>"
+                        return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-success'>DELIVERED</span>"
                     }
                     else if(item.status_id == 3) {
                          return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-error'>FAILED</span>"
