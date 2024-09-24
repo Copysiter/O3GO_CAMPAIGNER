@@ -184,7 +184,7 @@ window.initMessageGrid = function(id) {
                         return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-dark'>CREATED</span>"
                     }
                     else if(item.status_id == 1) {
-                        return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-warning'>SENT</span>"
+                        return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-warning'>SUBMITTED</span>"
                     }
                     else if(item.status_id == 2) {
                         return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-success'>DELIVERED</span>"
