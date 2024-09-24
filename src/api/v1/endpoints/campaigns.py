@@ -53,7 +53,8 @@ async def create_campaign(
 
     campaign_db_in = schemas.CampaignUpdate(
         name = campaign_in.name,
-        user_id = campaign_in.user_id | current_user.id,
+        user_id = campaign_in.user_id if campaign_in.user_id else current_user.id,
+        api_keys = campaign_in.api_keys,
         schedule = campaign_in.schedule,
         msg_template = campaign_in.msg_template,
         msg_total = 0,

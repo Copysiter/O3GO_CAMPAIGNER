@@ -49,13 +49,13 @@ class CampaignCreate(CampaignBase):
         'field_3': 3
     }
     keys: Optional[list] = []
-    api_keys: list = []
+    api_keys: Optional[list] = []
 
 
 # Properties to receive on item update
 class CampaignUpdate(CampaignBase):
     keys: Optional[list] = []
-    api_keys: list = []
+    api_keys: Optional[list] = []
 
 
 # Properties shared by models stored in DB

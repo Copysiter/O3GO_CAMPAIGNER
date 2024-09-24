@@ -22,37 +22,31 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
     #    return await super().update(db=db, db_obj=db_obj, obj_in=obj_in)
 
     async def create(self, db: AsyncSession, *, obj_in: CampaignCreate) -> Campaign:
-        db_obj = Campaign(
-            user_id=obj_in.user_id,
-            login=obj_in.login,
-            password=obj_in.password,
-            name=obj_in.name,
-            is_active=obj_in.is_active,
-        )
-        db_obj.keys = [CampaignApiKeys(api_key=key) for key in obj_in.api_keys]
-        db.add(db_obj)
+        if isinstance(obj_in, dict):
+            obj_in_data = obj_in
+        else:
+            obj_in_data = obj_in.model_dump(exclude_unset=True)
+        api_keys = obj_in_data.pop('api_keys')
+        campaign = await super().create(db, obj_in=obj_in_data)
+        campaign.keys = [CampaignApiKeys(api_key=key) for key in api_keys]
+        db.add(campaign)
         await db.commit()
-        await db.refresh(db_obj)
-        return db_obj
+        return campaign
 
     async def update(
         self, db: AsyncSession, *, db_obj: Campaign,
         obj_in: Union[CampaignUpdate, Dict[str, Any]]
     ) -> Campaign:
-        obj_data = jsonable_encoder(db_obj)
         if isinstance(obj_in, dict):
             update_data = obj_in
         else:
             update_data = obj_in.model_dump(exclude_unset=True)
-        for field in obj_data:
-            if field in update_data:
-                setattr(db_obj, field, update_data[field])
-        if 'api_keys' in update_data:
-            db_obj.keys = [CampaignApiKeys(api_key=key) for key in update_data['api_keys']]
-        db.add(db_obj)
+        api_keys = update_data.pop('api_keys')
+        campaign = await super().update(db, db_obj=db_obj, obj_in=update_data)
+        campaign.keys = [CampaignApiKeys(api_key=key) for key in api_keys]
+        db.add(campaign)
         await db.commit()
-        await db.refresh(db_obj)
-        return db_obj
+        return campaign
 
 
     # def get_msg_rows(
