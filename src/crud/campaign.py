@@ -41,11 +41,12 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             update_data = obj_in
         else:
             update_data = obj_in.model_dump(exclude_unset=True)
-        api_keys = update_data.pop('api_keys')
-        campaign = await super().update(db, db_obj=db_obj, obj_in=update_data)
-        campaign.keys = [CampaignApiKeys(api_key=key) for key in api_keys]
-        db.add(campaign)
-        await db.commit()
+        if 'api_keys' in update_data:
+            api_keys = update_data.pop('api_keys')
+            campaign = await super().update(db, db_obj=db_obj, obj_in=update_data)
+            campaign.keys = [CampaignApiKeys(api_key=key) for key in api_keys]
+            db.add(campaign)
+            await db.commit()
         return campaign
 
 
