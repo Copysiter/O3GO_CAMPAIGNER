@@ -1,6 +1,6 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Column, ForeignKey, Integer, BigInteger, String, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, BigInteger, String, DateTime, Index
 from sqlalchemy.orm import relationship, dynamic_loader
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.ext.associationproxy import AssociationProxy
@@ -31,11 +31,13 @@ class Campaign(Base):
     msg_total = Column(Integer, index=True, default=0)
     msg_sent = Column(Integer, index=True, default=0)
     msg_delivered = Column(Integer, index=True, default=0)
+    msg_undelivered = Column(Integer, index=True, default=0)
     msg_failed = Column(Integer, index=True, default=0)
     create_ts = Column(DateTime, index=True)
     start_ts = Column(DateTime, index=True)
     stop_ts = Column(DateTime, index=True)
-    status_id  = Column(Integer, index=True)
+    order = Column(Integer, index=True)
+    status  = Column(Integer, index=True)
     user = relationship('User', lazy='joined')
     connection = relationship('Connection', lazy='joined')
 
@@ -44,3 +46,7 @@ class Campaign(Base):
         cascade='save-update, merge, delete, delete-orphan'
     )
     api_keys = AssociationProxy('keys', 'api_key')
+
+    __table_args__ = (
+        Index('ix_campaign_schedule_gin', schedule, postgresql_using='gin'),
+    )

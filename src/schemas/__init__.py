@@ -7,3 +7,4 @@ from .campaign import Campaign, CampaignCreate, CampaignInDB, CampaignUpdate, Ca
 from .campaign_dst import CampaignDst, CampaignDstCreate, CampaignDstInDB, CampaignDstUpdate, CampaignDstRows  # noqa
 from .webhook import WebhookRequest, WebhookResponse  # noqa
 from .option import OptionStr, OptionInt, OptionBool  # noqa
+from .status import CampaignStatus, CampaignDstStatus  # noqa

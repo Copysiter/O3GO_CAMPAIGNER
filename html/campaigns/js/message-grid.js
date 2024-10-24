@@ -105,7 +105,7 @@ window.initMessageGrid = function(id) {
                         field_1: { type: 'string' },
                         field_2: { type: 'string' },
                         field_3: { type: 'string' },
-                        status_id: { type: 'number' },
+                        status: { type: 'number' },
                         // empty: {}
                     },
                 },
@@ -180,16 +180,19 @@ window.initMessageGrid = function(id) {
                 width: '100px',
                 title: 'Status',
                 template: function(item) {
-                    if(item.status_id == 0) {
+                    if(item.status == 0) {
                         return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-dark'>CREATED</span>"
                     }
-                    else if(item.status_id == 1) {
-                        return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-warning'>SUBMITTED</span>"
+                    else if(item.status == 1) {
+                        return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-primary'>SUBMITTED</span>"
                     }
-                    else if(item.status_id == 2) {
+                    else if(item.status == 2) {
                         return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-success'>DELIVERED</span>"
                     }
-                    else if(item.status_id == 3) {
+                    else if(item.status == 3) {
+                         return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-warning'>UNDELIVERED</span>"
+                    }
+                    else if(item.status == 4) {
                          return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-error'>FAILED</span>"
                     }
                 },

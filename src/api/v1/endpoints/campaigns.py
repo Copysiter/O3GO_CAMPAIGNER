@@ -1,19 +1,20 @@
 import os
 import pandas as pd
+import openpyxl
 
+from openpyxl.worksheet.table import Table, TableStyleInfo
 from typing import Any, List, Dict, Union
 from datetime import datetime
+from io import BytesIO
 
 from fastapi import APIRouter, Depends, Request, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from fastapi.encoders import jsonable_encoder
 
 from api import deps
 
 import crud, models, schemas
-
-from campaigner import campaigner
 
 router = APIRouter()
 
@@ -61,7 +62,7 @@ async def create_campaign(
         create_ts = ts,
         start_ts=campaign_in.start_ts,
         stop_ts=campaign_in.stop_ts,
-        status_id = campaign_in.status_id
+        status = campaign_in.status
     )
 
     campaign_dst_in = []
@@ -122,6 +123,12 @@ async def update_campaign(
         raise HTTPException(status_code=404, detail='Campaign not found')
     # campaign_in.schedule = jsonable_encoder(campaign_in.schedule)
     campaign = await crud.campaign.update(db=db, db_obj=campaign, obj_in=campaign_in)
+    if campaign.create_ts:
+        campaign.create_ts = campaign.create_ts.strftime('%Y-%m-%d %H:%M:%S')
+    if campaign.start_ts:
+        campaign.start_ts = campaign.start_ts.strftime('%Y-%m-%d %H:%M:%S')
+    if campaign.stop_ts:
+        campaign.stop_ts = campaign.stop_ts.strftime('%Y-%m-%d %H:%M:%S')
     return campaign
 
 
@@ -145,7 +152,7 @@ async def update_campaign(
         msg_template = campaign.msg_template,
         msg_total = campaign.msg_total,
         start_ts = start_ts,
-        status_id = 1
+        status = 1
     )
     campaign = await crud.campaign.update(
         db=db, db_obj=campaign, obj_in=campaign_in)
@@ -173,7 +180,7 @@ async def update_campaign(
         msg_template = campaign.msg_template,
         msg_total = campaign.msg_total,
         stop_ts = stop_ts,
-        status_id = 2
+        status = 2
     )
     campaign = await crud.campaign.update(
         db=db, db_obj=campaign, obj_in=campaign_in)
@@ -234,31 +241,102 @@ async def read_campaign_campaign_dsts(
     if not orders:
         orders = [{'field': 'id', 'dir': 'asc'}]
     filters.append({'field': 'campaign_id', 'operator': 'eq', 'value': id})
-    campaign_dsts = jsonable_encoder(await crud.campaign_dst.get_rows(db=db, skip=skip, limit=limit, filters=filters, orders=orders))
+    campaign_dsts = jsonable_encoder(
+        await crud.campaign_dst.get_rows(
+            db=db, skip=skip, limit=limit, filters=filters, orders=orders
+        )
+    )
     for i in range(len(campaign_dsts)):
         campaign_dsts[i]['text'] = campaign.msg_template
         for j in range(1, 6):
             field = f'field_{j}'
             if (campaign_dsts[i][field]):
-                campaign_dsts[i]['text'] = campaign_dsts[i]['text'].replace('{' + field + '}', campaign_dsts[i][field])
+                campaign_dsts[i]['text'] = campaign_dsts[i]['text'].replace(
+                    '{' + field + '}', campaign_dsts[i][field]
+                )
     count = await crud.campaign_dst.get_count(db=db, filters=filters)
     return JSONResponse({'data' : campaign_dsts, 'total': count})
 
 
-'''
-@router.get('/campaign_dst/{count}')
-def read_campaign_dsts(
+@router.get('/{campaign_id}/report')
+async def download_campaign_report(
     *,
     db: Session = Depends(deps.get_db),
-    count
-) -> Any:
-    campaigns = jsonable_encoder(crud.campaign.get_rows(db, skip=0, limit=1000))
-    campaign_dsts = []
-    for i in range(len(campaigns)):
-        campaign_dst = jsonable_encoder(crud.campaign_dst.get_one(db=db, campaign_id=campaigns[i]['id']))
-        if (campaign_dst is not None):
-            campaign_dst['campaign'] = campaigns[i]
-            campaign_dsts.append(campaign_dst)
+    campaign_id: int
+):
+    campaign = await crud.campaign.get(db=db, id=campaign_id)
+    if not campaign:
+        raise HTTPException(
+            status_code=404, detail='Campaign not found')
 
-    return JSONResponse({'data' : campaign_dsts})
-'''
+    filters = [{
+        'field': 'campaign_id', 'operator': 'eq', 'value': campaign_id
+    }]
+    orders = [{'field': 'id', 'dir': 'asc'}]
+    campaign_dsts = await crud.campaign_dst.get_rows(
+        db=db, limit=campaign.msg_total, filters=filters, orders=orders
+    )
+    if not campaign_dsts:
+        raise HTTPException(
+            status_code=404, detail="No campaign messages found")
+
+    output = BytesIO()
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = f"Campaign_{campaign_id}_report"
+
+    headers = [
+        "Название рассылки", "Номер телефона",
+        "Время отправки", "Статус", "Сообщение"
+    ]
+    sheet.append(headers)
+
+    for dst in campaign_dsts:
+        text = campaign.msg_template
+        for j in range(1, 6):
+            field = f'field_{j}'
+            if getattr(dst, field):
+                text = text.replace(
+                    '{' + field + '}', getattr(dst, field)
+                )
+        sheet.append([
+            campaign.name,
+            dst.dst_addr,
+            dst.sent_ts.strftime('%Y-%m-%d %H:%M:%S') if dst.sent_ts else '',
+            schemas.CampaignDstStatus.name(dst.status),
+            dst.text or text
+        ])
+
+    table_ref = 'A1:{}'.format(
+        sheet.cell(row=sheet.max_row, column=sheet.max_column).coordinate
+    )
+    table = Table(displayName='DataTable', ref=table_ref)
+    style = TableStyleInfo(
+        name='TableStyleMedium9',
+        showFirstColumn=False, showLastColumn=False,
+        showRowStripes=True, showColumnStripes=False
+    )
+    table.tableStyleInfo = style
+    sheet.add_table(table)
+
+    for column in sheet.columns:
+        adjusted_width = max(len(str(cell.value)) for cell in column)
+        sheet.column_dimensions[
+            column[0].column_letter].width = adjusted_width + 5
+
+    workbook.save(output)
+    output.seek(0)
+
+    filename = '{}_report_{}.xlsx'.format(
+        campaign_id, datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    )
+    headers = {
+        'Content-Disposition': f'attachment; filename={filename}'
+    }
+
+    return StreamingResponse(
+        output,
+        media_type='application/vnd.openxmlformats-'
+                   'officedocument.spreadsheetml.sheet',
+        headers=headers
+    )

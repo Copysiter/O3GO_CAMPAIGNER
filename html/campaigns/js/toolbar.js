@@ -83,7 +83,13 @@ window.initToolbar = function() {
                     getCampaignStat(selectedCampaignItem.id);
                     $("#message-grid").data("kendoGrid").dataSource.read();
                 }
-            }, { 
+            }, {
+                type: "button",
+                text: "Export to Excel",
+                click: function() {
+                    exportCampaignReport(selectedCampaignItem.id);
+                }
+            }, {
                 type: "separator"
             }, {
                 type: "button",

@@ -500,3 +500,8 @@ td[role='gridcell'] .badge:first-child {
 .k-notification-content {
     white-space: nowrap;
 }
+
+.k-badge-solid.k-badge-dark {
+    border-color: #666;
+    background-color: #666;
+}

@@ -44,7 +44,7 @@ window.initCampaignGrid = function() {
                     fields: {
                         id: { type: 'string' },
                         name: { type: 'string' },
-                        status_id: { type: 'number' },
+                        status: { type: 'number' },
                         user_id: { type: 'number' },
                         msg_template: { type: 'string' },
                         create_ts: { type: 'date' },
@@ -156,17 +156,17 @@ window.initCampaignGrid = function() {
                 },
             },
             {
-                field: 'status_id',
+                field: 'status',
                 width: '100px',
                 title: 'Status',
                 template: function(item) {
-                    if (item.status_id == 0) {
+                    if (item.status == 0) {
                         return "<span class='info info-sm info-light'>Created</span>"
-                    } else if(item.status_id == 1) {
+                    } else if(item.status == 1) {
                         return "<span class='info info-sm info-green'>Running</span>"
-                    } else if(item.status_id == 2) {
+                    } else if(item.status == 2) {
                         return "<span class='info info-sm info-red'>Stopped</span>"
-                    } else if(item.status_id == 3) {
+                    } else if(item.status == 3) {
                         return "<span class='info info-sm info-blue'>Complete</span>"
                     }
                 },
@@ -240,6 +240,11 @@ window.initCampaignGrid = function() {
             {
                 field: 'msg_delivered',
                 title: 'Delivered',
+                filterable: false
+            },
+            {
+                field: 'msg_undelivered',
+                title: 'Undelivered',
                 filterable: false
             },
             {

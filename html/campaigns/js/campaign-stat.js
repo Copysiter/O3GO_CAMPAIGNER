@@ -31,6 +31,21 @@ window.initCampaignStat = function() {
         }
     });
 
+    $("#campaign-undelivered-progress").kendoProgressBar({
+        showStatus: true,
+        max: 100,
+        value: 0,
+        type: "percent",
+        animation: false,
+        change: function(e) {
+          //this.progressStatus.text(`${window.selectedCampaignItem.msg_delivered === null ? 0 : window.selectedCampaignItem.msg_delivered} / ${window.selectedCampaignItem.msg_total}`);
+          this.progressWrapper.css({
+            "background-color": "#f5a600",
+            //"border-color": "#79c979"
+          });
+        }
+    });
+
     $("#campaign-failed-progress").kendoProgressBar({
         showStatus: true,
         max: 100,

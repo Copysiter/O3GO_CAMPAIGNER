@@ -31,4 +31,12 @@ class CRUDCampaignDst(CRUDBase[CampaignDst, CampaignDstCreate, CampaignDstUpdate
     #) -> List[CampaignDst]:
     #    return db.query(CampaignDst).join(Campaign).group_by(CampaignDst.campaign_id).order_by(Campaign.start_ts).all()
 
+    async def get_next(
+        self, db: AsyncSession, *, api_key: str
+    ) -> List[CampaignDst]:
+        statement = insert(CampaignDst).values(obj_in)
+        await db.execute(statement)
+        await db.commit()
+        return len(obj_in)
+
 campaign_dst = CRUDCampaignDst(CampaignDst)

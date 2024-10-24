@@ -72,7 +72,18 @@ window.initWizard = function() {
                 }, {
                     field: "name",
                     label: "Campaign Name:",
-                    colSpan: 12
+                    colSpan: 6
+                }, {
+                    field: "order",
+                    label: "Order:",
+                    editor: 'NumericTextBox',
+                    editorOptions: {
+                        format: "n0",
+                        min: 1,
+                        max: 100,
+                        // value: 1
+                    },
+                    colSpan: 6
                 }, {
                     field: "sep2",
                     colSpan: 12,

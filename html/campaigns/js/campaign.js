@@ -20,7 +20,8 @@ window.openCampaignEditForm = function() {
             "start_ts": window.selectedCampaignItem.start_ts,
             "stop_ts": window.selectedCampaignItem.stop_ts,
             "api_keys": window.selectedCampaignItem.api_keys,
-            "schedule": window.selectedCampaignItem.schedule
+            "schedule": window.selectedCampaignItem.schedule,
+            "order": window.selectedCampaignItem.order,
         }
         console.log(values)
         form.setOptions({
@@ -76,7 +77,7 @@ window.getCampaignStat = function(id) {
 
 window.updateCampaignStat = function(item) {
     if (window.campaign_stat_timer) clearTimeout(campaign_stat_timer);
-    switch (item.status_id) {
+    switch (item.status) {
         case 0:
             $('#campaign-status').text('Created');
             $('#campaign-status').removeClass("info-blue");
@@ -117,14 +118,17 @@ window.updateCampaignStat = function(item) {
 
     $("#campaign-sent-progress").data("kendoProgressBar").value((item.msg_total > 0 ? item.msg_sent / item.msg_total * 100 : 0));
     $("#campaign-delivered-progress").data("kendoProgressBar").value((item.msg_total > 0 ? item.msg_delivered / item.msg_total * 100 : 0));
+    $("#campaign-undelivered-progress").data("kendoProgressBar").value((item.msg_total > 0 ? item.msg_undelivered / item.msg_total * 100 : 0));
     $("#campaign-failed-progress").data("kendoProgressBar").value((item.msg_total > 0 ? item.msg_failed / item.msg_total * 100 : 0));
-    
+
     $('#campaign-msg-total').html(`${item.msg_total === null ? 0
         : item.msg_total}`);
     $('#campaign-msg-sent').html(`${item.msg_sent === null ? 0 
         : item.msg_sent}`);
     $('#campaign-msg-delivered').html(`${item.msg_delivered === null ? 0 
         : item.msg_delivered}`);
+    $('#campaign-msg-undelivered').html(`${item.msg_undelivered === null ? 0 
+        : item.msg_undelivered}`);
     $('#campaign-msg-failed').html(`${item.msg_failed === null ? 0 
         : item.msg_failed}`);
 
@@ -214,4 +218,13 @@ window.campaignDelete = function() {
             
         });
     }
+}
+
+window.exportCampaignReport = function(id) {
+    kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Download campaign report?</div>`).done(function() {
+        window.open(`http://${api_base_url}/api/v1/campaigns/${id}/report`, '_blank');
+        // window.location.href = `http://${api_base_url}/api/v1/campaigns/${id}/report`
+    }).fail(function() {
+
+    });
 }

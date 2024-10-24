@@ -7,7 +7,18 @@ window.initForm = function() {
         items: [{
             field: "name",
             label: "Campaign Name:",
-            colSpan: 12
+            colSpan: 6
+        }, {
+            field: "order",
+            label: "Order:",
+            editor: 'NumericTextBox',
+            editorOptions: {
+                format: "n0",
+                min: 1,
+                max: 100,
+                // value: 1
+            },
+            colSpan: 6
         }, {
             field: "sep1",
             colSpan: 12,
@@ -148,8 +159,6 @@ window.initForm = function() {
             e.preventDefault();
             let data = e.model;
             let id = data.ID;
-            console.log(data);
-            console.log(JSON.stringify(data));
             if (data.start_ts !== undefined) {
                 data.start_ts = kendo.toString(data.start_ts, "yyyy-MM-dd HH:mm:ss")
             }
@@ -210,9 +219,7 @@ function addNew(value, id) {
         dataType: 'json',
         data: JSON.stringify({value: value})
     }).done(function (result) {
-        console.log(result);
         let widget = $(`#${id} #api_keys`).data('kendoMultiSelect');
-        console.log(widget);
         let dataSource = widget.dataSource;
         dataSource.add({
             text: value,

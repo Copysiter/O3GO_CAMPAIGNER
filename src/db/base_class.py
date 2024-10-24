@@ -15,3 +15,9 @@ class Base:
     def __tablename__(cls) -> str:
         # CamelCase -> snake_case
         return '_'.join(re.split(r'(?<=\w)(?=[A-Z])', cls.__name__)).lower()
+
+    def to_dict(self):
+        return {
+            column.name: getattr(self, column.name)
+            for column in self.__table__.columns
+        }

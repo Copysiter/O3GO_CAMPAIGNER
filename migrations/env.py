@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 from dotenv import load_dotenv
+
+
 load_dotenv('.env')
 
 # this is the Alembic Config object, which provides

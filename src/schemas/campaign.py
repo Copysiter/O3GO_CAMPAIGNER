@@ -26,8 +26,10 @@ class CampaignBase(BaseModel):
     msg_total: Optional[int] = 0
     msg_sent: Optional[int] = 0
     msg_delivered: Optional[int] = 0
+    msg_undelivered: Optional[int] = 0
     msg_failed: Optional[int] = 0
-    status_id: Optional[int] = 0
+    order: Optional[int] = None
+    status: Optional[int] = 0
     create_ts: Optional[datetime] = datetime.utcnow()
     start_ts: Optional[datetime] = None
     stop_ts: Optional[datetime] = None

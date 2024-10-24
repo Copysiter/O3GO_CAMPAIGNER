@@ -16,8 +16,8 @@ class CampaignDstBase(BaseModel):
     field_3: Optional[str] = None
     field_4: Optional[str] = None
     field_5: Optional[str] = None
-    status_id: Optional[int] = None
-    create_ts: Optional[datetime] = None
+    status: Optional[int] = None
+    create_ts: Optional[datetime] = datetime.utcnow()
 
 
 # Properties to receive on item creation
@@ -28,8 +28,8 @@ class CampaignDstCreate(CampaignDstBase):
 
 # Properties to receive on item update
 class CampaignDstUpdate(CampaignDstBase):
-    start_ts: Optional[datetime] = None
-    stop_ts: Optional[datetime] = None
+    sent_ts: Optional[str] = None
+    update_ts: Optional[str] = None
     error: Optional[str] = None
 
 
