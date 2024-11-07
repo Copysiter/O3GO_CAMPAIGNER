@@ -18,16 +18,16 @@
         <script src="../static/auth.js"></script>
         <script src="../static/script.js"></script>
     </head>
-    <body class="d-flex flex-column" data-id="proxies">
+    <body class="d-flex flex-column" data-id="tags">
         
         <div id="appbar"></div>
         <div class="flex-grow-1" id="app-root">
             <div id="drawer">
                 <div id="content" class="position-relative d-flex flex-column p-8">
-                    <div id="proxies-toolbar"></div>
+                    <div id="tags-toolbar"></div>
                     <div class="position-relative flex-grow-1">
                         <div
-                            id="proxies-grid"
+                            id="tags-grid"
                             class="position-absolute h-100 w-100 d-flex flex-column"
                         ></div>
                     </div>
@@ -40,11 +40,11 @@
         <script src="js/grid.js"></script>
         <script src="js/form.js"></script>
         <script
-            id="proxies-popup-editor"
+            id="tags-popup-editor"
             type="text/x-kendo-template"
             data-role="window"
         >
-            <form id="form-edit-proxies">
+            <form id="form-edit-tags">
             </form>
         </script>
         <script type="text/javascript">

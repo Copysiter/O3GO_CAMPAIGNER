@@ -14,11 +14,11 @@ window.initGrid = function() {
             return (value+'').replace(/[\x09-\x10]/g, '') ? value : '';
         }
 
-        $('#proxies-grid').kendoGrid({
+        $('#tags-grid').kendoGrid({
             dataSource: {
                 transport: {
                     read: {
-                        url: `http://${api_base_url}/api/v1/proxies/`,
+                        url: `http://${api_base_url}/api/v1/tags/`,
                         type: 'GET',
                         beforeSend: function (request) {
                             request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
@@ -26,7 +26,7 @@ window.initGrid = function() {
                         dataType: 'json',
                     },
                     create: {
-                        url: `http://${api_base_url}/api/v1/proxies/`,
+                        url: `http://${api_base_url}/api/v1/tags/`,
                         type: 'POST',
                         dataType: 'json',
                         contentType: 'application/json',
@@ -37,7 +37,7 @@ window.initGrid = function() {
                     update: {
                         url: function (options) {
                             console.log(options);
-                            return `http://${api_base_url}/api/v1/proxies/${options.id}`;
+                            return `http://${api_base_url}/api/v1/tags/${options.id}`;
                         },
 
                         type: 'PUT',
@@ -50,7 +50,7 @@ window.initGrid = function() {
                     destroy: {
                         url: function (options) {
                             console.log(options);
-                            return `http://${api_base_url}/api/v1/proxies/${options.id}`;
+                            return `http://${api_base_url}/api/v1/tags/${options.id}`;
                         },
 
                         type: 'DELETE',
@@ -101,15 +101,14 @@ window.initGrid = function() {
                                 type: 'string',
                                 editable: true
                             },
-                            url: {
+                            color_txt: {
                                 type: 'string',
-                                editable: true,
-                                validation: { required: true },
+                                editable: true
                             },
-                            timestamp: { type: 'date', editable: false },
-                            good_count: { type: 'number', editable: false },
-                            bad_count: { type: 'number', editable: false },
-                            ts_1: { type: 'date', editable: false },
+                            color_bg: {
+                                type: 'string',
+                                editable: true
+                            },
                             actions: { type: 'object', editable: false },
                         },
                     },
@@ -127,17 +126,19 @@ window.initGrid = function() {
             persistSelection: true,
             sortable: true,
             edit: function (e) {
+                e.model.color_txt = e.model.color_txt || "#FFFFFF";
+                e.model.color_bg = e.model.color_bg || "#000000";
                 form.data('kendoForm').setOptions({
                     formData: e.model,
                 });
                 popup.setOptions({
-                    title: e.model.id ? 'Edit Proxy' : 'New Proxy',
+                    title: e.model.id ? 'Edit Tag' : 'New Tag',
                 });
                 popup.center();
             },
             editable: {
                 mode: 'popup',
-                template: kendo.template($('#proxies-popup-editor').html()),
+                template: kendo.template($('#tags-popup-editor').html()),
                 window: {
                     width: 480,
                     maxHeight: '90%',
@@ -190,7 +191,7 @@ window.initGrid = function() {
                 pageSizes: [100, 250, 500],
             },
             change: function (e) {
-                let toolbar = $('#proxies-toolbar').data('kendoToolBar');
+                let toolbar = $('#tags-toolbar').data('kendoToolBar');
                 let rows = this.select();
                 if (rows.length > 0) {
                     toolbar.show($('#delete'));
@@ -198,26 +199,12 @@ window.initGrid = function() {
                     toolbar.hide($('#delete'));
                 }
             },
-            excel: {
-                fileName: 'o3go_proxies.xlsx',
-                allPages: true,
-                filterable: true
-            },
-            excelExport: function(e){
-             var sheet = e.workbook.sheets[0];
-             for (var i = 0; i < sheet.rows.length; i++) {
-                for (var ci = 0; ci < sheet.rows[i].cells.length; ci++) {
-                    sheet.rows[i].cells[ci].value = stripFunnyChars(sheet.rows[i].cells[ci].value)
-                }
-              }
-            },
             columns: [
                 {
                     field: 'id',
                     title: '#',
                     // width: 33,
-                    filterable: false,
-                    exportable: { excel: true }
+                    filterable: false
                 },
                 {
                     field: 'name',
@@ -229,58 +216,17 @@ window.initGrid = function() {
                             operator: 'eq',
                         },
                     },
-                    exportable: { excel: true }
+                    template:  "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-inline' style='font-weight:bold;# if (color_txt) { #color:#:color_txt#;# } ## if (color_bg) { #background:#:color_bg#;# } #'>#:name#</span>"
                 },
                 {
-                    field: 'url',
-                    title: 'URL',
-                    filterable: {
-                        cell: {
-                            inputWidth: 0,
-                            showOperators: true,
-                            operator: 'eq',
-                        },
-                    },
-                    exportable: { excel: true }
-                },
-                {
-                    field: 'good_count',
-                    title: 'Good',
-                    // width: 33,
+                    field: "color_txt",
+                    title: "Text Color",
                     filterable: false,
-                    exportable: { excel: true },
-                    template: '<div class="text-green text-right">#: good_count #</div>'
                 },
                 {
-                    field: 'bad_count',
-                    title: 'Bad',
-                    // width: 33,
+                    field: "color_bg",
+                    title: "Background",
                     filterable: false,
-                    exportable: { excel: true },
-                    template: '<div class="text-red text-right">#: bad_count #</div>'
-                },
-                {
-                    field: 'timestamp',
-                    title: 'Last Used',
-                    // width: 33,
-                    filterable: false,
-                    // filterable: {
-                    //     cell: {
-                    //         inputWidth: 0,
-                    //         showOperators: true,
-                    //         operator: 'eq',
-                    //     },
-                    // },
-                    exportable: { excel: true },
-                    format: '{0: yyyy-MM-dd HH:mm:ss}',
-                },
-                {
-                    field: 'ts_1',
-                    title: 'Last Used Successful',
-                    // width: 33,
-                    filterable: false,
-                    exportable: { excel: true },
-                    format: '{0: yyyy-MM-dd HH:mm:ss}',
                 },
                 {
                     command: [
@@ -322,7 +268,7 @@ window.initGrid = function() {
             }
         };
 
-        $('#proxies-grid').on('dblclick', "td[role='gridcell']", function (e) {
+        $('#tags-grid').on('dblclick', "td[role='gridcell']", function (e) {
             var text = $(this).find('.text');
             if (text.length) text.selectText();
             else $(this).selectText();
@@ -333,12 +279,12 @@ window.initGrid = function() {
                 selectedDataItems = [];
                 selectedItemIds = [];
                 selectedItemImsi = [];
-                $('#proxies-grid').data('kendoGrid').clearSelection();
-                $('#proxies-toolbar').data('kendoToolBar').hide($('#delete'));
+                $('#tags-grid').data('kendoGrid').clearSelection();
+                $('#tags-toolbar').data('kendoToolBar').hide($('#delete'));
             }
         });
     } catch (error) {
         console.warn(error);
     }
-    window.optimize_grid(['#proxies-grid']);
+    window.optimize_grid(['#tags-grid']);
 }

@@ -7,24 +7,13 @@ window.initForm = function() {
         items: [{
             field: "name",
             label: "Campaign Name:",
-            colSpan: 6
-        }, {
-            field: "order",
-            label: "Order:",
-            editor: 'NumericTextBox',
-            editorOptions: {
-                format: "n0",
-                min: 1,
-                max: 100,
-                // value: 1
-            },
-            colSpan: 6
+            colSpan: 12
         }, {
             field: "sep1",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
-        }/*, {
+        }, {
             field: "user_id",
             label: "User:",
             colSpan: 6,
@@ -33,7 +22,7 @@ window.initForm = function() {
                 dataSource: {
                     transport: {
                         read: {
-                            url: "/api/v1/option/users",
+                            url: `http://${api_base_url}/api/v1/options/user`,
                             type: "GET",
                             beforeSend: function (request) {
                                 request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
@@ -41,30 +30,38 @@ window.initForm = function() {
                         }
                     }
                 },
+                dataBound: function(e) {
+                    console.log(isAuth.user.id);
+                    campaignCreateModel.data.set("user_id", isAuth.user.id);
+                    this.select(function(item) {
+                        return item.value === isAuth.user.id;
+                    });
+                    //this.trigger("select");
+                },
                 dataTextField: "text",
                 dataValueField: "value",
                 optionLabel: "Select user...",
                 valuePrimitive: true
             },
-            validation: { required: true }
+            // validation: { required: true }
+            hidden: true
         }, {
-            field: "src_addr",
-            label: "SRC Addr:",
-            colSpan: 6,
-            validation: { required: true }
+            field: "webhook_url",
+            label: "Webhook URL:",
+            colSpan: 6
         }, {
             field: "sep2",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
-        }*/, {
+        }, {
             field: "msg_template",
             label: "",
             colSpan: 12,
             editor: "TextArea",
             editorOptions: {
-                overflow: "hidden",
-                rows: 3
+                overflow: "auto",
+                rows: 10
             },
             validation: { required: true }
         }, {
@@ -114,6 +111,78 @@ window.initForm = function() {
             label: false,
             editor: "<div class='separator mx-n15'></div>"
         }, {
+            field: 'tags',
+            label: 'Tags',
+            editor: 'MultiSelect',
+            editorOptions: {
+                dataSource: new kendo.data.DataSource({
+                    transport: {
+                        read: {
+                            url: `http://${api_base_url}/api/v1/options/tag`,
+                            type: 'GET',
+                            beforeSend: function (request) {
+                                request.setRequestHeader(
+                                    'Authorization',
+                                    `${token_type} ${access_token}`
+                                );
+                            },
+                        },
+                    },
+                }),
+                dataTextField: 'text',
+                dataValueField: 'value',
+                valuePrimitive: true,
+                downArrow: true,
+                animation: false,
+                autoClose: false,
+                // noDataTemplate: function (e) {
+                //     let value = e.instance.input.val();
+                //     return `
+                //     <div class='no-data'>
+                //     <p>Api Key not found.<br>Do you want to add new Api Key ${value} ?</p>
+                //     <button class="k-button k-button-solid-base k-button-solid k-button-md k-rounded-md" onclick="addNew('${value}', 'campaign-create-window')">Append</button>
+                //     </p>
+                //     `;
+                // },
+                // tagTemplate: '<span class="k-chip k-chip-md k-rounded-md k-chip-solid k-chip-solid-base" unselectable="on" style="color::color_txt;background::color_bg;">' +
+                //     '<span unselectable="on" class="k-chip-content"><span class="k-chip-label">:name</span></span>' +
+                //     '<span class="k-chip-action k-chip-remove-action" unselectable="on" aria-hidden="true" aria-label="delete" title="delete">' +
+                //     '<span class="k-icon k-i-x-circle"></span>' +
+                //     '</span>' +
+                //     '</span>'
+            },
+            colSpan: 12,
+        }, {
+            field: "sep5",
+            colSpan: 12,
+            label: false,
+            editor: "<div class='separator mx-n15'></div>"
+        }, {
+            field: "msg_lifespan",
+            label: "Lifespan:",
+            editor: 'NumericTextBox',
+            editorOptions: {
+                format: "n0",
+                min: 1
+            },
+            colSpan: 6
+        }, {
+            field: "order",
+            label: "Order:",
+            editor: 'NumericTextBox',
+            editorOptions: {
+                format: "n0",
+                min: 1,
+                max: 100,
+                // value: 1
+            },
+            colSpan: 6
+        }, {
+            field: "sep6",
+            colSpan: 12,
+            label: false,
+            editor: "<div class='separator mx-n15'></div>"
+        }, {
             id: "start_ts",
             field: "start_ts",
             label: "Start at:",
@@ -134,7 +203,7 @@ window.initForm = function() {
                 timeFormat: "HH:mm"
             }
         }, {
-            field: "sep5",
+            field: "sep7",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -144,7 +213,7 @@ window.initForm = function() {
             label: false,
             editor: "<div id='campaign-edit-schedule' class='schedule'></div>"
         }, {
-            field: "sep7",
+            field: "sep8",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"

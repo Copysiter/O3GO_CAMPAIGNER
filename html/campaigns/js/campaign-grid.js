@@ -189,6 +189,15 @@ window.initCampaignGrid = function() {
                 }
             },
             {
+                field: 'tags',
+                title: 'TAGS',
+                maxWidth: 60,
+                template:
+                    "<div class='d-flex'># for (var i = 0; i < tags.length; i++) { #<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-inline' style='color:#:tags[i].color_txt#;background:#:tags[i].color_bg#;'>#:tags[i].name#</span># } #</div>",
+                sortable: false,
+                filterable: false,
+            },
+            {
                 field: 'user_id',
                 width: '100px',
                 title: 'User',
@@ -221,11 +230,19 @@ window.initCampaignGrid = function() {
                 field: 'msg_template',
                 // width: 80,
                 title: 'Message',
+                encoded: false,
                 filterable: {
                     cell: {
                         showOperators: false,
                     },
                 },
+                template: function(item) {
+                    return `<div class="long_text">
+                            ${item.msg_template.replaceAll("\n", "<br>")}
+                            </div>`
+                },
+                minWidth: 480,
+                maxWidth: 640
             },
             {
                 field: 'msg_total',

@@ -20,8 +20,11 @@ window.openCampaignEditForm = function() {
             "start_ts": window.selectedCampaignItem.start_ts,
             "stop_ts": window.selectedCampaignItem.stop_ts,
             "api_keys": window.selectedCampaignItem.api_keys,
+            "tags": window.selectedCampaignItem.tags.map(({ id }) => id),
             "schedule": window.selectedCampaignItem.schedule,
+            "msg_lifespan": window.selectedCampaignItem.msg_lifespan,
             "order": window.selectedCampaignItem.order,
+            "webhook_url": window.selectedCampaignItem.webhook_url,
         }
         console.log(values)
         form.setOptions({

@@ -26,69 +26,6 @@ window.initMessageGrid = function(id) {
                     }
                     if (data.hasOwnProperty('filter') && data.filter) {
                         data.filter = data.filter.filters;
-                        for (let i = 0; i < data.filter.length; i++) {
-                            if (data.filter[i].field == 'status') {
-                                switch (data.filter[i].value) {
-                                    case 0:
-                                        data.filter.push({
-                                            'field': 'submit_status',
-                                            'operator': 'isnullorempty'
-                                        });
-                                    break;
-                                    case 1:
-                                        data.filter.push({
-                                            'field': 'submit_status',
-                                            'operator': 'eq',
-                                            'value': 2
-                                        });
-                                    break;
-                                    case 2:
-                                        data.filter.push({
-                                            'field': 'submit_status',
-                                            'operator': 'eq',
-                                            'value': 0
-                                        });
-                                    break;
-                                    case 3:
-                                        data.filter.push({
-                                            'field': 'submit_status',
-                                            'operator': 'eq',
-                                            'value': 1
-                                        });
-                                        data.filter.push({
-                                            'field': 'delivery_status',
-                                            'operator': 'eq',
-                                            'value': 0
-                                        });
-                                    break;
-                                    case 4:
-                                        data.filter.push({
-                                            'field': 'submit_status',
-                                            'operator': 'eq',
-                                            'value': 1
-                                        });
-                                        data.filter.push({
-                                            'field': 'delivery_status',
-                                            'operator': 'eq',
-                                            'value': 1
-                                        });
-                                    break;
-                                    case 5:
-                                        data.filter.push({
-                                            'field': 'submit_status',
-                                            'operator': 'eq',
-                                            'value': 1
-                                        });
-                                        data.filter.push({
-                                            'field': 'delivery_status',
-                                            'operator': 'eq',
-                                            'value': -1
-                                        });
-                                    break;
-                                }
-                                delete data.filter[i];
-                            }
-                        }
                     }
                     return data;
                 }
@@ -207,10 +144,11 @@ window.initMessageGrid = function(id) {
                         element.kendoDropDownList({
                             animation: false,
                             dataSource: [
-                                {value: 0, text: "Created"},
-                                {value: 1, text: "Used"},
-                                {value: 2, text: "Sent"},
-                                {value: 3, text: "Faild"}
+                                {value: 0, text: "CREATED"},
+                                {value: 1, text: "SUBMITTED"},
+                                {value: 2, text: "DELIVERED"},
+                                {value: 3, text: "UNDELIVERED"},
+                                {value: 4, text: "FAILED"}
                             ],
                             dataTextField: "text",
                             dataValueField: "value",
@@ -224,9 +162,14 @@ window.initMessageGrid = function(id) {
                 field: 'text',
                 width: '100px',
                 title: 'Message',
-                template: '<div class="long_text">#: text #</div>',
+                // template: '<div class="long_text">#: text #</div>',
+                template: function(item) {
+                    return `<div class="long_text">
+                            ${item.text.replaceAll("\n", "<br>")}
+                            </div>`
+                },
                 sortable: false,
-                sortable: false,
+                minWidth: 480,
                 maxWidth: 640
             }, {
                 field: 'field_1',

@@ -364,7 +364,9 @@ html, body {
   background: rgba(0, 0, 0, 0.04);
 }
 .long_text {
+  min-width: 480px;
   max-width: 640px;
+  white-space: wrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
