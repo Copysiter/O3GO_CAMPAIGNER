@@ -44,3 +44,21 @@ async def get_api_keys_options(
         'text': rows[i].value,
         'value': rows[i].value
     } for i in range(len(rows))])
+
+
+@router.get('/tag', response_model=List[schemas.OptionInt])
+async def get_tag_options(
+    *,
+    db: Session = Depends(deps.get_db),
+    _: models.User = Depends(deps.get_current_active_superuser)
+) -> Any:
+    """
+    Retrieve tag options.
+    """
+    rows = await crud.tag.get_rows(db, limit=None)
+    return JSONResponse([{
+        'text': rows[i].name,
+        'value': rows[i].id,
+        'color_txt': rows[i].color_txt,
+        'color_bg': rows[i].color_bg
+    } for i in range(len(rows))])

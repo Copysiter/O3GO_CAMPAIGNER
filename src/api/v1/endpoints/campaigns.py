@@ -56,6 +56,7 @@ async def create_campaign(
         name = campaign_in.name,
         user_id = campaign_in.user_id if campaign_in.user_id else current_user.id,
         api_keys = campaign_in.api_keys,
+        tags = campaign_in.tags,
         schedule = campaign_in.schedule,
         msg_template = campaign_in.msg_template,
         msg_total = 0,
@@ -84,7 +85,7 @@ async def create_campaign(
         ext = os.path.splitext(campaign_in.data_file_name)[1]
         data = pd.DataFrame()
         if ext in ['.csv', '.txt']:
-            data = pd.read_csv(f'upload/{campaign_in.data_file_name}', sep='[,;:]', header=None)
+            data = pd.read_csv(f'upload/{campaign_in.data_file_name}', sep='[\s+|,;:]', header=None)
             data = data.astype(str)
         if ext in ['.xls', '.xlsx']:
             data = pd.read_excel(f'upload/{campaign_in.data_file_name}', sheet_name=0, header=None)
@@ -121,8 +122,8 @@ async def update_campaign(
     campaign = await crud.campaign.get(db=db, id=id)
     if not campaign:
         raise HTTPException(status_code=404, detail='Campaign not found')
-    # campaign_in.schedule = jsonable_encoder(campaign_in.schedule)
-    campaign = await crud.campaign.update(db=db, db_obj=campaign, obj_in=campaign_in)
+    campaign = await crud.campaign.update(
+        db=db, db_obj=campaign, obj_in=campaign_in)
     if campaign.create_ts:
         campaign.create_ts = campaign.create_ts.strftime('%Y-%m-%d %H:%M:%S')
     if campaign.start_ts:

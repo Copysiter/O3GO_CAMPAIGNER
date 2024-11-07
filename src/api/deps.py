@@ -1,12 +1,13 @@
 ﻿from typing import List, Dict
 from fastapi import Request, Depends, HTTPException, Security, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, HTTPBasic, HTTPBasicCredentials
 from fastapi.security.api_key import APIKey, APIKeyQuery, APIKeyHeader
 from jose import jwt
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings  # noqa
+from core.security import verify_password # noqa
 from db.session import async_session  # noqa
 
 import crud, models, schemas  # noqa
@@ -17,6 +18,8 @@ from utils.query_string import parse  # noqa
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f'{settings.API_VERSION_PREFIX}/auth/access-token'
 )
+
+http_basic = HTTPBasic()
 
 api_key_query = APIKeyQuery(name='x_api_key', auto_error=False)
 api_key_header = APIKeyHeader(name='X-Api-Key', auto_error=False)
@@ -62,6 +65,27 @@ async def get_current_active_superuser(
             status_code=400, detail='The user doesn\'t have enough privileges'
         )
     return current_user
+
+
+async def get_basic_auth_user(
+    db: AsyncSession = Depends(get_db),
+    credentials: HTTPBasicCredentials = Depends(http_basic)
+) -> models.User:
+    user = await crud.user.get_by_login(db, login=credentials.username)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail='User not found'
+        )
+    if not crud.user.is_active(user):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail='Inactive user'
+        )
+    if not verify_password(credentials.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail='Incorrect password',
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return user
 
 
 def get_api_key(

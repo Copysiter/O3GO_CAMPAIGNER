@@ -9,6 +9,7 @@ from .campaign import Campaign
 
 # Shared properties
 class CampaignDstBase(BaseModel):
+    ext_id: Optional[str]
     campaign_id: Optional[int]
     dst_addr: Optional[int]
     field_1: Optional[str] = None

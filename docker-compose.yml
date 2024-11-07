@@ -12,17 +12,17 @@ services:
     ports:
       - '5432:5432'
 
-  # redis:
-  #   image: redis:7
-  #   restart: always
-  #   ports:
-  #     - '6379:6379'
+  redis:
+     image: redis:7
+     restart: always
+     ports:
+       - '6379:6379'
 
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    command: python main.py
+    command: sh -c "sh /app/run.sh"
     volumes:
       - ./src/:/app/
     env_file:

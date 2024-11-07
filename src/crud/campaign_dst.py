@@ -11,13 +11,16 @@ from models.campaign_dst import CampaignDst
 from models.campaign import Campaign
 from schemas.campaign_dst import CampaignDstCreate, CampaignDstUpdate
 
+from core.config import settings
 
 class CRUDCampaignDst(CRUDBase[CampaignDst, CampaignDstCreate, CampaignDstUpdate]):
     async def create_rows(
         self, db: AsyncSession, *, obj_in: List[CampaignDstCreate],
     ) -> List[CampaignDst]:
-        statement = insert(CampaignDst).values(obj_in)
-        await db.execute(statement)
+        statement = insert(CampaignDst)
+        for i in range(0, len(obj_in), settings.DATABASE_INSERT_BATCH_SIZE):
+            batch = obj_in[i:i + settings.DATABASE_INSERT_BATCH_SIZE]
+            await db.execute(statement, batch)
         await db.commit()
         return len(obj_in)
     
@@ -31,12 +34,5 @@ class CRUDCampaignDst(CRUDBase[CampaignDst, CampaignDstCreate, CampaignDstUpdate
     #) -> List[CampaignDst]:
     #    return db.query(CampaignDst).join(Campaign).group_by(CampaignDst.campaign_id).order_by(Campaign.start_ts).all()
 
-    async def get_next(
-        self, db: AsyncSession, *, api_key: str
-    ) -> List[CampaignDst]:
-        statement = insert(CampaignDst).values(obj_in)
-        await db.execute(statement)
-        await db.commit()
-        return len(obj_in)
 
 campaign_dst = CRUDCampaignDst(CampaignDst)

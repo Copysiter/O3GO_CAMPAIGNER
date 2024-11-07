@@ -12,7 +12,6 @@ from core.config import settings
 from db.init_db import init_db
 from api.v1.api_router import api_router
 from api.ext.v1.api_router import api_router as ext_api_router
-from middlewares.stats import StatsMiddleware
 
 
 def init_app() -> FastAPI:
@@ -38,15 +37,6 @@ def init_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    if settings.STATS_ENABLE:
-        app.add_middleware(
-            StatsMiddleware,
-            prefix=settings.STATS_PREFIX,
-            host=settings.STATS_SERVER_HOST,
-            port=settings.STATS_SERVER_PORT,
-            block_urls=settings.STATS_BLOCK_URLS
-        )
 
     app.include_router(api_router, prefix=settings.API_VERSION_PREFIX)
 

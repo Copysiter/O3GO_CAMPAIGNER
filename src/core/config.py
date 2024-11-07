@@ -75,6 +75,7 @@ class Settings(BaseSettings):
     DATABASE_CREATE_ALL: bool = Field(True, env='DATABASE_CREATE_ALL')
     DATABASE_POOL_SIZE: int = Field(20, env='DATABASE_POOL_SIZE')
     DATABASE_MAX_OVERFLOW: int = Field(40, env='DATABASE_MAX_OVERFLOW')
+    DATABASE_INSERT_BATCH_SIZE: int = Field(100, env='DATABASE_INSERT_BATCH_SIZE')
 
     CELERY_BROKER_URL: str = Field('redis://redis:6379', env='CELERY_BROKER_URL')
     CELERY_RESULT_BACKEND: str = Field('redis://redis:6379', env='CELERY_RESULT_BACKEND')
@@ -92,8 +93,6 @@ class Settings(BaseSettings):
 
     FIRST_SUPERUSER: str = Field('admin', env='FIRST_SUPERUSER')
     FIRST_SUPERUSER_PASSWORD: str = Field('admin', env='FIRST_SUPERUSER_PASSWORD')
-
-    REPORT_LAST_DAYS: int = Field(7, env='REPORT_LAST_DAYS')
 
     class Config:
         env_file = '.env'

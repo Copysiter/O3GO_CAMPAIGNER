@@ -6,13 +6,13 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from .user import User
+from .tag import Tag
 
 
 # Shared properties
 class CampaignBase(BaseModel):
     name: Optional[str] = None
     user_id: Optional[int] = None
-    connection_id: Optional[int] = None
     schedule: Optional[dict] = {
         1: [],
         2: [],
@@ -23,11 +23,13 @@ class CampaignBase(BaseModel):
         7: []
     }
     msg_template: Optional[str] = None
+    msg_lifespan: Optional[int] = None
     msg_total: Optional[int] = 0
     msg_sent: Optional[int] = 0
     msg_delivered: Optional[int] = 0
     msg_undelivered: Optional[int] = 0
     msg_failed: Optional[int] = 0
+    webhook_url: Optional[str] = None
     order: Optional[int] = None
     status: Optional[int] = 0
     create_ts: Optional[datetime] = datetime.utcnow()
@@ -52,12 +54,14 @@ class CampaignCreate(CampaignBase):
     }
     keys: Optional[list] = []
     api_keys: Optional[list] = []
+    tags: Optional[list] = []
 
 
 # Properties to receive on item update
 class CampaignUpdate(CampaignBase):
     keys: Optional[list] = []
     api_keys: Optional[list] = []
+    tags: Optional[list] = []
 
 
 # Properties shared by models stored in DB
@@ -72,6 +76,7 @@ class CampaignInDBBase(CampaignBase):
 class Campaign(CampaignInDBBase):
     user: User
     api_keys: list = []
+    tags: List[Tag] = []
 
 # Properties stored in DB
 class CampaignInDB(CampaignInDBBase):

@@ -1,8 +1,8 @@
-from typing import TYPE_CHECKING, Optional
+from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from db.base_class import Base
 
@@ -15,6 +15,7 @@ class CampaignDst(Base):
         Integer, primary_key=True, index=True,
         autoincrement=True, unique=True
     )
+    ext_id = Column(String, index=True)
     campaign_id = Column(
         Integer, ForeignKey('campaign.id', ondelete='CASCADE')
     )
@@ -27,7 +28,8 @@ class CampaignDst(Base):
     text = Column(String, index=True)
     status = Column(Integer, index=True, default=0)
     error = Column(String)
-    create_ts = Column(DateTime, index=True)
+    create_ts = Column(DateTime, index=True, default=datetime.utcnow)
+    expire_ts = Column(DateTime, index=True)
     sent_ts = Column(DateTime, index=True)
     update_ts = Column(DateTime, index=True)
 

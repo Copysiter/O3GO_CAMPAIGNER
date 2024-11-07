@@ -1,13 +1,13 @@
 from datetime import datetime
 from dataclasses import fields
-from typing import Any, Literal
-
+from typing import Any, Literal, List
 from fastapi import APIRouter, Depends, HTTPException
-
-from sqlalchemy import text
+from sqlalchemy import text, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.config import settings
 from api import deps
+from tasks import webhook
 
 import crud, models, schemas
 
@@ -15,8 +15,38 @@ import crud, models, schemas
 router = APIRouter()
 
 
+@router.post('/send') #, response_model=schemas.CampaignDst)
+async def send(
+    *, db: AsyncSession = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_basic_auth_user),
+    messages: List[schemas.MessageCreate]
+) -> Any:
+    '''
+    Send batch messages.
+    '''
+    entries_data = []
+    for message in messages:
+        campaign = await crud.campaign.get(db=db, id=message.campaign_id)
+        if not campaign or campaign.user_id != current_user.id:
+            raise HTTPException(
+                status_code=404,
+                detail=f'Campaign not found '
+                       f'(campaign_id={message.campaign_id})'
+            )
+        obj_in = message.model_dump()
+        obj_in['ext_id'] = str(obj_in.pop('id'))
+        obj_in['dst_addr'] = str(obj_in.pop('phone'))
+        entries_data.append(obj_in)
+    statement = insert(models.CampaignDst)
+    for i in range(0, len(entries_data), settings.DATABASE_INSERT_BATCH_SIZE):
+        batch = entries_data[i:i + settings.DATABASE_INSERT_BATCH_SIZE]
+        await db.execute(statement, batch)
+    await db.commit()
+    return entries_data
+
+
 @router.get('/next') #, response_model=schemas.CampaignDst)
-async def next(
+async def get_next(
     *, session: AsyncSession = Depends(deps.get_db), api_key: str = None,
     _=Depends(deps.check_api_key)
 ) -> Any:
@@ -62,21 +92,24 @@ async def next(
                 ''')
             )
             if not (row := result.first()):
-                raise HTTPException(status_code=404, detail='Messages not found')
+                raise HTTPException(
+                    status_code=404, detail='Messages not found'
+                )
             campaign_dst = row._mapping  # noqa
 
             message = {
                 'id': campaign_dst.get('id'),
                 'phone': campaign_dst.get('dst_addr'),
-                'text': campaign.get('msg_template')
+                'text': campaign_dst.get('text')
             }
-
-            for j in range(1, 6):
-                field = f'field_{j}'
-                if campaign_dst.get(field):
-                    message['text'] = message['text'].replace(
-                        '{' + field + '}', campaign_dst.get(field)
-                    )
+            if not message['text']:
+                message['text'] = campaign.get('msg_template')
+                for j in range(1, 6):
+                    field = f'field_{j}'
+                    if campaign_dst.get(field):
+                        message['text'] = message['text'].replace(
+                            '{' + field + '}', campaign_dst.get(field)
+                        )
 
             await session.execute(
                 statement=text(f'''
@@ -112,11 +145,9 @@ async def next(
 
 
 @router.get('/status')
-async def next(
+async def get_status(
     *, session: AsyncSession = Depends(deps.get_db), id: int,
-    status: Literal[
-        *[field.name.lower() for field in fields(schemas.CampaignDstStatus)]  # noqa
-    ],
+    status: Literal['delivered', 'undelivered', 'failed'],
     _=Depends(deps.check_api_key)
 ) -> Any:
     '''
@@ -135,6 +166,30 @@ async def next(
                     status_code=404, detail='Message not found'
                 )
             campaign_dst = row._mapping  # noqa
+
+            if campaign_dst.status in (
+                schemas.CampaignDstStatus.DELIVERED,
+                schemas.CampaignDstStatus.UNDELIVERED,
+                schemas.CampaignDstStatus.FAILED
+            ):
+                if not (row := result.fetchone()):
+                    raise HTTPException(
+                        status_code=422,
+                        detail='Message status already received'
+                    )
+
+            result = await session.execute(
+                statement=text(f'''
+                    SELECT campaign.* FROM campaign
+                    WHERE campaign.id = {campaign_dst.get('campaign_id')}
+                    LIMIT 1;
+                ''')
+            )
+            if not (row := result.first()):
+                raise HTTPException(
+                    status_code=404, detail='Campaign not found'
+                )
+            campaign = row._mapping  # noqa
 
             if campaign_dst.status != (
                 new_status := getattr(
@@ -162,14 +217,17 @@ async def next(
                     ''')
                 )
 
-            message = {
+            if campaign.webhook_url and campaign_dst.ext_id:
+                webhook.delay(campaign.webhook_url, {
+                    'id': campaign_dst.ext_id, 'status': status
+                })
+
+            return {
                 'id': campaign_dst.id,
                 'phone': campaign_dst.dst_addr,
                 'text': campaign_dst.text,
                 'status': status,
             }
-
-            return message
     except Exception as e:
         await session.rollback()
         raise HTTPException(status_code=500, detail=str(e))

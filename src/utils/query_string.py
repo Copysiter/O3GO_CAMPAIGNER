@@ -175,7 +175,7 @@ def _normalize(d):
                     temp_new.append(_normalize(v1))
                 newd[k] = temp_new
             elif first_key == '':
-                newd[k] = v.values()[0]
+                newd[k] = list(v.values())[0]
             else:
                 newd[k] = _normalize(v)
         else:
