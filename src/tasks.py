@@ -43,7 +43,7 @@ async def update_sent_messages():
     async with async_session() as session:
         async with session.begin():
             try:
-                now = datetime.utcnow() - timedelta(seconds=30)
+                now = datetime.utcnow() - timedelta(seconds=settings.WAIT_STATUS_TIMEOUT)
                 await session.execute(
                     statement=text(f'''
                         UPDATE campaign_dst
@@ -59,6 +59,29 @@ async def update_sent_messages():
                 raise
 
 
+async def update_complete_campaigns():
+    async with async_session() as session:
+        async with session.begin():
+            try:
+                await session.execute(
+                    statement=text(f'''
+                        UPDATE campaign
+                        SET status = {schemas.CampaignStatus.COMPLETE}
+                        WHERE msg_delivered + msg_undelivered >= msg_total
+                    ''')
+                )
+            except Exception as e:
+                await session.rollback()
+                print(f"Ошибка при обновлении завершенных кампаний: {e}")
+                raise
+
+
+async def send_webhook(webhook_url, data):
+    async with aiohttp.ClientSession() as session:
+        async with session.post(webhook_url, data=data) as resp:
+            return await resp.json()
+
+
 @celery.task
 def update_messages():
     loop = asyncio.get_event_loop()
@@ -66,11 +89,10 @@ def update_messages():
     loop.run_until_complete(update_sent_messages())
 
 
-async def send_webhook(webhook_url, data):
-    async with aiohttp.ClientSession() as session:
-        async with session.post(webhook_url, data=data) as resp:
-            print(resp)
-            return await resp.json()
+@celery.task
+def update_campaigns():
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(update_complete_campaigns())
 
 
 @celery.task
@@ -78,9 +100,14 @@ def webhook(webhook_url, data):
     loop = asyncio.get_event_loop()
     loop.run_until_complete(send_webhook(webhook_url, data))
 
+
 celery.conf.beat_schedule = {
-    'update_expired_messages': {
+    'update_messages': {
         'task': 'tasks.update_messages',
         'schedule': timedelta(seconds=10),
+    },
+    'update_campaigns': {
+        'task': 'tasks.update_campaigns',
+        'schedule': timedelta(seconds=60),
     },
 }

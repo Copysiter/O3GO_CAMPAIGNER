@@ -17,8 +17,13 @@ class CampaignDstBase(BaseModel):
     field_3: Optional[str] = None
     field_4: Optional[str] = None
     field_5: Optional[str] = None
+    attempts: Optional[int] = None
     status: Optional[int] = None
     create_ts: Optional[datetime] = datetime.utcnow()
+    sent_ts: Optional[datetime] = None
+    update_ts: Optional[datetime] = None
+    expire_ts: Optional[datetime] = None
+    error: Optional[str] = None
 
 
 # Properties to receive on item creation
@@ -29,9 +34,7 @@ class CampaignDstCreate(CampaignDstBase):
 
 # Properties to receive on item update
 class CampaignDstUpdate(CampaignDstBase):
-    sent_ts: Optional[str] = None
-    update_ts: Optional[str] = None
-    error: Optional[str] = None
+    pass
 
 
 # Properties shared by models stored in DB

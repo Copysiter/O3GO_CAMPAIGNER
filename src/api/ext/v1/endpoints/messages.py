@@ -1,8 +1,9 @@
-from datetime import datetime
-from dataclasses import fields
+from datetime import datetime, timedelta
 from typing import Any, Literal, List
+from collections import defaultdict
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import text, insert
+from sqlalchemy import text, insert, update, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
@@ -25,6 +26,7 @@ async def send(
     Send batch messages.
     '''
     entries_data = []
+    campaigns_count = defaultdict(int)
     for message in messages:
         campaign = await crud.campaign.get(db=db, id=message.campaign_id)
         if not campaign or campaign.user_id != current_user.id:
@@ -37,10 +39,23 @@ async def send(
         obj_in['ext_id'] = str(obj_in.pop('id'))
         obj_in['dst_addr'] = str(obj_in.pop('phone'))
         entries_data.append(obj_in)
+        campaigns_count[campaign.id] += 1
     statement = insert(models.CampaignDst)
     for i in range(0, len(entries_data), settings.DATABASE_INSERT_BATCH_SIZE):
         batch = entries_data[i:i + settings.DATABASE_INSERT_BATCH_SIZE]
         await db.execute(statement, batch)
+    statement = (
+        update(models.Campaign)
+        .where(models.Campaign.id.in_(campaigns_count.keys()))
+        .values(
+            msg_total=models.Campaign.msg_total + case(*[
+                (models.Campaign.id == campaign_id, count)
+                for campaign_id, count in campaigns_count.items()
+            ], else_=0)
+        )
+    )
+    await db.execute(statement)
+
     await db.commit()
     return entries_data
 
@@ -86,6 +101,7 @@ async def get_next(
                         {schemas.CampaignDstStatus.CREATED},
                         {schemas.CampaignDstStatus.FAILED}
                     )
+                    AND attempts > 0
                     ORDER BY status
                     LIMIT 1
                     FOR UPDATE SKIP LOCKED;
@@ -111,12 +127,19 @@ async def get_next(
                             '{' + field + '}', campaign_dst.get(field)
                         )
 
+            sent_ts = datetime.utcnow()
+            expire_ts = "'{}'".format(
+                sent_ts + timedelta(seconds=campaign.msg_status_timeout)
+            ) if campaign.msg_status_timeout else 'NULL'
+
             await session.execute(
                 statement=text(f'''
                     UPDATE campaign_dst
                     SET status = {schemas.CampaignDstStatus.SENT},
                         text = '{message.get('text')}',
-                        sent_ts = '{datetime.utcnow()}'
+                        sent_ts = '{expire_ts}',
+                        expire_ts = {expire_ts}
+                        attempts = attempts - 1, 
                     WHERE id = {campaign_dst.get('id')}
                 ''')
             )
@@ -145,7 +168,7 @@ async def get_next(
 
 
 @router.get('/status')
-async def get_status(
+async def set_status(
     *, session: AsyncSession = Depends(deps.get_db), id: int,
     status: Literal['delivered', 'undelivered', 'failed'],
     _=Depends(deps.check_api_key)
@@ -154,11 +177,13 @@ async def get_status(
     Update message status
     '''
     try:
-        async with session.begin():
+        async with (session.begin()):
             result = await session.execute(
                 statement=text(f'''
-                    SELECT * FROM campaign_dst
-                    WHERE id = {id}
+                    SELECT campaign_dst.*, campaign.webhook_url
+                    FROM campaign_dst
+                    JOIN campaign ON campaign.id = campaign_dst.campaign_id
+                    WHERE campaign_dst.id = {id}
                 ''')
             )
             if not (row := result.fetchone()):
@@ -172,24 +197,21 @@ async def get_status(
                 schemas.CampaignDstStatus.UNDELIVERED,
                 schemas.CampaignDstStatus.FAILED
             ):
-                if not (row := result.fetchone()):
-                    raise HTTPException(
-                        status_code=422,
-                        detail='Message status already received'
-                    )
-
-            result = await session.execute(
-                statement=text(f'''
-                    SELECT campaign.* FROM campaign
-                    WHERE campaign.id = {campaign_dst.get('campaign_id')}
-                    LIMIT 1;
-                ''')
-            )
-            if not (row := result.first()):
                 raise HTTPException(
-                    status_code=404, detail='Campaign not found'
+                    status_code=422,
+                    detail='Message status already received'
                 )
-            campaign = row._mapping  # noqa
+
+            if status == 'failed' and campaign_dst.attempts < 1:
+                status == 'undelivered'
+
+            campaign_status = f'''
+            CASE
+                WHEN msg_delivered + msg_undelivered + 1 >= msg_total
+                THEN {schemas.CampaignStatus.COMPLETE}
+                ELSE status
+            END
+            ''' if status in ('delivered', 'undelivered') else 'status'
 
             if campaign_dst.status != (
                 new_status := getattr(
@@ -208,17 +230,13 @@ async def get_status(
                     statement=text(f'''
                         UPDATE campaign
                         SET msg_{status} = msg_{status} + 1,
-                        status = CASE
-                            WHEN msg_delivered + msg_undelivered + 1 >= msg_total
-                            THEN {schemas.CampaignStatus.COMPLETE}
-                            ELSE status
-                        END
+                        status = {campaign_status}
                         WHERE id = {campaign_dst.get('campaign_id')}
                     ''')
                 )
 
-            if campaign.webhook_url and campaign_dst.ext_id:
-                webhook.delay(campaign.webhook_url, {
+            if campaign_dst.webhook_url and campaign_dst.ext_id:
+                webhook.delay(campaign_dst.webhook_url, {
                     'id': campaign_dst.ext_id, 'status': status
                 })
 

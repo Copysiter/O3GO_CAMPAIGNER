@@ -26,6 +26,7 @@ class CampaignDst(Base):
     field_4 = Column(String, index=True)
     field_5 = Column(String, index=True)
     text = Column(String, index=True)
+    attempts = Column(Integer, index=True, default=1)
     status = Column(Integer, index=True, default=0)
     error = Column(String)
     create_ts = Column(DateTime, index=True, default=datetime.utcnow)

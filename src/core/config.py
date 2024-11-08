@@ -94,6 +94,8 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER: str = Field('admin', env='FIRST_SUPERUSER')
     FIRST_SUPERUSER_PASSWORD: str = Field('admin', env='FIRST_SUPERUSER_PASSWORD')
 
+    WAIT_STATUS_TIMEOUT: int = Field(30, env='WAIT_STATUS_TIMEOUT')
+
     class Config:
         env_file = '.env'
         env_file_encoding = 'utf-8'

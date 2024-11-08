@@ -568,8 +568,8 @@ window.initWizard = function() {
             console.log(JSON.stringify(data));
             return;
             */
-           //console.log(campaignCreateModel.data)
-           //console.log(campaignCreateModel.data.toJSON())
+           console.log(campaignCreateModel.data)
+           console.log(campaignCreateModel.data.toJSON())
             $.ajax({
                 url: `http://${api_base_url}/api/v1/campaigns/`,
                 type: 'POST',

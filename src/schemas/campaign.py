@@ -23,7 +23,9 @@ class CampaignBase(BaseModel):
         7: []
     }
     msg_template: Optional[str] = None
-    msg_lifespan: Optional[int] = None
+    msg_attempts: Optional[int] = None
+    msg_sending_timeout: Optional[int] = None
+    msg_status_timeout: Optional[int] = None
     msg_total: Optional[int] = 0
     msg_sent: Optional[int] = 0
     msg_delivered: Optional[int] = 0
