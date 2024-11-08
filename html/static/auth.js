@@ -34,7 +34,7 @@ if (isAuth) {
         (document.location.pathname === '/auth/') ||
         (document.location.pathname === '/auth')
     ) {
-        document.location.href = document.location.origin + '/report/';
+        document.location.href = document.location.origin + '/campaigns/';
     }
 }
 
