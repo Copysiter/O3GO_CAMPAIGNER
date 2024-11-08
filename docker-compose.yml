@@ -71,7 +71,7 @@ services:
   web:
     image: nginx
     ports:
-      - '8080:8888'
+      - '5000:8888'
     volumes:
       - ./html/:/usr/share/nginx/html/
       - ./services/nginx.conf:/etc/nginx/conf.d/nginx.conf
