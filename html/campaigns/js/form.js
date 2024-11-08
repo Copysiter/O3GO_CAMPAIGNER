@@ -7,12 +7,7 @@ window.initForm = function() {
         items: [{
             field: "name",
             label: "Campaign Name:",
-            colSpan: 12
-        }, {
-            field: "sep1",
-            colSpan: 12,
-            label: false,
-            editor: "<div class='separator mx-n15'></div>"
+            colSpan: 6
         }, {
             field: "user_id",
             label: "User:",
@@ -45,6 +40,22 @@ window.initForm = function() {
             },
             // validation: { required: true }
             hidden: true
+        }, {
+            field: "sep1",
+            colSpan: 12,
+            label: false,
+            editor: "<div class='separator mx-n15'></div>"
+        }, {
+            field: "order",
+            label: "Order:",
+            editor: 'NumericTextBox',
+            editorOptions: {
+                format: "n0",
+                min: 1,
+                max: 100,
+                // value: 1
+            },
+            colSpan: 6
         }, {
             field: "webhook_url",
             label: "Webhook URL:",
@@ -158,8 +169,8 @@ window.initForm = function() {
             label: false,
             editor: "<div class='separator mx-n15'></div>"
         }, {
-            field: "msg_lifespan",
-            label: "Lifespan:",
+            field: "msg_sending_timeout",
+            label: "Sending Timeout:",
             editor: 'NumericTextBox',
             editorOptions: {
                 format: "n0",
@@ -167,14 +178,12 @@ window.initForm = function() {
             },
             colSpan: 6
         }, {
-            field: "order",
-            label: "Order:",
+            field: "msg_status_timeout",
+            label: "Status Timeout:",
             editor: 'NumericTextBox',
             editorOptions: {
                 format: "n0",
-                min: 1,
-                max: 100,
-                // value: 1
+                min: 1
             },
             colSpan: 6
         }, {

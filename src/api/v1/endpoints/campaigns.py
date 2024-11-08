@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import openpyxl
+from asyncpg.pgproto.pgproto import timedelta
 
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from typing import Any, List, Dict, Union
@@ -55,16 +56,26 @@ async def create_campaign(
     campaign_db_in = schemas.CampaignUpdate(
         name = campaign_in.name,
         user_id = campaign_in.user_id if campaign_in.user_id else current_user.id,
+        webhook_url=campaign_in.webhook_url,
         api_keys = campaign_in.api_keys,
         tags = campaign_in.tags,
         schedule = campaign_in.schedule,
+        msg_sending_timeout=campaign_in.msg_sending_timeout,
+        msg_status_timeout=campaign_in.msg_status_timeout,
         msg_template = campaign_in.msg_template,
         msg_total = 0,
+        order=campaign_in.order,
         create_ts = ts,
         start_ts=campaign_in.start_ts,
         stop_ts=campaign_in.stop_ts,
         status = campaign_in.status
     )
+
+    # campaign_db_in = schemas.CampaignUpdate(
+    #     **campaign_in.model_dump()
+    # )
+    # if not campaign_db_in.user_id:
+    #     campaign_db_in.user_id = current_user.id
 
     campaign_dst_in = []
     fields = campaign_in.data_fields
@@ -95,6 +106,9 @@ async def create_campaign(
             for i in fields:
                 if i in ['dst_addr', 'field_1', 'field_2', 'field_3'] and int(fields[i]) in row:
                     campaign_dst[i] = row[int(fields[i])].strip().strip('"').strip('\'')
+            campaign_dst[i].attempts = campaign_in.msg_attempts
+            if campaign_in.msg_sending_timeout:
+                campaign_dst[i].expire_ts = ts + timedelta(seconds=campaign_in.msg_sending_timeout)
             campaign_dst_in.append(campaign_dst)
 
     campaign_db_in.msg_total = len(campaign_dst_in)
@@ -117,7 +131,7 @@ async def update_campaign(
     campaign_in: schemas.CampaignUpdate
 ) -> Any:
     '''
-    Update an campaign.
+    Update a campaign.
     '''
     campaign = await crud.campaign.get(db=db, id=id)
     if not campaign:
@@ -141,7 +155,7 @@ async def update_campaign(
     id: int
 ) -> Any:
     '''
-    Start an campaign.
+    Start a campaign.
     '''
     campaign = await crud.campaign.get(db=db, id=id)
     if not campaign:

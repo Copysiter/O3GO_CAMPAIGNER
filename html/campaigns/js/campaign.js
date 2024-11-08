@@ -22,11 +22,11 @@ window.openCampaignEditForm = function() {
             "api_keys": window.selectedCampaignItem.api_keys,
             "tags": window.selectedCampaignItem.tags.map(({ id }) => id),
             "schedule": window.selectedCampaignItem.schedule,
-            "msg_lifespan": window.selectedCampaignItem.msg_lifespan,
+            "msg_sending_timeout": window.selectedCampaignItem.msg_sending_timeout,
+            "msg_status_timeout": window.selectedCampaignItem.msg_status_timeout,
             "order": window.selectedCampaignItem.order,
             "webhook_url": window.selectedCampaignItem.webhook_url,
         }
-        console.log(values)
         form.setOptions({
             formData: values
         });

@@ -72,12 +72,7 @@ window.initWizard = function() {
                 }, {
                     field: "name",
                     label: "Campaign Name:",
-                    colSpan: 12
-                }, {
-                    field: "sep2",
-                    colSpan: 12,
-                    label: false,
-                    editor: "<div class='separator mx-n15'></div>"
+                    colSpan: 6
                 }, {
                     field: "user_id",
                     label: "User:",
@@ -110,6 +105,22 @@ window.initWizard = function() {
                     },
                     // validation: { required: true }
                     hidden: true
+                }, {
+                    field: "sep2",
+                    colSpan: 12,
+                    label: false,
+                    editor: "<div class='separator mx-n15'></div>"
+                }, {
+                    field: "order",
+                    label: "Order:",
+                    editor: 'NumericTextBox',
+                    editorOptions: {
+                        format: "n0",
+                        min: 1,
+                        max: 100,
+                        // value: 1
+                    },
+                    colSpan: 6
                 }, {
                     field: "webhook_url",
                     label: "Webhook URL:",
@@ -424,8 +435,8 @@ window.initWizard = function() {
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
                 }, {
-                    field: "msg_lifespan",
-                    label: "Lifespan:",
+                    field: "msg_sending_timeout",
+                    label: "Sending Timeout:",
                     editor: 'NumericTextBox',
                     editorOptions: {
                         format: "n0",
@@ -433,14 +444,12 @@ window.initWizard = function() {
                     },
                     colSpan: 6
                 }, {
-                    field: "order",
-                    label: "Order:",
+                    field: "msg_status_timeout",
+                    label: "Status Timeout:",
                     editor: 'NumericTextBox',
                     editorOptions: {
                         format: "n0",
-                        min: 1,
-                        max: 100,
-                        // value: 1
+                        min: 1
                     },
                     colSpan: 6
                 }, {
@@ -482,6 +491,8 @@ window.initWizard = function() {
                 change(e) {
                     if ((e.field == "start_ts" || e.field == "stop_ts") && e.value != undefined) {
                         campaignCreateModel.data.set(e.field, kendo.toString(e.value, "yyyy-MM-dd HH:mm:ss"));
+                    } else if (!["sep10", "se11", "sep12", "schedule"].includes(e.field)) {
+                        campaignCreateModel.data.set(e.field, e.value);
                     }
                 }
             }
