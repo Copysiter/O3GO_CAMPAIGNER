@@ -67,7 +67,8 @@ async def update_complete_campaigns():
                     statement=text(f'''
                         UPDATE campaign
                         SET status = {schemas.CampaignStatus.COMPLETE}
-                        WHERE msg_delivered + msg_undelivered >= msg_total
+                        WHERE msg_sent > 0
+                        AND msg_delivered + msg_undelivered >= msg_total
                     ''')
                 )
             except Exception as e:
