@@ -159,8 +159,12 @@ window.initMessageGrid = function(id) {
                 }
             },
             {
+                field: 'attempts',
+                title: 'Attempts',
+                sortable: false
+            },
+            {
                 field: 'text',
-                width: '100px',
                 title: 'Message',
                 // template: '<div class="long_text">#: text #</div>',
                 template: function(item) {

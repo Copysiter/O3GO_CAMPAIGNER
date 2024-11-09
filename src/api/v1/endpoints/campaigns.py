@@ -86,6 +86,11 @@ async def create_campaign(
     ):
         for line in campaign_in.data_text.split(campaign_in.data_text_row_sep):
             campaign_dst = {}
+            campaign_dst['attempts'] = campaign_in.msg_attempts
+            if campaign_in.msg_sending_timeout:
+                campaign_dst['expire_ts'] = ts + timedelta(
+                    seconds=campaign_in.msg_sending_timeout
+                )
             row = line.split(campaign_in.data_text_col_sep)
             for f in fields:
                 if f in ['dst_addr', 'field_1', 'field_2', 'field_3'] and int(fields[f]) < len(row):
@@ -103,12 +108,14 @@ async def create_campaign(
             data = data.astype(str)
         for i, row in data.iterrows():
             campaign_dst = {}
+            campaign_dst['attempts'] = campaign_in.msg_attempts
+            if campaign_in.msg_sending_timeout:
+                campaign_dst['expire_ts'] = ts + timedelta(
+                    seconds=campaign_in.msg_sending_timeout
+                )
             for i in fields:
                 if i in ['dst_addr', 'field_1', 'field_2', 'field_3'] and int(fields[i]) in row:
                     campaign_dst[i] = row[int(fields[i])].strip().strip('"').strip('\'')
-            campaign_dst[i].attempts = campaign_in.msg_attempts
-            if campaign_in.msg_sending_timeout:
-                campaign_dst[i].expire_ts = ts + timedelta(seconds=campaign_in.msg_sending_timeout)
             campaign_dst_in.append(campaign_dst)
 
     campaign_db_in.msg_total = len(campaign_dst_in)
