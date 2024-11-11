@@ -3,7 +3,8 @@
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 
-from sqlalchemy import select, func, or_  # noqa
+from sqlalchemy import inspect, select, func, or_  # noqa
+from sqlalchemy import String, Text, Unicode, UnicodeText
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,6 +41,10 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 if isinstance(filters[i]['field'], str)
                 else filters[i]['field']
             )
+            column = inspect(self.model).columns.get(filters[i]['field'])
+            if column is not None and isinstance(
+                    column.type, (String, Text, Unicode, UnicodeText)):
+                filters[i]['value'] = str(filters[i]['value'])
             if filters[i]['operator'] == 'eq':
                 where = field == filters[i]['value']
             if filters[i]['operator'] == 'neq':
@@ -70,7 +75,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 where = field.is_not(None)
             if filters[i]['operator'] == '?':
                 where = field.op('?')(filters[i]['value'])
-            if filters[i]['operator'] == 'in':
+            if filters[i]['operator'] == 'overlaps':
                 if None in filters[i]['value']:
                     values = [v for v in filters[i]['value'] if v]
                     where = or_(
@@ -79,7 +84,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                     )
                 else:
                     where = field.in_(filters[i]['value'])
-            if filters[i]['operator'] == 'overlaps':
+            if filters[i]['operator'] == 'in':
                 where = field.in_(filters[i]['value'])
             if filters[i]['operator'] == 'or':
                 where = [or_(field) == value

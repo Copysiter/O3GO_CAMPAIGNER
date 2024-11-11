@@ -12,22 +12,10 @@ window.openCampaignDetail = function() {
 window.openCampaignEditForm = function() {
     if (window.selectedCampaignItem) {
         let form = $('#campaign-edit-form').data('kendoForm');
-        let values = {
-            "ID": window.selectedCampaignItem.id,
-            "name": window.selectedCampaignItem.name,
-            "user_id": window.selectedCampaignItem.user_id,
-            "msg_template": window.selectedCampaignItem.msg_template,
-            "msg_sending_timeout": window.selectedCampaignItem.msg_sending_timeout,
-            "msg_status_timeout": window.selectedCampaignItem.msg_status_timeout,
-            "msg_attempts": window.selectedCampaignItem.msg_attempts,
-            "start_ts": window.selectedCampaignItem.start_ts,
-            "stop_ts": window.selectedCampaignItem.stop_ts,
-            "api_keys": window.selectedCampaignItem.api_keys,
-            "tags": window.selectedCampaignItem.tags.map(({ id }) => id),
-            "schedule": window.selectedCampaignItem.schedule,
-            "order": window.selectedCampaignItem.order,
-            "webhook_url": window.selectedCampaignItem.webhook_url,
-        }
+        let values = {};
+        Object.assign(values, window.selectedCampaignItem);
+        values.ID = window.selectedCampaignItem.id;
+        values.tags = window.selectedCampaignItem.tags.map(({ id }) => id);
         form.setOptions({
             formData: values
         });
@@ -47,14 +35,18 @@ window.openCampaignEditForm = function() {
 window.campaignUpdate = function(data) {
     let dataItem = $("#campaign-grid").data("kendoGrid").dataItem($("#campaign-grid").data("kendoGrid").select());
     for (const key in data) {
-        /*
-        if (key == 'create_ts' || key == 'start_ts' || key == 'stop_ts') {
-            dataItem[key] = timeConverter(data[key]);
-        } else {
-            dataItem[key] = data[key];
-        }
-        */
         dataItem[key] = data[key];
+    }
+    $("#campaign-grid").data("kendoGrid").refresh();
+}
+
+window.campaignUpdateRows = function(data) {
+    let rows = $("#campaign-grid").data("kendoGrid").select()
+    for (let i = 0; i < rows.length; i++) {
+        let dataItem = $("#campaign-grid").data("kendoGrid").dataItem(rows[i]);
+        for (const key in data[dataItem['id']]) {
+            dataItem[key] = data[dataItem['id']][key];
+        }
     }
     $("#campaign-grid").data("kendoGrid").refresh();
 }
@@ -157,36 +149,104 @@ window.updateCampaignStat = function(item) {
 
 window.updateCampaignStatus = function(status) {
     const action = status == 1 ? 'start' : 'stop';
-    kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to ${action} Campaign?</div>`).done(function() {
-        $.ajax({
-            url: `http://${api_base_url}/api/v1/campaigns/${window.selectedCampaignItem.id}/${action}`,
-            type: "POST",
-            beforeSend: function (xhr) {
-                xhr.setRequestHeader ("Authorization", `${token_type} ${access_token}`);
-            },
-            success: function(data) {
-                
-            },
-            error: function(jqXHR, textStatus, ex) {
-                
-            }
-        }).then(function(data) {
-            if (data.id) {
-                campaignUpdate(data);
-                updateCampaignStat(data);
-                if (window.campaign_stat_timer) {
-                    clearTimeout(campaign_stat_timer);
-                    updateCampaignStat(data);
+    if (window.selectedCampaignItems.length > 1) {
+        kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to ${action} Campaigns?</div>`).done(function () {
+            $.ajax({
+                url: `http://${api_base_url}/api/v1/campaigns/${action}`,
+                type: "POST",
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({ids: window.selectedCampaignItems.map(obj => parseInt(obj.id))}),
+                dataType: 'json',
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader("Authorization", `${token_type} ${access_token}`);
+                },
+                success: function (data) {
+
+                },
+                error: function (jqXHR, textStatus, ex) {
+
                 }
-            }
+            }).then(function (data) {
+                if (data.length > 0) {
+                    campaignUpdateRows(Object.fromEntries(data.map(item => [item.id, item])));
+                }
+            });
+        }).fail(function () {
+
         });
-    }).fail(function() {
-        
-    });
+    } else {
+        kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to ${action} Campaign?</div>`).done(function () {
+            $.ajax({
+                url: `http://${api_base_url}/api/v1/campaigns/${window.selectedCampaignItem.id}/${action}`,
+                type: "POST",
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader("Authorization", `${token_type} ${access_token}`);
+                },
+                success: function (data) {
+
+                },
+                error: function (jqXHR, textStatus, ex) {
+
+                }
+            }).then(function (data) {
+                if (data.id) {
+                    campaignUpdate(data);
+                    updateCampaignStat(data);
+                    if (window.campaign_stat_timer) {
+                        clearTimeout(campaign_stat_timer);
+                        updateCampaignStat(data);
+                    }
+                }
+            });
+        }).fail(function () {
+
+        });
+    }
 }
 
 window.campaignDelete = function() {
-    if (window.selectedCampaignItem) {
+    if (window.selectedCampaignItems.length > 1) {
+        kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to delete Campaigns ?</div>`).done(function() {
+            $.ajax({
+                url: `http://${api_base_url}/api/v1/campaigns/`,
+                type: "DELETE",
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({ids: window.selectedCampaignItems.map(obj => parseInt(obj.id))}),
+                dataType: 'json',
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader ("Authorization", `${token_type} ${access_token}`);
+                },
+                success: function(data) {
+
+                },
+                error: function(jqXHR, textStatus, ex) {
+
+                }
+            }).then(function(data) {
+                if (data) {
+                    $("#campaign-notification").kendoNotification({
+                        type: "warning",
+                        position: {
+                            top: 54,
+                            right: 8
+                        },
+                        width: "auto",
+                        allowHideAfter: 1000,
+                        autoHideAfter: 5000
+                    });
+                    let rows = $("#campaign-grid").data("kendoGrid").select();
+                    for (let i = 0; i < rows.length; i++) {
+                        $("#campaign-grid").data("kendoGrid").removeRow($(rows[i]));
+                    }
+                    $("#campaign-grid").data("kendoGrid").refresh();
+                    $("#campaign-window").data("kendoWindow").close();
+                    $("#campaign-notification").getKendoNotification().show("Campaigns haму been deleted.");
+                }
+            });
+        }).fail(function() {
+
+        });
+    } else if (window.selectedCampaignItem) {
         kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to delete Campaign ?</div>`).done(function() {
             $.ajax({
                 url: `http://${api_base_url}/api/v1/campaigns/${selectedCampaignItem.id}`,

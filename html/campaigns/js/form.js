@@ -7,7 +7,12 @@ window.initForm = function() {
         items: [{
             field: "name",
             label: "Campaign Name:",
-            colSpan: 6
+            colSpan: 12
+        }, {
+            field: "sep1",
+            colSpan: 12,
+            label: false,
+            editor: "<div class='separator mx-n15'></div>"
         }, {
             field: "user_id",
             label: "User:",
@@ -41,7 +46,11 @@ window.initForm = function() {
             // validation: { required: true }
             hidden: true
         }, {
-            field: "sep1",
+            field: "webhook_url",
+            label: "Webhook URL:",
+            colSpan: 6
+        }, {
+            field: "sep2",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -57,11 +66,18 @@ window.initForm = function() {
             },
             colSpan: 6
         }, {
-            field: "webhook_url",
-            label: "Webhook URL:",
+            field: "msg_attempts",
+            label: "Message Attempts:",
+            editor: 'NumericTextBox',
+            editorOptions: {
+                format: "n0",
+                min: 1,
+                max: 100,
+                // value: 1
+            },
             colSpan: 6
         }, {
-            field: "sep2",
+            field: "sep3",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -76,7 +92,7 @@ window.initForm = function() {
             },
             validation: { required: true }
         }, {
-            field: "sep3",
+            field: "sep4",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -117,7 +133,7 @@ window.initForm = function() {
             },
             colSpan: 12,
         }, {
-            field: "sep4",
+            field: "sep5",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -164,7 +180,7 @@ window.initForm = function() {
             },
             colSpan: 12,
         }, {
-            field: "sep5",
+            field: "sep6",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -187,7 +203,7 @@ window.initForm = function() {
             },
             colSpan: 6
         }, {
-            field: "sep6",
+            field: "sep7",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -212,7 +228,7 @@ window.initForm = function() {
                 timeFormat: "HH:mm"
             }
         }, {
-            field: "sep7",
+            field: "sep8",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -222,7 +238,7 @@ window.initForm = function() {
             label: false,
             editor: "<div id='campaign-edit-schedule' class='schedule'></div>"
         }, {
-            field: "sep8",
+            field: "sep9",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -237,6 +253,9 @@ window.initForm = function() {
             e.preventDefault();
             let data = e.model;
             let id = data.ID;
+            if (data.create_ts !== undefined) {
+                data.create_ts = kendo.toString(data.create_ts, "yyyy-MM-dd HH:mm:ss")
+            }
             if (data.start_ts !== undefined) {
                 data.start_ts = kendo.toString(data.start_ts, "yyyy-MM-dd HH:mm:ss")
             }

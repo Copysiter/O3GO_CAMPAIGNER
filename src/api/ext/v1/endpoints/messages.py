@@ -38,6 +38,12 @@ async def send(
         obj_in = message.model_dump()
         obj_in['ext_id'] = str(obj_in.pop('id'))
         obj_in['dst_addr'] = str(obj_in.pop('phone'))
+        obj_in['ext_id'] = str(obj_in.pop('id'))
+        obj_in['attempts'] = campaign.msg_attempts
+        if campaign.msg_sending_timeout is not None:
+            obj_in['expire_ts'] = datetime.utcnow() + timedelta(
+                seconds=campaign.msg_sending_timeout
+            )
         entries_data.append(obj_in)
         campaigns_count[campaign.id] += 1
     statement = insert(models.CampaignDst)

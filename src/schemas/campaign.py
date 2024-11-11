@@ -65,6 +65,9 @@ class CampaignUpdate(CampaignBase):
     api_keys: Optional[list] = []
     tags: Optional[list] = []
 
+    class Config:
+        from_attributes = True
+
 
 # Properties shared by models stored in DB
 class CampaignInDBBase(CampaignBase):

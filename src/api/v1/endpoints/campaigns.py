@@ -1,14 +1,15 @@
 import os
+from dataclasses import field
+
 import pandas as pd
 import openpyxl
-from asyncpg.pgproto.pgproto import timedelta
 
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from typing import Any, List, Dict, Union
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Body, Depends, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from fastapi.encoders import jsonable_encoder
@@ -35,6 +36,17 @@ async def read_campaigns(
     '''
     if not orders:
         orders = [{'field': 'id', 'dir': 'desc'}]
+    tags_idx = None
+    for i in range(len(filters)):
+        if filters[i]['field'] == 'tags':
+            if tags_idx is None:
+                tags_idx = i
+                filters[i]['relationship'] = models.Campaign.campaign_tags
+                filters[i]['field'] = models.CampaignTags.tag_id
+                filters[i]['operator'] = 'overlaps'
+                filters[i]['value'] = [filters[i]['value']]
+            else:
+                filters[tags_idx]['value'].append(filters.pop(i)['value'])
     campaigns = await crud.campaign.get_rows(db, skip=skip, limit=limit, filters=filters, orders=orders)
     count = await crud.campaign.get_count(db, filters=filters)
     return {'data' : campaigns, 'total': count}
@@ -129,6 +141,55 @@ async def create_campaign(
     return campaign
 
 
+@router.post('/start', response_model=List[schemas.Campaign])
+async def update_campaign_rows(
+    *,
+    current_user: models.User = Depends(deps.get_current_active_user),
+    db: Session = Depends(deps.get_db),
+    ids: List[int] = Body(..., embed=True)
+) -> Any:
+    '''
+    Start a campaigns.
+    '''
+    user_id = None if current_user.is_superuser else current_user.id
+    result = await crud.campaign.update_rows(db, ids=ids, user_id=user_id, obj_in={
+        'status': schemas.CampaignStatus.RUNNING
+    })
+    return result
+
+
+@router.post('/stop', response_model=List[schemas.Campaign])
+async def update_campaign_rows(
+    *,
+    current_user: models.User = Depends(deps.get_current_active_user),
+    db: Session = Depends(deps.get_db),
+    ids: List[int] = Body(..., embed=True)
+) -> Any:
+    '''
+    Start a campaigns.
+    '''
+    user_id = None if current_user.is_superuser else current_user.id
+    result = await crud.campaign.update_rows(db, ids=ids, user_id=user_id, obj_in={
+        'status': schemas.CampaignStatus.STOPPED
+    })
+    return result
+
+
+@router.delete('/', response_model=List[int])
+async def delete_campaign_rows(
+    *,
+    current_user: models.User = Depends(deps.get_current_active_user),
+    db: Session = Depends(deps.get_db),
+    ids: List[int] = Body(..., embed=True)
+) -> Any:
+    '''
+    Start a campaigns.
+    '''
+    user_id = None if current_user.is_superuser else current_user.id
+    result = await crud.campaign.delete_rows(db, ids=ids, user_id=user_id)
+    return result
+
+
 @router.put('/{id}', response_model=schemas.Campaign)
 async def update_campaign(
     *,
@@ -168,16 +229,11 @@ async def update_campaign(
     if not campaign:
         raise HTTPException(status_code=404, detail='Campaign not found')
     start_ts = campaign.start_ts if campaign.start_ts else datetime.utcnow()
-    campaign_in = schemas.CampaignUpdate(
-        name = campaign.name,
-        user_id = campaign.user_id,
-        msg_template = campaign.msg_template,
-        msg_total = campaign.msg_total,
-        start_ts = start_ts,
-        status = 1
-    )
     campaign = await crud.campaign.update(
-        db=db, db_obj=campaign, obj_in=campaign_in)
+        db=db, db_obj=campaign, obj_in={
+            'status': schemas.CampaignStatus.RUNNING,
+            'start_ts': start_ts
+        })
     return campaign
 
 
@@ -196,16 +252,11 @@ async def update_campaign(
     if not campaign:
         raise HTTPException(status_code=404, detail='Campaign not found')
     stop_ts = campaign.stop_ts if campaign.stop_ts else datetime.utcnow()
-    campaign_in = schemas.CampaignUpdate(
-        name = campaign.name,
-        user_id = campaign.user_id,
-        msg_template = campaign.msg_template,
-        msg_total = campaign.msg_total,
-        stop_ts = stop_ts,
-        status = 2
-    )
     campaign = await crud.campaign.update(
-        db=db, db_obj=campaign, obj_in=campaign_in)
+        db=db, db_obj=campaign, obj_in={
+            'status': schemas.CampaignStatus.STOPPED,
+            'stop_ts': stop_ts
+        })
     return campaign
 
 

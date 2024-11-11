@@ -7,7 +7,7 @@ window.initContextMenu = function() {
         dataSource: [
             {
                 text: "Campaign Detail",
-                cssClass: "editSim",
+                cssClass: "campaignDetail",
                 spriteCssClass: "famfamfam-silk layers",
                 attr: {
                     "onclick": "openCampaignDetail()"
@@ -19,7 +19,7 @@ window.initContextMenu = function() {
             }, 
             {
                 text: "Campaign Settings",
-                cssClass: "editSim",
+                cssClass: "campaignEdit",
                 spriteCssClass: "famfamfam-silk cog",
                 attr: {
                     "onclick": "openCampaignEditForm()"
@@ -31,7 +31,7 @@ window.initContextMenu = function() {
             }, 
             {
                 text: "Start Campaign",
-                cssClass: "editSim",
+                cssClass: "campaignStart",
                 //spriteCssClass: "famfamfam-silk tick",
                 spriteCssClass: "famfamfam-silk accept",
                 attr: {
@@ -40,7 +40,7 @@ window.initContextMenu = function() {
             },
             {
                 text: "Stop Campaign",
-                cssClass: "disableSim",
+                cssClass: "campaignStop",
                 //spriteCssClass: "famfamfam-silk cross",
                 spriteCssClass: "famfamfam-silk delete",
                 attr: {
@@ -53,7 +53,7 @@ window.initContextMenu = function() {
             }, 
             {
                 text: "Delete Campaign",
-                cssClass: "disableSim",
+                cssClass: "campaignDelete",
                 //spriteCssClass: "famfamfam-silk cut_red_ broom",
                 spriteCssClass: "famfamfam-silk cross",
                 attr: {
@@ -72,6 +72,13 @@ window.initContextMenu = function() {
             if (!$(e.target).is('.k-state-selected')) grid.clearSelection();
             grid.select(e.target);
             grid.trigger("change");
+            if (selectedCampaignItems.length > 1) {
+                menu.enable("li.campaignDetail", false);
+                menu.enable("li.campaignEdit", false);
+            } else {
+                menu.enable("li.campaignDetail", true);
+                menu.enable("li.campaignEdit", true);
+            }
         },
         deactivate: function(e) {
         },

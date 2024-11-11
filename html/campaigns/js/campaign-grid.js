@@ -6,6 +6,7 @@ window.initCampaignGrid = function() {
 
     window.selectedCampaignId = null;
     window.selectedCampaignItem = null;
+    window.selectedCampaignItems = null;
 
     $('#campaign-grid').kendoGrid({
         dataSource: {
@@ -86,7 +87,7 @@ window.initCampaignGrid = function() {
         height: '100%',
         reorderable: true,
         resizable: true,
-        selectable: "row",
+        selectable: "multiple, row",
         persistSelection: true,
         sortable: true,
         /*
@@ -135,7 +136,15 @@ window.initCampaignGrid = function() {
             }, 60000);
         },
         change: function (e) {
-            window.selectedCampaignItem = e.sender.dataItem(e.sender.select()[0]);
+            window.selectedCampaignItems = []
+            let rows = e.sender.select();
+            window.selectedCampaignItem = e.sender.dataItem(rows[0]);
+            for (let i = 0; i < rows.length; i++) {
+                let dataItem = e.sender.dataItem($(rows[i]));
+                if (window.selectedCampaignItems.indexOf(dataItem) == -1) {
+                    window.selectedCampaignItems.push(dataItem);
+                }
+            }
         },
         columns: [
             {
@@ -195,7 +204,33 @@ window.initCampaignGrid = function() {
                 template:
                     "<div class='d-flex'># for (var i = 0; i < tags.length; i++) { #<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-inline' style='color:#:tags[i].color_txt#;background:#:tags[i].color_bg#;'>#:tags[i].name#</span># } #</div>",
                 sortable: false,
-                filterable: false,
+                filterable: {
+                    multi: true,
+                    dataSource: new kendo.data.DataSource({
+                        transport: {
+                            read: {
+                                url: `http://${api_base_url}/api/v1/options/tag`,
+                                type: 'GET',
+                                beforeSend: function (request) {
+                                    request.setRequestHeader(
+                                        'Authorization',
+                                        `${token_type} ${access_token}`
+                                    );
+                                },
+                            },
+                        },
+                    }),
+                    itemTemplate: function(e) {
+                        console.log(e);
+                        if (e.field == "all") {
+                            //handle the check-all checkbox template
+                            return "";
+                        } else {
+                            //handle the other checkboxes
+                            return "<div class=''><label class='d-flex align-items-center py-8 ps-3 border-bottom cursor-pointer'><input type='checkbox' name='" + e.field + "' value='#=value#' class='k-checkbox k-checkbox-md k-rounded-md'/><span class='ms-8'>#=text#</span></label></div>"
+                        }
+                    }
+                }
             },
             {
                 field: 'user_id',
@@ -212,12 +247,20 @@ window.initCampaignGrid = function() {
                     ui : function(element) {
                         element.kendoDropDownList({
                             animation: false,
-                            dataSource: {
+                            dataSource: new kendo.data.DataSource({
                                 transport: {
-                                    read: `http://${api_base_url}/api/v1/dropdown/customer`,
-                                    //dataType: "json"
-                                }
-                            },
+                                    read: {
+                                        url: `http://${api_base_url}/api/v1/options/user`,
+                                        type: 'GET',
+                                        beforeSend: function (request) {
+                                            request.setRequestHeader(
+                                                'Authorization',
+                                                `${token_type} ${access_token}`
+                                            );
+                                        },
+                                    },
+                                },
+                            }),
                             dataTextField: "text",
                             dataValueField: "value",
                             valuePrimitive: true,
@@ -274,18 +317,20 @@ window.initCampaignGrid = function() {
                 title: 'Created',
                 width: '150px',
                 format: '{0: yyyy-MM-dd HH:mm:ss}',
-                filterable: {
-                    ui: "datepicker",
-                }
+                filterable: false
+                // filterable: {
+                //     ui: "datepicker",
+                // }
             },
             {
                 field: 'start_ts',
                 title: 'Started',
                 width: '150px',
                 format: '{0: yyyy-MM-dd HH:mm:ss}',
-                filterable: {
-                    ui: "datepicker",
-                }
+                filterable: false
+                // filterable: {
+                //     ui: "datepicker",
+                // }
             },
             {
                 field: 'stop_ts',
@@ -301,9 +346,10 @@ window.initCampaignGrid = function() {
                     }
                 },
                 */
-                filterable: {
-                    ui: "datepicker",
-                }
+                filterable: false
+                // filterable: {
+                //     ui: "datepicker",
+                // }
             },
             {}
         ]

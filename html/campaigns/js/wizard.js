@@ -23,8 +23,10 @@ window.initWizard = function() {
         campaignCreateModel.set("data", { fields: {} });
         campaignCreateModel.source.fields.data([]);
         $("#wizard").data("kendoWizard").steps().forEach(function(step, index) {
-            if (index < 2) step.form.clear();
+            // if (index < 3) step.form.clear();
+            step.form.clear();
             if (index == 0) step.form.editable.options.model.set("data_source", 1);
+            $('#data-source').data('kendoDropDownList').trigger('change');
         });
         $("#wizard").data("kendoWizard").select(0);
         $('#campaign-create-schedule').scheduler('val', {});
