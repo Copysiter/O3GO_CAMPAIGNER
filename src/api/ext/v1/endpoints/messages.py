@@ -143,9 +143,9 @@ async def get_next(
                     UPDATE campaign_dst
                     SET status = {schemas.CampaignDstStatus.SENT},
                         text = '{message.get('text')}',
-                        sent_ts = '{expire_ts}',
-                        expire_ts = {expire_ts}
-                        attempts = attempts - 1, 
+                        sent_ts = '{sent_ts}',
+                        expire_ts = {expire_ts},
+                        attempts = attempts - 1
                     WHERE id = {campaign_dst.get('id')}
                 ''')
             )
@@ -170,7 +170,7 @@ async def get_next(
             return message
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=getattr(e, 'status_code', 500), detail=e.detail)
 
 
 @router.get('/status')
@@ -254,4 +254,4 @@ async def set_status(
             }
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=getattr(e, 'status_code', 500), detail=e.detail)

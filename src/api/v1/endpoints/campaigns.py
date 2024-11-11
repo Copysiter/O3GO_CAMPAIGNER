@@ -247,7 +247,6 @@ async def update_campaign(
     '''
     Stop an campaign.
     '''
-    ts = datetime.utcnow()
     campaign = await crud.campaign.get(db=db, id=id)
     if not campaign:
         raise HTTPException(status_code=404, detail='Campaign not found')
