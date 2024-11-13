@@ -77,14 +77,14 @@ async def update_sent_messages():
                     ''')
                 )
 
-                print(f'''
-                    UPDATE campaign
-                    SET msg_failed = msg_failed + CASE id
-                        {case_statements}
-                        ELSE msg_failed
-                    END
-                    WHERE id IN ({','.join(map(str, campaign_fail_counts.keys()))})
-                ''')
+                # print(f'''
+                #     UPDATE campaign
+                #     SET msg_failed = msg_failed + CASE id
+                #         {case_statements}
+                #         ELSE msg_failed
+                #     END
+                #     WHERE id IN ({','.join(map(str, campaign_fail_counts.keys()))})
+                # ''')
 
             except Exception as e:
                 await session.rollback()
