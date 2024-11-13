@@ -72,6 +72,7 @@ async def create_campaign(
         api_keys = campaign_in.api_keys,
         tags = campaign_in.tags,
         schedule = campaign_in.schedule,
+        msg_attempts=campaign_in.msg_attempts,
         msg_sending_timeout=campaign_in.msg_sending_timeout,
         msg_status_timeout=campaign_in.msg_status_timeout,
         msg_template = campaign_in.msg_template,

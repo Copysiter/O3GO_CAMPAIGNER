@@ -21,11 +21,11 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             obj_in_data = obj_in.model_dump(exclude_unset=True)
         obj_in_data['campaign_tags'] = [
             CampaignTags(tag_id=id)
-            for id in obj_in_data.pop('tags', [])
+            for id in (obj_in_data.pop('tags', []) or [])
         ]
         obj_in_data['keys'] = [
             CampaignApiKeys(api_key=key)
-            for key in obj_in_data.pop('api_keys', [])
+            for key in (obj_in_data.pop('api_keys', []) or [])
         ]
         campaign = await super().create(db, obj_in=obj_in_data)
         return campaign
@@ -41,12 +41,12 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         if 'tags' in update_data:
             update_data['campaign_tags'] = [
                 CampaignTags(tag_id=id)
-                for id in update_data.pop('tags', [])
+                for id in (update_data.pop('tags', []) or [])
             ]
         if 'keys' in update_data:
             update_data['keys'] = [
                 CampaignApiKeys(api_key=key)
-                for key in update_data.pop('api_keys', [])
+                for key in (update_data.pop('api_keys', []) or [])
             ]
         if 'msg_attempts' in update_data and \
                 db_obj.msg_attempts != update_data['msg_attempts']:

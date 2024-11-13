@@ -2,6 +2,8 @@ import asyncio
 import aiohttp
 
 from datetime import datetime, timedelta
+from collections import Counter
+
 from celery import Celery
 from sqlalchemy import text
 
@@ -23,14 +25,17 @@ async def update_expired_messages():
     async with async_session() as session:
         async with session.begin():
             try:
-                now = datetime.utcnow()
+                ts = datetime.utcnow()
                 await session.execute(
                     statement=text(f'''
                         UPDATE campaign_dst
                         SET status = {schemas.CampaignDstStatus.UNDELIVERED}
-                        WHERE status <> {schemas.CampaignDstStatus.DELIVERED}
+                        WHERE status NOT IN (
+                            {schemas.CampaignDstStatus.DELIVERED},
+                            {schemas.CampaignDstStatus.UNDELIVERED}
+                        )
                         AND expire_ts IS NOT NULL
-                        AND expire_ts < '{now}'
+                        AND expire_ts < '{ts}'
                     ''')
                 )
             except Exception as e:
@@ -43,16 +48,44 @@ async def update_sent_messages():
     async with async_session() as session:
         async with session.begin():
             try:
-                now = datetime.utcnow() - timedelta(seconds=settings.WAIT_STATUS_TIMEOUT)
-                await session.execute(
+                ts = datetime.utcnow() - timedelta(seconds=settings.WAIT_STATUS_TIMEOUT)
+                result = await session.execute(
                     statement=text(f'''
                         UPDATE campaign_dst
                         SET status = {schemas.CampaignDstStatus.FAILED}
                         WHERE status = {schemas.CampaignDstStatus.SENT}
                         AND sent_ts IS NOT NULL
-                        AND sent_ts < '{now}'
+                        AND sent_ts < '{ts}'
+                        RETURNING campaign_id
                     ''')
                 )
+                campaign_fail_counts = Counter(result.scalars().all())
+                if not campaign_fail_counts:
+                    return
+                case_statements = '\n'.join([
+                    f'WHEN {campaign_id} THEN {count}'
+                    for campaign_id, count in campaign_fail_counts.items()
+                ])
+                await session.execute(
+                    statement=text(f'''
+                        UPDATE campaign
+                        SET msg_failed = msg_failed + CASE id
+                            {case_statements}
+                            ELSE msg_failed
+                        END
+                        WHERE id IN ({','.join(map(str, campaign_fail_counts.keys()))})
+                    ''')
+                )
+
+                print(f'''
+                    UPDATE campaign
+                    SET msg_failed = msg_failed + CASE id
+                        {case_statements}
+                        ELSE msg_failed
+                    END
+                    WHERE id IN ({','.join(map(str, campaign_fail_counts.keys()))})
+                ''')
+
             except Exception as e:
                 await session.rollback()
                 print(f"Ошибка при обновлении отправленных сообщений: {e}")

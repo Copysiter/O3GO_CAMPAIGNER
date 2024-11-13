@@ -209,7 +209,7 @@ async def set_status(
                 )
 
             if status == 'failed' and campaign_dst.attempts < 1:
-                status == 'undelivered'
+                status = 'undelivered'
 
             campaign_status = f'''
             CASE
@@ -224,6 +224,7 @@ async def set_status(
                     schemas.CampaignDstStatus, status.upper()
                 )
             ):
+
                 await session.execute(
                     statement=text(f'''
                         UPDATE campaign_dst
@@ -232,6 +233,7 @@ async def set_status(
                         WHERE id = {id}
                     ''')
                 )
+
                 await session.execute(
                     statement=text(f'''
                         UPDATE campaign
