@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class UserBase(BaseModel):
     name: Optional[str] = None
     login: Optional[str] = None
+    ext_api_key: Optional[str] = None
     is_active: Optional[bool] = True
     is_superuser: bool = False
 

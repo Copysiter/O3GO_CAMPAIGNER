@@ -70,40 +70,8 @@ function showEditForm(model) {
                 editor: "<div class='separator mx-n15'></div>",
             },
             {
-                field: 'api_keys',
-                label: 'Api Keys',
-                editor: 'MultiSelect',
-                editorOptions: {
-                    dataSource: new kendo.data.DataSource({
-                        transport: {
-                            read: {
-                                url: `http://${api_base_url}/api/v1/options/api_key`,
-                                type: 'GET',
-                                beforeSend: function (request) {
-                                    request.setRequestHeader(
-                                        'Authorization',
-                                        `${token_type} ${access_token}`
-                                    );
-                                },
-                            },
-                        },
-                    }),
-                    dataTextField: 'text',
-                    dataValueField: 'value',
-                    valuePrimitive: true,
-                    downArrow: true,
-                    animation: false,
-                    autoClose: false,
-                    noDataTemplate: function (e) {
-                        let value = e.instance.input.val();
-                        return `
-                        <div class='no-data'>
-                        <p>Api Key not found.<br>Do you want to add new Api Key ${value} ?</p> 
-                        <button class="k-button k-button-solid-base k-button-solid k-button-md k-rounded-md" onclick="addNew('${value}', 'api_keys')">Append</button>
-                        </p>
-                        `;
-                    },
-                },
+                field: 'ext_api_key',
+                label: 'External API Key',
                 colSpan: 12,
             },
             {

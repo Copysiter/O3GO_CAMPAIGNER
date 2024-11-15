@@ -2,16 +2,16 @@ import asyncio
 import aiohttp
 
 from datetime import datetime, timedelta
-from collections import Counter
+from collections import Counter, defaultdict
 
 from celery import Celery
-from sqlalchemy import text
+from sqlalchemy import text, select
 
 from core.config import settings
 from db.session import async_session
 
 import schemas
-
+import models
 
 celery = Celery(__name__)
 celery.conf.broker_url = settings.CELERY_BROKER_URL
@@ -48,43 +48,61 @@ async def update_sent_messages():
     async with async_session() as session:
         async with session.begin():
             try:
-                ts = datetime.utcnow() - timedelta(seconds=settings.WAIT_STATUS_TIMEOUT)
+                ts = datetime.utcnow() - timedelta(
+                    seconds=settings.WAIT_STATUS_TIMEOUT
+                )
                 result = await session.execute(
                     statement=text(f'''
                         UPDATE campaign_dst
-                        SET status = {schemas.CampaignDstStatus.FAILED}
+                        SET status = CASE
+                        WHEN attempts > 0 THEN {schemas.CampaignDstStatus.FAILED}
+                        ELSE {schemas.CampaignDstStatus.UNDELIVERED}
+                        END
                         WHERE status = {schemas.CampaignDstStatus.SENT}
                         AND sent_ts IS NOT NULL
                         AND sent_ts < '{ts}'
-                        RETURNING campaign_id
+                        RETURNING (campaign_id, status)
                     ''')
                 )
-                campaign_fail_counts = Counter(result.scalars().all())
-                if not campaign_fail_counts:
-                    return
-                case_statements = '\n'.join([
-                    f'WHEN {campaign_id} THEN {count}'
-                    for campaign_id, count in campaign_fail_counts.items()
-                ])
-                await session.execute(
-                    statement=text(f'''
-                        UPDATE campaign
-                        SET msg_failed = msg_failed + CASE id
-                            {case_statements}
-                            ELSE msg_failed
-                        END
-                        WHERE id IN ({','.join(map(str, campaign_fail_counts.keys()))})
-                    ''')
-                )
+                failed_counts = defaultdict(int)
+                undelivered_counts = defaultdict(int)
+                for campaign_id, status in result.scalars().all():
+                    if status == schemas.CampaignDstStatus.FAILED:
+                        failed_counts[campaign_id] += 1
+                    if status == schemas.CampaignDstStatus.UNDELIVERED:
+                        undelivered_counts[campaign_id] += 1
 
-                # print(f'''
-                #     UPDATE campaign
-                #     SET msg_failed = msg_failed + CASE id
-                #         {case_statements}
-                #         ELSE msg_failed
-                #     END
-                #     WHERE id IN ({','.join(map(str, campaign_fail_counts.keys()))})
-                # ''')
+                if failed_counts:
+                    case_statements = '\n'.join([
+                        f'WHEN {campaign_id} THEN {count}'
+                        for campaign_id, count in failed_counts.items()
+                    ])
+                    await session.execute(
+                        statement=text(f'''
+                            UPDATE campaign
+                            SET msg_failed = msg_failed + CASE id
+                                {case_statements}
+                                ELSE msg_failed
+                            END
+                            WHERE id IN ({','.join(map(str, failed_counts.keys()))})
+                        ''')
+                    )
+
+                if undelivered_counts:
+                    case_statements = '\n'.join([
+                        f'WHEN {campaign_id} THEN {count}'
+                        for campaign_id, count in undelivered_counts.items()
+                    ])
+                    await session.execute(
+                        statement=text(f'''
+                            UPDATE campaign
+                            SET msg_undelivered = msg_undelivered + CASE id
+                                {case_statements}
+                                ELSE msg_undelivered
+                            END
+                            WHERE id IN ({','.join(map(str, undelivered_counts.keys()))})
+                        ''')
+                    )
 
             except Exception as e:
                 await session.rollback()

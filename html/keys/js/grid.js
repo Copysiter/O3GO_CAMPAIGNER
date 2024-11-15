@@ -1,4 +1,4 @@
-$(document).ready(function () {
+window.initGrid = function() {
     let timer = null;
     let resizeColumn = false;
     let showLoader = true;
@@ -9,23 +9,54 @@ $(document).ready(function () {
         let { access_token, token_type } = token;
 
         var popup;
-        autoFitColumn = function (grid) {
-            setTimeout(function () {
-                // grid.autoFitColumn('id');
-                grid.autoFitColumn('name');
-                grid.autoFitColumn('login');
-                grid.autoFitColumn('balance');
-                grid.autoFitColumn('balance_lock');
-                grid.autoFitColumn('is_superuser');
-                grid.autoFitColumn('connections');
-            });
-        };
 
-        $('#users-grid').kendoGrid({
+        stripFunnyChars = function (value) {
+            return (value+'').replace(/[\x09-\x10]/g, '') ? value : '';
+        }
+
+        let user_column = window.isAuth.user.is_superuser ? [{
+            field: 'user_id',
+            width: '100px',
+            title: 'User',
+            template: '#: user.name #',
+            filterable: {
+                operators: {
+                    string: {
+                        eq: "Equal to",
+                        neq: "Not equal to"
+                    }
+                },
+                ui : function(element) {
+                    element.kendoDropDownList({
+                        animation: false,
+                        dataSource: new kendo.data.DataSource({
+                            transport: {
+                                read: {
+                                    url: `http://${api_base_url}/api/v1/options/user`,
+                                    type: 'GET',
+                                    beforeSend: function (request) {
+                                        request.setRequestHeader(
+                                            'Authorization',
+                                            `${token_type} ${access_token}`
+                                        );
+                                    },
+                                },
+                            },
+                        }),
+                        dataTextField: "text",
+                        dataValueField: "value",
+                        valuePrimitive: true,
+                        optionLabel: "-- Select Customer --"
+                    });
+                }
+            }
+        }] : []
+
+        $('#keys-grid').kendoGrid({
             dataSource: {
                 transport: {
                     read: {
-                        url: `http://${api_base_url}/api/v1/users/`,
+                        url: `http://${api_base_url}/api/v1/api_keys/`,
                         type: 'GET',
                         beforeSend: function (request) {
                             request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
@@ -33,7 +64,7 @@ $(document).ready(function () {
                         dataType: 'json',
                     },
                     create: {
-                        url: `http://${api_base_url}/api/v1/users/`,
+                        url: `http://${api_base_url}/api/v1/api_keys/`,
                         type: 'POST',
                         dataType: 'json',
                         contentType: 'application/json',
@@ -44,7 +75,7 @@ $(document).ready(function () {
                     update: {
                         url: function (options) {
                             console.log(options);
-                            return `http://${api_base_url}/api/v1/users/${options.id}`;
+                            return `http://${api_base_url}/api/v1/api_keys/${options.id}`;
                         },
 
                         type: 'PUT',
@@ -57,7 +88,7 @@ $(document).ready(function () {
                     destroy: {
                         url: function (options) {
                             console.log(options);
-                            return `http://${api_base_url}/api/v1/users/${options.id}`;
+                            return `http://${api_base_url}/api/v1/api_keys/${options.id}`;
                         },
 
                         type: 'DELETE',
@@ -106,22 +137,16 @@ $(document).ready(function () {
                             id: { type: 'number', editable: false },
                             name: {
                                 type: 'string',
-                                editable: true,
-                                validation: { required: true },
+                                editable: true
                             },
-                            login: {
-                                type: 'string',
-                                editable: true,
-                                validation: { required: true },
-                            },
-                            password: {
+                            color_txt: {
                                 type: 'string',
                                 editable: true
                             },
-                            // balance: { type: 'number', editable: true },
-                            // balance_lock: { type: 'number', editable: true },
-                            is_active: { type: 'boolean', editable: true },
-                            is_superuser: { editable: true },
+                            color_bg: {
+                                type: 'string',
+                                editable: true
+                            },
                             actions: { type: 'object', editable: false },
                         },
                     },
@@ -139,17 +164,19 @@ $(document).ready(function () {
             persistSelection: true,
             sortable: true,
             edit: function (e) {
+                e.model.color_txt = e.model.color_txt || "#FFFFFF";
+                e.model.color_bg = e.model.color_bg || "#000000";
                 form.data('kendoForm').setOptions({
                     formData: e.model,
                 });
                 popup.setOptions({
-                    title: e.model.id ? 'Edit User' : 'New User',
+                    title: e.model.id ? 'Edit Key' : 'New Key',
                 });
                 popup.center();
             },
             editable: {
                 mode: 'popup',
-                template: kendo.template($('#users-popup-editor').html()),
+                template: kendo.template($('#keys-popup-editor').html()),
                 window: {
                     width: 480,
                     maxHeight: '90%',
@@ -165,26 +192,12 @@ $(document).ready(function () {
             },
             save: function (e) {
                 // e.model.id = e.sender.dataSource.data().length;
-                console.log(e.model.is_superuser);
-                console.log(typeof e.model.is_superuser);
-                e.model.is_superuser = e.model.is_superuser === true || e.model.is_superuser === 'true';
-                console.log(e.model.is_superuser);
-                console.log(typeof e.model.is_superuser);
             },
             dataBinding: function (e) {
                 clearTimeout(timer);
             },
             dataBound: function (e) {
                 showLoader = true;
-                // if (!resizeColumn) {
-                //     autoFitColumn(e.sender);
-                //     resizeColumn = true;
-                // }
-
-                // timer = setTimeout(function () {
-                //     showLoader = false;
-                //     e.sender.dataSource.read();
-                // }, 30000);
             },
             filterable: {
                 mode: 'menu',
@@ -214,108 +227,37 @@ $(document).ready(function () {
                 refresh: true,
                 pageSizes: [100, 250, 500],
             },
-            change: function (e) {},
+            change: function (e) {
+                let toolbar = $('#keys-toolbar').data('kendoToolBar');
+                let rows = this.select();
+                if (rows.length > 0) {
+                    toolbar.show($('#delete'));
+                } else {
+                    toolbar.hide($('#delete'));
+                }
+            },
             columns: [
-                {
-                    field: 'is_active',
-                    title: '&nbsp;',
-                    // width: 44,
-                    template: "<div class='marker block #=is_active == 1 ? 'green' : 'red'#'><i></i></div>",
-                    filterable: false,
-                },
                 {
                     field: 'id',
                     title: '#',
                     // width: 33,
-                    filterable: false,
+                    filterable: false
                 },
                 {
-                    field: 'name',
-                    title: 'Name',
+                    field: 'value',
+                    title: 'Key',
                     filterable: {
                         cell: {
                             inputWidth: 0,
                             showOperators: true,
                             operator: 'eq',
                         },
-                    },
-                },
+                    }
+                }].concat(user_column).concat([
                 {
-                    field: 'login',
-                    title: 'Login',
-                    filterable: {
-                        cell: {
-                            inputWidth: 0,
-                            showOperators: true,
-                            operator: 'eq',
-                        },
-                    },
+                    field: "description",
+                    title: "Description",
                 },
-                {
-                    field: 'password',
-                    title: 'Password',
-                    // width: 120,
-                    filterable: false,
-                    hidden: true,
-                },
-                {
-                    field: 'is_superuser',
-                    title: 'Role',
-                    template: function (item) {
-                        console.log(item);
-                        if (item.is_superuser == true) {
-                            return "<span class='info info-blue'>Admin</span>";
-                        } else {
-                            return "<span class='info info-light'>User</span>";
-                        }
-                    },
-                    filterable: {
-                        cell: {
-                            inputWidth: 0,
-                            showOperators: true,
-                            operator: 'eq',
-                        },
-                        ui: function (element) {
-                            element.kendoDropDownList({
-                                animation: false,
-                                dataSource: [
-                                    { text: 'Customer', value: false },
-                                    { text: 'Admin', value: true },
-                                ],
-                                dataTextField: 'text',
-                                dataValueField: 'value',
-                                valuePrimitive: false,
-                                optionLabel: '-- Select Role --',
-                            });
-                        },
-                    },
-                },
-                /*
-                {
-                    field: 'balance',
-                    title: 'Balance',
-                    format: '{0:0.00}',
-                    filterable: {
-                        cell: {
-                            inputWidth: 0,
-                            showOperators: true,
-                            operator: 'lte',
-                        },
-                    },
-                },
-                {
-                    field: 'balance_lock',
-                    title: 'Lock',
-                    // format: '{0:#}',
-                    filterable: {
-                        cell: {
-                            inputWidth: 0,
-                            showOperators: true,
-                            operator: 'lte',
-                        },
-                    },
-                },
-                */
                 {
                     command: [
                         {
@@ -337,7 +279,7 @@ $(document).ready(function () {
                     // width: 86,
                 },
                 {},
-            ],
+            ]),
         });
         jQuery.fn.selectText = function () {
             var doc = document;
@@ -356,7 +298,7 @@ $(document).ready(function () {
             }
         };
 
-        $('#users-grid').on('dblclick', "td[role='gridcell']", function (e) {
+        $('#keys-grid').on('dblclick', "td[role='gridcell']", function (e) {
             var text = $(this).find('.text');
             if (text.length) text.selectText();
             else $(this).selectText();
@@ -367,11 +309,12 @@ $(document).ready(function () {
                 selectedDataItems = [];
                 selectedItemIds = [];
                 selectedItemImsi = [];
-                $('#users-grid').data('kendoGrid').clearSelection();
+                $('#keys-grid').data('kendoGrid').clearSelection();
+                $('#keys-toolbar').data('kendoToolBar').hide($('#delete'));
             }
         });
     } catch (error) {
         console.warn(error);
     }
-    window.optimize_grid(['#users-grid']);
-});
+    window.optimize_grid(['#keys-grid']);
+}

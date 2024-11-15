@@ -19,13 +19,17 @@ async def read_api_keys(
     orders: List[schemas.Order] = Depends(deps.request_orders),
     skip: int = 0,
     limit: int = 100,
-    _: models.User = Depends(deps.get_current_active_user),
+    current_user: models.User = Depends(deps.get_current_active_user),
 ) -> Any:
     """
     Retrieve api_keys.
     """
     if not orders:
         orders = [{'field': 'id', 'dir': 'desc'}]
+    if not current_user.is_superuser:
+        filters.append(
+            {'field': 'user_id', 'operator': 'eq', 'value': current_user.id}
+        )
     api_keys = await crud.api_key.get_rows(
         db, filters=filters, orders=orders, skip=skip, limit=limit
     )
@@ -42,11 +46,13 @@ async def create_api_key(
     *,
     db: AsyncSession = Depends(deps.get_db),
     api_key_in: schemas.ApiKeyCreate,
-    _: models.User = Depends(deps.get_current_active_user),
+    current_user: models.User = Depends(deps.get_current_active_user),
 ) -> Any:
     """
     Create new api_key.
     """
+    if not api_key_in.user_id:
+        api_key_in.user_id = current_user.id
     api_key = await crud.api_key.create(
         db=db, obj_in=api_key_in
     )
@@ -59,14 +65,17 @@ async def update_api_key(
     db: AsyncSession = Depends(deps.get_db),
     id: int,
     api_key_in: schemas.ApiKeyUpdate,
-    _: models.User = Depends(deps.get_current_active_user),
+    current_user: models.User = Depends(deps.get_current_active_user),
 ) -> Any:
     """
     Update an api_key.
     """
     api_key = await crud.api_key.get(db=db, id=id)
-    if not api_key:
+    if not api_key or (not current_user.is_superuser
+                       and api_key.user_id != current_user.id):
         raise HTTPException(status_code=404, detail='ApiKey not found')
+    if not api_key_in.user_id:
+        api_key_in.user_id = current_user.id
     api_key = await crud.api_key.update(db=db, db_obj=api_key, obj_in=api_key_in)
     return api_key
 
@@ -76,13 +85,14 @@ async def read_api_key(
     *,
     db: AsyncSession = Depends(deps.get_db),
     id: int,
-    _: models.User = Depends(deps.get_current_active_user),
+    current_user: models.User = Depends(deps.get_current_active_user),
 ) -> Any:
     """
     Get api_key by ID.
     """
     api_key = await crud.api_key.get(db=db, id=id)
-    if not api_key:
+    if not api_key or (not current_user.is_superuser
+                       and api_key.user_id != current_user.id):
         raise HTTPException(status_code=404, detail='ApiKey not found')
     return api_key
 
@@ -92,13 +102,14 @@ async def delete_api_key(
     *,
     db: AsyncSession = Depends(deps.get_db),
     id: int,
-    _: models.User = Depends(deps.get_current_active_user),
+    current_user: models.User = Depends(deps.get_current_active_user),
 ) -> Any:
     """
     Delete an api_key.
     """
     api_key = await crud.api_key.get(db=db, id=id)
-    if not api_key:
+    if not api_key or (not current_user.is_superuser
+                       and api_key.user_id != current_user.id):
         raise HTTPException(status_code=404, detail='ApiKey not found')
     api_key = await crud.api_key.delete(db=db, id=id)
     return api_key

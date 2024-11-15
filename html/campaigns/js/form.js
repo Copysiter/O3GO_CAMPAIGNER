@@ -31,11 +31,12 @@ window.initForm = function() {
                     }
                 },
                 dataBound: function(e) {
-                    console.log(isAuth.user.id);
-                    campaignCreateModel.data.set("user_id", isAuth.user.id);
-                    this.select(function(item) {
-                        return item.value === isAuth.user.id;
-                    });
+                    // console.log(campaignCreateModel.data)
+                    // console.log(isAuth.user.id);
+                    //campaignCreateModel.data.set("user_id", isAuth.user.id);
+                    // this.select(function(item) {
+                    //     return item.value === isAuth.user.id;
+                    // });
                     //this.trigger("select");
                 },
                 dataTextField: "text",
@@ -43,8 +44,7 @@ window.initForm = function() {
                 optionLabel: "Select user...",
                 valuePrimitive: true
             },
-            // validation: { required: true }
-            hidden: true
+            validation: { required: true }
         }, {
             field: "webhook_url",
             label: "Webhook URL:",

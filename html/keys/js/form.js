@@ -28,8 +28,7 @@ function showEditForm(model) {
             valuePrimitive: true
         },
     }] : []
-
-    return $('#form-edit-tags').kendoForm({
+    return $('#form-edit-keys').kendoForm({
         orientation: 'vertical',
         formData: model,
         layout: 'grid',
@@ -37,33 +36,11 @@ function showEditForm(model) {
         buttonsTemplate: '',
         items: [
             {
-                field: 'name',
-                label: 'Name',
+                field: 'value',
+                label: 'Key',
                 colSpan: window.isAuth.user.is_superuser ? 6 : 12,
-                validation: { required: true },
+                validation: { required: true }
             }].concat(user_field).concat([
-            {
-                field: 'color_txt',
-                label: 'Text Color',
-                colSpan: 6,
-                editor: 'ColorPicker',
-                editorOptions: {
-                    views: ["gradient"],
-                    preview: false,
-                    value: "#FFFFFF"
-                }
-            },
-            {
-                field: 'color_bg',
-                label: 'Background',
-                colSpan: 6,
-                editor: 'ColorPicker',
-                editorOptions: {
-                    views: ["gradient"],
-                    preview: false,
-                    value: "#000000"
-                }
-            },
             {
                 field: 'description',
                 label: 'Description',

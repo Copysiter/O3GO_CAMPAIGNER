@@ -69,7 +69,7 @@ async def send(
 @router.get('/next') #, response_model=schemas.CampaignDst)
 async def get_next(
     *, session: AsyncSession = Depends(deps.get_db), api_key: str = None,
-    _=Depends(deps.check_api_key)
+    user = Depends(deps.get_user_by_api_key)
 ) -> Any:
     '''
     Get next message.
@@ -85,7 +85,8 @@ async def get_next(
                     SELECT campaign.* FROM campaign
                     JOIN campaign_api_keys ON campaign.id = campaign_api_keys.campaign_id
                     AND campaign_api_keys.api_key = '{api_key}'
-                    WHERE campaign.status = {schemas.CampaignStatus.RUNNING}
+                    WHERE campaign.user_id = {user.id}
+                    AND campaign.status = {schemas.CampaignStatus.RUNNING}
                     AND ((campaign.start_ts IS NOT NULL AND campaign.stop_ts IS NOT NULL 
                           AND '{now}' BETWEEN campaign.start_ts AND campaign.stop_ts) OR
                          (schedule::jsonb ->> '{weekday}' IS NOT NULL 
@@ -170,14 +171,16 @@ async def get_next(
             return message
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=getattr(e, 'status_code', 500), detail=e.detail)
+        raise HTTPException(
+            status_code=getattr(e, 'status_code', 500), detail=str(e)
+        )
 
 
 @router.get('/status')
 async def set_status(
     *, session: AsyncSession = Depends(deps.get_db), id: int,
     status: Literal['delivered', 'undelivered', 'failed'],
-    _=Depends(deps.check_api_key)
+    user = Depends(deps.get_user_by_api_key)
 ) -> Any:
     '''
     Update message status
@@ -190,6 +193,7 @@ async def set_status(
                     FROM campaign_dst
                     JOIN campaign ON campaign.id = campaign_dst.campaign_id
                     WHERE campaign_dst.id = {id}
+                    AND campaign.user_id = {user.id}
                 ''')
             )
             if not (row := result.fetchone()):
@@ -256,4 +260,6 @@ async def set_status(
             }
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=getattr(e, 'status_code', 500), detail=e.detail)
+        raise HTTPException(
+            status_code=getattr(e, 'status_code', 500), detail=str(e)
+        )

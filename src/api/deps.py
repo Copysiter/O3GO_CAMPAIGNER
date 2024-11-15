@@ -102,14 +102,24 @@ def get_api_key(
     )
 
 
-async def check_api_key(
-    api_key: APIKey = Security(get_api_key)) -> bool:
-    if api_key != settings.EXT_API_KEY:
+async def get_user_by_api_key(
+    session: AsyncSession = Depends(get_db),
+    api_key: APIKey = Security(get_api_key)
+) -> bool:
+    try:
+        async with session.begin():
+            user = await crud.user.get_by(session, ext_api_key=api_key)
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail='Invalid API key'
+                )
+            return user
+    except Exception as e:
+        await session.rollback()
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Invalid API key'
+            status_code=getattr(e, 'status_code', 500), detail=str(e)
         )
-    return True
 
 
 def query_params(

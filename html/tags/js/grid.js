@@ -14,6 +14,44 @@ window.initGrid = function() {
             return (value+'').replace(/[\x09-\x10]/g, '') ? value : '';
         }
 
+        let user_column = window.isAuth.user.is_superuser ? [{
+            field: 'user_id',
+            width: '100px',
+            title: 'User',
+            template: '#: user.name #',
+            filterable: {
+                operators: {
+                    string: {
+                        eq: "Equal to",
+                        neq: "Not equal to"
+                    }
+                },
+                ui : function(element) {
+                    element.kendoDropDownList({
+                        animation: false,
+                        dataSource: new kendo.data.DataSource({
+                            transport: {
+                                read: {
+                                    url: `http://${api_base_url}/api/v1/options/user`,
+                                    type: 'GET',
+                                    beforeSend: function (request) {
+                                        request.setRequestHeader(
+                                            'Authorization',
+                                            `${token_type} ${access_token}`
+                                        );
+                                    },
+                                },
+                            },
+                        }),
+                        dataTextField: "text",
+                        dataValueField: "value",
+                        valuePrimitive: true,
+                        optionLabel: "-- Select Customer --"
+                    });
+                }
+            }
+        }] : []
+
         $('#tags-grid').kendoGrid({
             dataSource: {
                 transport: {
@@ -154,7 +192,6 @@ window.initGrid = function() {
             },
             save: function (e) {
                 // e.model.id = e.sender.dataSource.data().length;
-                e.model.is_superuser = e.model.is_superuser == 'true';
             },
             dataBinding: function (e) {
                 clearTimeout(timer);
@@ -217,7 +254,7 @@ window.initGrid = function() {
                         },
                     },
                     template:  "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-inline' style='font-weight:bold;# if (color_txt) { #color:#:color_txt#;# } ## if (color_bg) { #background:#:color_bg#;# } #'>#:name#</span>"
-                },
+                }].concat(user_column).concat([
                 {
                     field: "color_txt",
                     title: "Text Color",
@@ -227,6 +264,10 @@ window.initGrid = function() {
                     field: "color_bg",
                     title: "Background",
                     filterable: false,
+                },
+                {
+                    field: "description",
+                    title: "Description",
                 },
                 {
                     command: [
@@ -249,7 +290,7 @@ window.initGrid = function() {
                     // width: 86,
                 },
                 {},
-            ],
+            ]),
         });
         jQuery.fn.selectText = function () {
             var doc = document;

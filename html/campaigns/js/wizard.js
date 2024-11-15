@@ -43,7 +43,7 @@ window.initWizard = function() {
             })
         },
         data: {
-            user_id: isAuth.user.id,
+            user_id: null,
             fields: {}
         }
     });
@@ -98,11 +98,11 @@ window.initWizard = function() {
                             }
                         },
                         dataBound: function(e) {
-                            console.log(isAuth.user.id);
-                            campaignCreateModel.data.set("user_id", isAuth.user.id);
-                            this.select(function(item) {
-                                return item.value === isAuth.user.id;
-                            });
+                            // console.log(isAuth.user.id);
+                            // campaignCreateModel.data.set("user_id", isAuth.user.id);
+                            // this.select(function(item) {
+                            //     return item.value === isAuth.user.id;
+                            // });
                             //this.trigger("select");
                         },
                         dataTextField: "text",
@@ -110,8 +110,7 @@ window.initWizard = function() {
                         optionLabel: "Select user...",
                         valuePrimitive: true
                     },
-                    // validation: { required: true }
-                    hidden: true
+                    // validation: { required: true },
                 }, {
                     field: "webhook_url",
                     label: "Webhook URL:",

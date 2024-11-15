@@ -28,14 +28,17 @@ async def read_campaigns(
     filters: List[schemas.Filter] = Depends(deps.request_filters),
     orders: List[schemas.Order] = Depends(deps.request_orders),
     skip: int = 0,
-    limit: int = 100,
-    request: Request = None
+    limit: int = 100
 ) -> Any:
     '''
     Retrieve campaigns.
     '''
     if not orders:
         orders = [{'field': 'id', 'dir': 'desc'}]
+    if not current_user.is_superuser:
+        filters.append(
+            {'field': 'user_id', 'operator': 'eq', 'value': current_user.id}
+        )
     tags_idx = None
     for i in range(len(filters)):
         if filters[i]['field'] == 'tags':

@@ -13,7 +13,7 @@ $(document).ready(function () {
     <li>
     <a href='/campaigns/' data-role='drawer-item' class='${
         $('body').attr('data-id') == 'campaigns' ? 'k-selected ' : ''
-    }d-flex align-items-center text-decoration-none p-0' id='reports-icon'>
+    }d-flex align-items-center text-decoration-none p-0'>
     <span><i class='mdi mdi-cube fs-24'></i></span>
     <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='campaigns'>Campaigns</span>
     </a>
@@ -21,15 +21,23 @@ $(document).ready(function () {
     <li>
     <a href='/tags/' data-role='drawer-item' class='${
         $('body').attr('data-id') == 'tags' ? 'k-selected ' : ''
-    }d-flex align-items-center text-decoration-none p-0' id='peers-icon'>
+    }d-flex align-items-center text-decoration-none p-0'>
     <span><i class='mdi mdi-tag-multiple fs-24'></i></span>
     <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='Tags'>Tags</span>
     </a> 
     </li>
     <li>
+    <a href='/keys/' data-role='drawer-item' class='${
+        $('body').attr('data-id') == 'keys' ? 'k-selected ' : ''
+    }d-flex align-items-center text-decoration-none p-0'>
+    <span><i class='mdi mdi-key-variant fs-24'></i></span>
+    <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='Keys'>API Keys</span>
+    </a> 
+    </li>
+    <li>
     <a href='/users/' data-role='drawer-item' class='${
         $('body').attr('data-id') == 'users' ? 'k-selected ' : ''
-    }d-flex align-items-center text-decoration-none p-0' id='reports-icon'>
+    }d-flex align-items-center text-decoration-none p-0'>
     <span><i class='mdi mdi-account-supervisor fs-24'></i></span>
     <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='users'>Users</span>
     </a>
@@ -40,10 +48,26 @@ $(document).ready(function () {
     <li>
     <a href='/campaigns/' data-role='drawer-item' class='${
         $('body').attr('data-id') == 'campaigns' ? 'k-selected ' : ''
-    }d-flex align-items-center text-decoration-none p-0' id='reports-icon'>
+    }d-flex align-items-center text-decoration-none p-0'>
     <span><i class='mdi mdi-cube fs-24'></i></span>
     <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='campaigns'>Campaigns</span>
     </a>
+    </li>
+    <li>
+    <a href='/tags/' data-role='drawer-item' class='${
+        $('body').attr('data-id') == 'tags' ? 'k-selected ' : ''
+    }d-flex align-items-center text-decoration-none p-0'>
+    <span><i class='mdi mdi-tag-multiple fs-24'></i></span>
+    <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='Tags'>Tags</span>
+    </a> 
+    </li>
+    <li>
+    <a href='/keys/' data-role='drawer-item' class='${
+        $('body').attr('data-id') == 'keys' ? 'k-selected ' : ''
+    }d-flex align-items-center text-decoration-none p-0'>
+    <span><i class='mdi mdi-key-variant fs-24'></i></span>
+    <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='Keys'>API Keys</span>
+    </a> 
     </li>
     </ul>`;
 

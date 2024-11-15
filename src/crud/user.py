@@ -12,6 +12,15 @@ from schemas.user import UserCreate, UserUpdate  # noqa
 
 
 class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
+    async def get_by(
+        self, db: AsyncSession, **kwargs: Dict[str, Any]
+    ) -> Optional[User]:
+        statement = select(User)
+        for attr, val in kwargs.items():
+            statement = statement.where(getattr(User, attr) == val)
+        results = await db.execute(statement=statement)
+        return results.unique().scalar_one_or_none()
+
     async def get_by_login(
         self, db: AsyncSession, *, login: str
     ) -> Optional[User]:

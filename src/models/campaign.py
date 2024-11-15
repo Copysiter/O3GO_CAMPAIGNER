@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Column, ForeignKey, Integer, BigInteger, String, DateTime, Index
-from sqlalchemy.orm import relationship, dynamic_loader
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.ext.associationproxy import AssociationProxy
 
@@ -31,7 +31,7 @@ class CampaignTags(Base):
 class Campaign(Base):
     id = Column(BigInteger, primary_key=True, index=True, autoincrement=True, unique=True)
     name = Column(String, index=True)
-    user_id = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'))
+    user_id = Column(BigInteger, ForeignKey('user.id', ondelete='CASCADE'))
     schedule = Column(JSONB, nullable=False, default={})
     msg_template = Column(String, index=True)
     msg_attempts = Column(Integer, index=True, default=1)

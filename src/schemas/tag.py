@@ -1,12 +1,16 @@
 ﻿from typing import List, Optional
 from pydantic import BaseModel
 
+from .user import User
+
 
 # Shared properties
 class TagBase(BaseModel):
     name: str
-    color_txt: Optional[str]
-    color_bg: Optional[str]
+    user_id: Optional[int] = None
+    color_txt: Optional[str] = None
+    color_bg: Optional[str] = None
+    description: Optional[str] = None
 
 
 # Properties to receive via API on creation
@@ -28,7 +32,7 @@ class TagInDBBase(TagBase):
 
 # Additional properties to return via API
 class Tag(TagInDBBase):
-    pass
+    user: User
 
 
 # Additional properties stored in DB

@@ -16,12 +16,15 @@ router = APIRouter()
 async def get_user_options(
     *,
     db: Session = Depends(deps.get_db),
-    _: models.User = Depends(deps.get_current_active_superuser)
+    user: models.User = Depends(deps.get_current_active_superuser)
 ) -> Any:
     """
     Retrieve user options.
     """
-    rows = await crud.user.get_rows(db, limit=None)
+    filters = [
+        {'field': 'user_id', 'operator': 'eq', 'value': user.id}
+    ] if not user.is_superuser else []
+    rows = await crud.user.get_rows(db, filters=filters, limit=None)
     return JSONResponse([{
         'text': rows[i].name if rows[i].name else rows[i].login,
         'value': rows[i].id
@@ -39,7 +42,10 @@ async def get_api_keys_options(
     """
     # user_id = user.id if not user.is_superuser else None
     # rows = await crud.user.get_api_keys(db, user_id=user_id)
-    rows = await crud.api_key.get_rows(db, limit=None)
+    filters = [
+        {'field': 'user_id', 'operator': 'eq', 'value': user.id}
+    ] if not user.is_superuser else []
+    rows = await crud.api_key.get_rows(db, filters=filters, limit=None)
     return JSONResponse([{
         'text': rows[i].value,
         'value': rows[i].value
@@ -50,11 +56,14 @@ async def get_api_keys_options(
 async def get_tag_options(
     *,
     db: Session = Depends(deps.get_db),
-    _: models.User = Depends(deps.get_current_active_superuser)
+    user: models.User = Depends(deps.get_current_active_superuser)
 ) -> Any:
     """
     Retrieve tag options.
     """
+    filters = [
+        {'field': 'user_id', 'operator': 'eq', 'value': user.id}
+    ] if not user.is_superuser else []
     rows = await crud.tag.get_rows(db, limit=None)
     return JSONResponse([{
         'text': rows[i].name,
