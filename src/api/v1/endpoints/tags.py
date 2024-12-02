@@ -1,5 +1,6 @@
 from typing import Any, List  # noqa
 
+from aiofiles.os import remove
 from fastapi import APIRouter, Depends, HTTPException, status  # noqa
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,12 +72,24 @@ async def update_tag(
     Update an tag.
     """
     tag = await crud.tag.get(db=db, id=id)
+    old_keys = set(tag.api_keys)
     if not tag or (not current_user.is_superuser
                    and tag.user_id != current_user.id):
         raise HTTPException(status_code=404, detail='Tag not found')
     if not tag_in.user_id:
         tag_in.user_id = current_user.id
     tag = await crud.tag.update(db=db, db_obj=tag, obj_in=tag_in)
+    new_keys = set(tag.api_keys)
+    removed_keys = old_keys.difference(new_keys)
+    for campaign in await crud.campaign.get_rows(db=db, filters=[{
+        'relationship': models.Campaign.campaign_tags,
+        'field': models.CampaignTags.tag_id,
+        'operator': 'overlaps', 'value': [tag.id]
+    }], limit=None):
+        _ = await crud.campaign.update_keys(
+            db=db, db_obj=campaign, removed_keys=removed_keys
+        )
+
     return tag
 
 
@@ -112,4 +125,6 @@ async def delete_tag(
                    and tag.user_id != current_user.id):
         raise HTTPException(status_code=404, detail='Tag not found')
     tag = await crud.tag.delete(db=db, id=id)
+    for campaign in tag.campaigns:
+        _ = crud.campaign.update_keys(db=db, db_obj=campaign)
     return tag

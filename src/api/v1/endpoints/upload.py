@@ -33,7 +33,10 @@ async def upload_file(file: UploadFile = File(...)):
     ''' 
     fields = []
     if ext in ['.csv', '.txt']:
-        data = pd.read_csv(f'upload/{filename}', sep='[,;:]', header=None)
+        try:
+            data = pd.read_csv(f'upload/{filename}', sep='[\s+|,;:]', header=None)
+        except pd.errors.ParserError:
+            data = pd.read_csv(f'upload/{filename}', header=None)
         data = data.astype(str)
         # fields = data.loc[len(data) // 2, :].tolist()
         fields = [i.strip().strip('"').strip('\'') for i in data.loc[len(data) // 2, :].tolist()]

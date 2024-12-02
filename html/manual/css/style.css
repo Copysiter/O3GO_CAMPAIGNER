@@ -1,0 +1,11 @@
+.k-grid td, .k-grid th {
+    width: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    border-width: 1px !important;
+}
+
+.k-grid td:last-child, .k-grid th:last-child {
+    width: 100%;
+    white-space: normal;
+}

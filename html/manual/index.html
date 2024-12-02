@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html prefix="og: http://ogp.me/ns#" lang="en">
+    <head>
+        <title>O3GO Team</title>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" type="image/x-icon" href="../static/favicon.ico" />
+        <link href="../static/lib/bootstrap/css/bootstrap.css" rel="stylesheet" />
+        <link href="../static/lib/kendo/css/base.css" rel="stylesheet" />
+        <link href="../static/lib/kendo/css/kendo.r2.css" rel="stylesheet" />
+        <link href="../static/lib/material/style.css" rel="stylesheet" />
+        <link href="../static/lib/silk/famfamfam-silk.min.css" rel="stylesheet" />
+        <script src="../static/lib/jquery.min.js"></script>
+        <script src="../static/lib/kendo/js/kendo.all.min.js"></script>
+        <script src="../static/lib/kendo/js/jszip.min.js"></script>
+        <link href="../static/style.css" rel="stylesheet" />
+        <link href="css/style.css" rel="stylesheet" />
+        <script src="../static/auth.js"></script>
+        <script src="../static/script.js"></script>
+    </head>
+    <body class="d-flex flex-column" data-id="manual">
+
+        <div id="appbar"></div>
+        <div class="flex-grow-1" id="app-root">
+            <div id="drawer">
+                <div id="content" class="position-relative d-flex flex-column p-8">
+                    <div class="position-absolute w-100 h-100 flex-grow-1 overflow-auto px-40 pt-40 pb-80 fs-14">
+                        <div class="p-40 border text-wrap" style="max-width: 960px;">
+                            <h1 class="mt-0">O3GO Campaigner</h1>
+                            <p>Кампейнер — система управления рассылками и автоматизации отправки сообщений с учетом настроек кампаний. Поддерживает создание, управление кампаниями через личный кабинет и отправку сообщений по API.</p>
+                            <h2>Работа с личным кабинетом</h2>
+                            <p>Перед началом работы с API необходимо создать кампанию в личном кабинете.</p>
+                            <h3>1. Основные настройки кампании</h3>
+                            <div class="k-grid">
+                            <table class="w-100 text-wrap">
+                            <thead class="k-grid-header">
+                            <tr class="text-bold">
+                            <th data-field="param">Параметр</th>
+                            <th data-field="description">Описание</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                            <td>Campaign Name</td>
+                            <td>Название кампании для быстрого поиска.</td>
+                            </tr>
+                            <tr class="k-alt">
+                            <td>Webhook URL</td>
+                            <td>URL адрес внешнего сервиса для получения статусов сообщений. Система отправляет HTTP-запросы с актуальной информацией о статусах доставки.</td>
+                            </tr>
+                            <tr>
+                            <td>API Keys</td>
+                            <td>Ключи доступа, которые ограничивают отправку сообщений с определенных устройств (компьютеров).</td>
+                            </tr>
+                            <tr class="k-alt">
+                            <td>Data Source</td>
+                            <td>Источник (метод) загрузки базы контактов (из файла (например, CSV) или ставка данных вручную в текстовое поле).                            </td>
+                            </tr>
+                            <tr>
+                            <td>Skip Rows</td>
+                            <td>Количество строк для пропуска при обработке загружаемого файла для исключения заголовков таблицы.</td>
+                            </tr>
+                            <tr class="k-alt">
+                            <td>Row Separator</td>
+                            <td>Разделитель строк при вставки базы контактов вручеую.</td>
+                            </tr>
+                            <tr>
+                            <td>Column Separator</td>
+                            <td>Разделитель колонок в строках при вставки базы контактов вручеую.</td>
+                            </tr>
+                            <tr class="k-alt">
+                            <td>Phone Number</td>
+                            <td>Поле, содержащее номер телефона в загруженных данных (для определения расположения внутри строки).</td>
+                            </tr>
+                            <tr>
+                            <td>Custom Field 1–3</td>
+                            <td>Пользовательские поля для хранения дополнительной информации (для определения расположения внутри строки).</td>
+                            </tr>
+                            <tr class="k-alt">
+                            <td>Order</td>
+                            <td>Приоритет кампании в порядке очереди. 1 - наивысший приоритет. Если значение отсутствует, сообщения отправляются с наименьшим приоритетом.</td>
+                            </tr>
+                            <tr>
+                            <td>Message Attempts</td>
+                            <td>Максимальное количество попыток отправки одного сообщения.</td>
+                            </tr>
+                            <tr class="k-alt">
+                            <td>Sending Timeout</td>
+                            <td>Максимально время ожидания отправки сообщения, после чего оно помечаются как “Undelivered”.</td>
+                            </tr>
+                            <tr>
+                            <td>Status Timeout</td>
+                            <td>Максимально время ожидания статуса доставки сообщения, после чего оно помечаются как “Undelivered”.</td>
+                            </tr>
+                            <tr class="k-alt">
+                            <td>Start at / Finish at</td>
+                            <td>Дата и время начала и завершения кампании.</td>
+                            </tr>
+                            <tr>
+                            <td>Scheduler</td>
+                            <td>Расписание отправки сообщений по дням недели и часам. Игнорируется, если заполнены поля Start at или Finish at.</td>
+                            </tr>
+                            </tbody>
+                            </table>
+                            </div>
+                            <h3>2. Использование шаблонов сообщений</h3>
+                            <p>Сообщение может быть статическим или использовать шаблоны для персонализации. Для настройки шаблона сообщения можно использовать 3 катомных поля.</p>
+                            <h4>Пример шаблона сообщения:</h4>
+<pre class="p-20 border text-white bg-dark"><code class="text-wrap">
+Приветcтвуем Вас, уважаемый {field_1} {field_2} {field_3}!
+Получите 500 бесплатных спинов и бонус на первый депозит — начни выигрывать прямо сейчас! 🎰
+</code></pre>
+                            <p>Где:</p>
+                            <ul>
+                            <li>{field_1} — фамилия,</li>
+                            <li>{field_2} — имя,</li>
+                            <li>{field_3} — отчество.</li>
+                            </ul>
+                            <h2>Работа с API</h2>
+                            <h3>1. Отправка сообщений через API</h3>
+                            <p>Для аутентификации пользователя в HTTP-запросах к API необходимо передавать API Key в заголовке запроса или в качестве query параметра</p>
+                            <h4>Примеры запросов:</h4>
+<pre class="p-20 border text-white bg-dark">
+curl -X 'POST' \
+  'http://{your-server}/ext/api/v1/messages/send' \
+  -H 'accept: application/json' \
+  -H 'X-Api-Key: {your-api-key}' \
+  -H 'Content-Type: application/json' \
+  -d '[
+  {
+    "id": 123,
+    "campaign_id": 1,
+    "dst_addr": "79201234567",
+    "text": "Текст сообщения",
+    "field_1": "Иванов",
+    "field_2": "Иван",
+    "field_3": "Иванович"
+  }
+]'
+</pre>
+<pre class="p-20 border text-white bg-dark">
+curl -X 'POST' \
+  'http://{your-server}/ext/api/v1/messages/send?x-api-key={your-api-key}' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '[
+  {
+    "id": 123,
+    "campaign_id": 1,
+    "dst_addr": "79201234567",
+    "text": "Текст сообщения",
+    "field_1": "Иванов",
+    "field_2": "Иван",
+    "field_3": "Иванович"
+  }
+]'
+</pre>
+                            <h4>Поля запроса</h4>
+                            <div class="k-grid k-widget k-grid-display-block w-100">
+                            <table class="w-100 text-wrap">
+                            <thead class="k-grid-header">
+                            <tr class="text-bold">
+                            <th data-field="param">Параметр</th>
+                            <th data-field="type">Тип</th>
+                            <th data-field="required">Обязательное</th>
+                            <th data-field="description">Описание</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                            <td>id</td>
+                            <td>str</td>
+                            <td>нет</td>
+                            <td>Идентификатор сообщения во внешней системе. Используется в webhook.</td>
+                            </tr>
+                            <tr class="k-alt">
+                            <td>campaign_id</td>
+                            <td>int</td>
+                            <td>да</td>
+                            <td>Идентификатор кампании, в рамках которой отправляется сообщение.</td>
+                            </tr>
+                            <tr>
+                            <td>dst_addr</td>
+                            <td>str</td>
+                            <td>да</td>
+                            <td>Номер телефона получателя.</td>
+                            </tr>
+                            <tr class="k-alt">
+                            <td>text</td>
+                            <td>str</td>
+                            <td>нет</td>
+                            <td>Текст сообщения. Если указан, шаблон из настроек кампании игнорируется.</td>
+                            </tr>
+                            <tr>
+                            <td>field_1–3</td>
+                            <td>str</td>
+                            <td>нет</td>
+                            <td>Дополнительные поля для подстановки в шаблон.</td>
+                            </tr>
+                            </tbody>
+                            </table>
+                            </div>
+                            <h4>Пример ответа (200 OK)</h4>
+<pre class="p-20 border text-white bg-dark">
+[
+  {
+    "text": "Текст сообщения",
+    "campaign_id": 1,
+    "field_1": "Иванов",
+    "field_2": "Иван",
+    "field_3": "Иванович",
+    "ext_id": "123",
+    "dst_addr": "79201234567",
+    "attempts": 3
+  }
+]
+</pre>
+                            <h3>2. Получение статусов сообщений</h3>
+                            <p>После отправки сообщения система отправит webhook-запрос на Webhook URL, указанный в настройах кампании при условии передачи с сообщением внешнего ID</p>
+                            <h4>Пример webhook-запроса</h4>
+<pre class="p-20 border text-white bg-dark">
+curl -X 'POST' \
+  'http://{your-server}/webhook/' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": 123,
+    "status": "delivered"
+  }'
+</pre>
+                            <h4>Поля webhook-запроса</h4>
+                            <div class="k-grid k-widget k-grid-display-block w-100">
+                            <table class="w-100 text-wrap">
+                            <thead class="k-grid-header">
+                            <tr class="text-bold">
+                            <th data-field="param">Параметр</th>
+                            <th data-field="type">Тип</th>
+                            <th data-field="description">Описание</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                            <td>id</td>
+                            <td>str</td>
+                            <td>Идентификатор сообщения во внешней системе</td>
+                            </tr>
+                            <tr class="k-alt">
+                            <td>status</td>
+                            <td>str</td>
+                            <td>Статус сообщения (delivered или undelivered).</td>
+                            </tr>
+                            </tbody>
+                            </table>
+                            </div>
+                        </div>
+                    </div>
+               </div>
+            </div>
+        </div>
+        <div id="confirm-logout"></div>
+<!--        <script>-->
+<!--            $(document).ready(function(){-->
+<!--                [1, 2, 3].forEach((i) => {-->
+<!--                    let grid = `#grid_${i}`;-->
+<!--                    $(grid).kendoGrid({-->
+<!--                        sortable: false,-->
+<!--                        filterable: false-->
+<!--                    });-->
+<!--                    $(`${grid} .k-grid-content table`).prepend($(`${grid} .k-grid-header thead`));-->
+<!--                    $(`${grid} .k-grid-header`).remove();-->
+<!--                    $(`${grid} colgroup`).remove();-->
+<!--                    $(`${grid} .k-grid-content thead`).addClass('k-grid-header');-->
+<!--                });-->
+<!--            });-->
+<!--        </script>-->
+        <script type="text/javascript">
+            $(function() {
+                try {
+                    let { access_token, token_type } = window.isAuth;
+                    window.access_token = access_token;
+                    window.token_type = token_type;
+                } catch (error) {
+                    console.warn(error);
+                }
+            });
+        </script>
+    
+    </body>
+</html>

@@ -284,6 +284,8 @@ body {
 .badge {
     min-width: 30px;
     text-align: center;
+    font-size: 12px !important;
+    padding: 3px 5px !important;
 }
 .badge-sm {
     min-width: 20px;

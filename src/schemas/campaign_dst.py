@@ -12,6 +12,7 @@ class CampaignDstBase(BaseModel):
     ext_id: Optional[str]
     campaign_id: Optional[int]
     dst_addr: Optional[int]
+    text: Optional[str] = None
     field_1: Optional[str] = None
     field_2: Optional[str] = None
     field_3: Optional[str] = None

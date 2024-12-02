@@ -198,41 +198,6 @@ window.initCampaignGrid = function() {
                 }
             },
             {
-                field: 'tags',
-                title: 'TAGS',
-                maxWidth: 60,
-                template:
-                    "<div class='d-flex'># for (var i = 0; i < tags.length; i++) { #<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-inline' style='color:#:tags[i].color_txt#;background:#:tags[i].color_bg#;'>#:tags[i].name#</span># } #</div>",
-                sortable: false,
-                filterable: {
-                    multi: true,
-                    dataSource: new kendo.data.DataSource({
-                        transport: {
-                            read: {
-                                url: `http://${api_base_url}/api/v1/options/tag`,
-                                type: 'GET',
-                                beforeSend: function (request) {
-                                    request.setRequestHeader(
-                                        'Authorization',
-                                        `${token_type} ${access_token}`
-                                    );
-                                },
-                            },
-                        },
-                    }),
-                    itemTemplate: function(e) {
-                        console.log(e);
-                        if (e.field == "all") {
-                            //handle the check-all checkbox template
-                            return "";
-                        } else {
-                            //handle the other checkboxes
-                            return "<div class=''><label class='d-flex align-items-center py-8 ps-3 border-bottom cursor-pointer'><input type='checkbox' name='" + e.field + "' value='#=value#' class='k-checkbox k-checkbox-md k-rounded-md'/><span class='ms-8'>#=text#</span></label></div>"
-                        }
-                    }
-                }
-            },
-            {
                 field: 'user_id',
                 width: '100px',
                 title: 'User',
@@ -270,6 +235,56 @@ window.initCampaignGrid = function() {
                 }
             },
             {
+                field: 'tags',
+                title: 'TAGS',
+                maxWidth: 60,
+                template:
+                    "<div class='d-flex'># for (var i = 0; i < tags.length; i++) { #<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-inline' style='color:#:tags[i].color_txt#;background:#:tags[i].color_bg#;'>#:tags[i].name#</span># } #</div>",
+                sortable: false,
+                filterable: {
+                    multi: true,
+                    dataSource: new kendo.data.DataSource({
+                        transport: {
+                            read: {
+                                url: `http://${api_base_url}/api/v1/options/tag`,
+                                type: 'GET',
+                                beforeSend: function (request) {
+                                    request.setRequestHeader(
+                                        'Authorization',
+                                        `${token_type} ${access_token}`
+                                    );
+                                },
+                            },
+                        },
+                    }),
+                    itemTemplate: function(e) {
+                        console.log(e);
+                        if (e.field == "all") {
+                            //handle the check-all checkbox template
+                            return "";
+                        } else {
+                            //handle the other checkboxes
+                            return "<div class=''><label class='d-flex align-items-center py-8 ps-3 border-bottom cursor-pointer'><input type='checkbox' name='" + e.field + "' value='#=value#' class='k-checkbox k-checkbox-md k-rounded-md'/><span class='ms-8'>#=text#</span></label></div>"
+                        }
+                    }
+                }
+            },
+            {
+                field: "api_keys",
+                title: "Api Keys",
+                filterable: false,
+                maxWidth: 360,
+                template: function (obj) {
+                    let html = '';
+                    if (obj.api_keys) {
+                        obj.api_keys.forEach(function (key) {
+                            html += `<span class="k-chip k-chip-sm k-rounded-md k-chip-solid k-chip-solid-base m-3 px-5 py-3 fs-14">${key}</span>`;
+                        });
+                    }
+                    return `<div class="inline-blocks d-flex flex-wrap m-n3">${html}</div>`;
+                }
+            },
+            {
                 field: 'msg_template',
                 // width: 80,
                 title: 'Message',
@@ -280,9 +295,13 @@ window.initCampaignGrid = function() {
                     },
                 },
                 template: function(item) {
-                    return `<div class="long_text">
-                            ${item.msg_template.replaceAll("\n", "<br>")}
-                            </div>`
+                    if (item.msg_template != undefined) {
+                        return `<div class="long_text">
+                                ${item.msg_template.replaceAll("\n", "<br>")}
+                                </div>`;
+                    } else {
+                        return '';
+                    }
                 },
                 minWidth: 480,
                 maxWidth: 640

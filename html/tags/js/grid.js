@@ -18,7 +18,10 @@ window.initGrid = function() {
             field: 'user_id',
             width: '100px',
             title: 'User',
-            template: '#: user.name #',
+            template: function (obj) {
+                 if (obj.user != undefined) return obj.user.name;
+                 return '';
+            },
             filterable: {
                 operators: {
                     string: {
@@ -254,7 +257,21 @@ window.initGrid = function() {
                         },
                     },
                     template:  "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-inline' style='font-weight:bold;# if (color_txt) { #color:#:color_txt#;# } ## if (color_bg) { #background:#:color_bg#;# } #'>#:name#</span>"
-                }].concat(user_column).concat([
+                }].concat(user_column).concat([{
+                    field: "api_keys",
+                    title: "Api Keys",
+                    filterable: false,
+                    maxWidth: 360,
+                    template: function (obj) {
+                        let html = '';
+                        if (obj.api_keys) {
+                            obj.api_keys.forEach(function (key) {
+                                html += `<span class="k-chip k-chip-sm k-rounded-md k-chip-solid k-chip-solid-base m-3 px-5 py-3 fs-14">${key}</span>`;
+                            });
+                        }
+                        return `<div class="inline-blocks d-flex flex-wrap m-n3">${html}</div>`;
+                    }
+                },
                 {
                     field: "color_txt",
                     title: "Text Color",

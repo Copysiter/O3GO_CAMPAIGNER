@@ -168,8 +168,9 @@ window.initMessageGrid = function(id) {
                 title: 'Message',
                 // template: '<div class="long_text">#: text #</div>',
                 template: function(item) {
+                    if (!item.text) return '';
                     return `<div class="long_text">
-                            ${item.text.replaceAll("\n", "<br>")}
+                            ${item.text ? item.text : item.text.replaceAll("\n", "<br>")}
                             </div>`
                 },
                 sortable: false,
@@ -184,6 +185,12 @@ window.initMessageGrid = function(id) {
                         showOperators: false,
                     },
                 },
+                template: function(item) {
+                    if (!item.field_1) return '';
+                    return `<div class="short_text">
+                            ${item.field_1.replaceAll("\n", "<br>")}
+                            </div>`
+                },
             },
             {
                 field: 'field_2',
@@ -194,6 +201,12 @@ window.initMessageGrid = function(id) {
                         showOperators: false,
                     },
                 },
+                template: function(item) {
+                    if (!item.field_2) return '';
+                    return `<div class="short_text">
+                            ${item.field_2.replaceAll("\n", "<br>")}
+                            </div>`
+                },
             },
             {
                 field: 'field_3',
@@ -203,6 +216,12 @@ window.initMessageGrid = function(id) {
                     cell: {
                         showOperators: false,
                     },
+                },
+                template: function(item) {
+                    if (!item.field_3) return '';
+                    return `<div class="short_text">
+                            ${item.field_3.replaceAll("\n", "<br>")}
+                            </div>`
                 },
             },
             {}

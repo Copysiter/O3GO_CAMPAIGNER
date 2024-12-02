@@ -90,7 +90,7 @@ window.initForm = function() {
                 overflow: "auto",
                 rows: 10
             },
-            validation: { required: true }
+            validation: { required: false }
         }, {
             field: "sep4",
             colSpan: 12,

@@ -42,6 +42,14 @@ $(document).ready(function () {
     <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='users'>Users</span>
     </a>
     </li>
+    <li>
+    <a href='/manual/' data-role='drawer-item' class='${
+        $('body').attr('data-id') == 'manual' ? 'k-selected ' : ''
+    }d-flex align-items-center text-decoration-none p-0'>
+    <span><i class='mdi mdi-api fs-24'></i></span>
+    <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='manual'>Manual</span>
+    </a>
+    </li>
     </ul>`;
 
     const drawerUserTemplate = `<ul>
@@ -68,6 +76,14 @@ $(document).ready(function () {
     <span><i class='mdi mdi-key-variant fs-24'></i></span>
     <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='Keys'>API Keys</span>
     </a> 
+    </li>
+    <li>
+    <a href='/manual/' data-role='drawer-item' class='${
+        $('body').attr('data-id') == 'manual' ? 'k-selected ' : ''
+    }d-flex align-items-center text-decoration-none p-0'>
+    <span><i class='mdi mdi-api fs-24'></i></span>
+    <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='manual'>Manual</span>
+    </a>
     </li>
     </ul>`;
 
@@ -188,7 +204,6 @@ function logout() {
 // optimize custom grids
 
 window.optimize_grid = function (grids) {
-    console.log(grids);
     $.each(grids, function (index, grid) {
         if ($(`${grid} .k-grid-footer`).length > 0) {
             $(`${grid} .k-grid-content table`).append('<tfoot></tfoot>');

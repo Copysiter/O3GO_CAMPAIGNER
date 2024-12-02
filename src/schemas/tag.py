@@ -11,16 +11,20 @@ class TagBase(BaseModel):
     color_txt: Optional[str] = None
     color_bg: Optional[str] = None
     description: Optional[str] = None
+    api_keys: Optional[list] = []
 
 
 # Properties to receive via API on creation
 class TagCreate(TagBase):
     name: str
+    keys: Optional[list] = []
+    api_keys: Optional[list] = []
 
 
 # Properties to receive via API on update
 class TagUpdate(TagBase):
-    pass
+    keys: Optional[list] = []
+    api_keys: Optional[list] = []
 
 
 class TagInDBBase(TagBase):

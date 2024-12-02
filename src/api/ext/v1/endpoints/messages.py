@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from typing import Any, Literal, List
 from collections import defaultdict
 
+from alembic.util import status
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text, insert, update, case
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +20,7 @@ router = APIRouter()
 @router.post('/send') #, response_model=schemas.CampaignDst)
 async def send(
     *, db: AsyncSession = Depends(deps.get_db),
-    current_user: models.User = Depends(deps.get_basic_auth_user),
+    user = Depends(deps.get_user_by_api_key),
     messages: List[schemas.MessageCreate]
 ) -> Any:
     '''
@@ -29,16 +30,14 @@ async def send(
     campaigns_count = defaultdict(int)
     for message in messages:
         campaign = await crud.campaign.get(db=db, id=message.campaign_id)
-        if not campaign or campaign.user_id != current_user.id:
+        if not campaign or campaign.user_id != user.id:
             raise HTTPException(
                 status_code=404,
                 detail=f'Campaign not found '
                        f'(campaign_id={message.campaign_id})'
             )
-        obj_in = message.model_dump()
-        obj_in['ext_id'] = str(obj_in.pop('id'))
-        obj_in['dst_addr'] = str(obj_in.pop('phone'))
-        obj_in['ext_id'] = str(obj_in.pop('id'))
+        obj_in = message.model_dump(exclude_none=True)
+        obj_in['ext_id'] = str(obj_in.pop('id')) if 'id' in obj_in else None
         obj_in['attempts'] = campaign.msg_attempts
         if campaign.msg_sending_timeout is not None:
             obj_in['expire_ts'] = datetime.utcnow() + timedelta(
@@ -49,7 +48,7 @@ async def send(
     statement = insert(models.CampaignDst)
     for i in range(0, len(entries_data), settings.DATABASE_INSERT_BATCH_SIZE):
         batch = entries_data[i:i + settings.DATABASE_INSERT_BATCH_SIZE]
-        await db.execute(statement, batch)
+        result = await db.execute(statement, batch)
     statement = (
         update(models.Campaign)
         .where(models.Campaign.id.in_(campaigns_count.keys()))
@@ -57,7 +56,7 @@ async def send(
             msg_total=models.Campaign.msg_total + case(*[
                 (models.Campaign.id == campaign_id, count)
                 for campaign_id, count in campaigns_count.items()
-            ], else_=0)
+            ], else_=0), status = schemas.CampaignStatus.RUNNING
         )
     )
     await db.execute(statement)
@@ -81,18 +80,32 @@ async def get_next(
     try:
         async with session.begin():
             result = await session.execute(
-                statement=text(f'''
-                    SELECT campaign.* FROM campaign
-                    JOIN campaign_api_keys ON campaign.id = campaign_api_keys.campaign_id
-                    AND campaign_api_keys.api_key = '{api_key}'
-                    WHERE campaign.user_id = {user.id}
-                    AND campaign.status = {schemas.CampaignStatus.RUNNING}
-                    AND ((campaign.start_ts IS NOT NULL AND campaign.stop_ts IS NOT NULL 
-                          AND '{now}' BETWEEN campaign.start_ts AND campaign.stop_ts) OR
-                         (schedule::jsonb ->> '{weekday}' IS NOT NULL 
-                          AND(schedule::jsonb -> '{weekday}')::jsonb @> to_jsonb({hour}::int)))
-                    ORDER BY campaign.order, campaign.msg_sent LIMIT 1;
-                ''')
+                text('''
+                    SELECT campaign.* 
+                    FROM campaign
+                    JOIN campaign_api_keys 
+                        ON campaign.id = campaign_api_keys.campaign_id
+                        AND campaign_api_keys.api_key = :api_key
+                    WHERE campaign.user_id = :user_id
+                      AND campaign.status = :status
+                      AND (
+                          (campaign.start_ts IS NOT NULL AND campaign.stop_ts IS NOT NULL 
+                           AND :now BETWEEN campaign.start_ts AND campaign.stop_ts)
+                          OR
+                          (schedule::jsonb ->> :weekday IS NOT NULL 
+                           AND (schedule::jsonb -> :weekday)::jsonb @> to_jsonb(CAST(:hour AS INTEGER)))
+                      )
+                    ORDER BY campaign.order, campaign.msg_sent 
+                    LIMIT 1;
+                '''),
+                {
+                    'api_key': api_key,
+                    'user_id': user.id,
+                    'status': schemas.CampaignStatus.RUNNING,
+                    'now': now,
+                    'weekday': weekday,
+                    'hour': hour
+                }
             )
             if not (row := result.first()):
                 raise HTTPException(
@@ -101,18 +114,20 @@ async def get_next(
             campaign = row._mapping  # noqa
 
             result = await session.execute(
-                statement=text(f'''
+                text('''
                     SELECT * FROM campaign_dst
-                    WHERE campaign_id = {campaign.get('id')}
-                    AND status IN (
-                        {schemas.CampaignDstStatus.CREATED},
-                        {schemas.CampaignDstStatus.FAILED}
-                    )
+                    WHERE campaign_id = :campaign_id
+                    AND status IN (:status_created, :status_failed)
                     AND attempts > 0
                     ORDER BY status
                     LIMIT 1
                     FOR UPDATE SKIP LOCKED;
-                ''')
+                '''),
+                {
+                    'campaign_id': campaign.get('id'),
+                    'status_created': schemas.CampaignDstStatus.CREATED,
+                    'status_failed': schemas.CampaignDstStatus.FAILED,
+                }
             )
             if not (row := result.first()):
                 raise HTTPException(
@@ -122,7 +137,7 @@ async def get_next(
 
             message = {
                 'id': campaign_dst.get('id'),
-                'phone': campaign_dst.get('dst_addr'),
+                'dst_addr': campaign_dst.get('dst_addr'),
                 'text': campaign_dst.get('text')
             }
             if not message['text']:
@@ -135,37 +150,49 @@ async def get_next(
                         )
 
             sent_ts = datetime.utcnow()
-            expire_ts = "'{}'".format(
-                sent_ts + timedelta(seconds=campaign.msg_status_timeout)
-            ) if campaign.msg_status_timeout else 'NULL'
+            expire_ts = sent_ts + timedelta(
+                seconds=campaign.msg_status_timeout
+            ) if campaign.msg_status_timeout else None
 
             await session.execute(
-                statement=text(f'''
+                text('''
                     UPDATE campaign_dst
-                    SET status = {schemas.CampaignDstStatus.SENT},
-                        text = '{message.get('text')}',
-                        sent_ts = '{sent_ts}',
-                        expire_ts = {expire_ts},
+                    SET status = :status,
+                        text = :text,
+                        sent_ts = :sent_ts,
+                        expire_ts = :expire_ts,
                         attempts = attempts - 1
-                    WHERE id = {campaign_dst.get('id')}
-                ''')
+                    WHERE id = :id
+                '''),
+                {
+                    'status': schemas.CampaignDstStatus.SENT,
+                    'text': message.get('text'),
+                    'sent_ts': sent_ts,
+                    'expire_ts': expire_ts,
+                    'id': campaign_dst.get('id'),
+                }
             )
 
             await session.execute(
-                statement=text(f'''
+                text('''
                     UPDATE campaign
                     SET msg_sent = CASE 
-                        WHEN {campaign_dst.get('status')} = {schemas.CampaignDstStatus.FAILED}
+                        WHEN CAST(:current_status AS INTEGER) = :status_failed
                         THEN msg_sent
                         ELSE msg_sent + 1
                     END,
                     msg_failed = CASE 
-                        WHEN {campaign_dst.get('status')} = {schemas.CampaignDstStatus.FAILED}
+                        WHEN :current_status = :status_failed
                         THEN msg_failed - 1
                         ELSE msg_failed
                     END
-                    WHERE id = {campaign_dst.get('campaign_id')}
-                ''')
+                    WHERE id = :campaign_id
+                '''),
+                {
+                    'current_status': campaign_dst.get('status'),
+                    'status_failed': schemas.CampaignDstStatus.FAILED,
+                    'campaign_id': campaign_dst.get('campaign_id'),
+                }
             )
 
             return message
@@ -188,13 +215,17 @@ async def set_status(
     try:
         async with (session.begin()):
             result = await session.execute(
-                statement=text(f'''
+                text('''
                     SELECT campaign_dst.*, campaign.webhook_url
                     FROM campaign_dst
                     JOIN campaign ON campaign.id = campaign_dst.campaign_id
-                    WHERE campaign_dst.id = {id}
-                    AND campaign.user_id = {user.id}
-                ''')
+                    WHERE campaign_dst.id = :id
+                      AND campaign.user_id = :user_id
+                '''),
+                {
+                    'id': id,
+                    'user_id': user.id
+                }
             )
             if not (row := result.fetchone()):
                 raise HTTPException(
@@ -228,33 +259,42 @@ async def set_status(
                     schemas.CampaignDstStatus, status.upper()
                 )
             ):
-
                 await session.execute(
-                    statement=text(f'''
+                    text('''
                         UPDATE campaign_dst
-                        SET status = {new_status},
-                        update_ts = '{datetime.utcnow()}'
-                        WHERE id = {id}
-                    ''')
+                        SET status = :status,
+                            update_ts = :update_ts,
+                            expire_ts = NULL
+                        WHERE id = :id
+                    '''),
+                    {
+                        'status': new_status,
+                        'update_ts': datetime.utcnow(),
+                        'id': id
+                    }
                 )
 
                 await session.execute(
-                    statement=text(f'''
+                    text(f'''
                         UPDATE campaign
                         SET msg_{status} = msg_{status} + 1,
-                        status = {campaign_status}
-                        WHERE id = {campaign_dst.get('campaign_id')}
-                    ''')
+                            status = {campaign_status}
+                        WHERE id = :campaign_id
+                    '''),
+                    {
+                        'campaign_id': campaign_dst.get('campaign_id')
+                    }
                 )
 
-            if campaign_dst.webhook_url and campaign_dst.ext_id:
-                webhook.delay(campaign_dst.webhook_url, {
+            if campaign_dst.webhook_url and campaign_dst.ext_id \
+                    and status in ('delivered', 'undelivered'):
+                webhook.delay(campaign_dst.webhook_url, data={
                     'id': campaign_dst.ext_id, 'status': status
                 })
 
             return {
                 'id': campaign_dst.id,
-                'phone': campaign_dst.dst_addr,
+                'dst_addr': campaign_dst.dst_addr,
                 'text': campaign_dst.text,
                 'status': status,
             }

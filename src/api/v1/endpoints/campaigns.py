@@ -117,7 +117,10 @@ async def create_campaign(
         ext = os.path.splitext(campaign_in.data_file_name)[1]
         data = pd.DataFrame()
         if ext in ['.csv', '.txt']:
-            data = pd.read_csv(f'upload/{campaign_in.data_file_name}', sep='[\s+|,;:]', header=None)
+            try:
+                data = pd.read_csv(f'upload/{campaign_in.data_file_name}', sep='[\s+|,;:]', header=None)
+            except pd.errors.ParserError:
+                data = pd.read_csv(f'upload/{campaign_in.data_file_name}', header=None)
             data = data.astype(str)
         if ext in ['.xls', '.xlsx']:
             data = pd.read_excel(f'upload/{campaign_in.data_file_name}', sheet_name=0, header=None)
@@ -323,13 +326,14 @@ async def read_campaign_campaign_dsts(
         )
     )
     for i in range(len(campaign_dsts)):
-        campaign_dsts[i]['text'] = campaign.msg_template
-        for j in range(1, 6):
-            field = f'field_{j}'
-            if (campaign_dsts[i][field]):
-                campaign_dsts[i]['text'] = campaign_dsts[i]['text'].replace(
-                    '{' + field + '}', campaign_dsts[i][field]
-                )
+        if not campaign_dsts[i]['text']:
+            campaign_dsts[i]['text'] = campaign.msg_template or ''
+            for j in range(1, 6):
+                field = f'field_{j}'
+                if (campaign_dsts[i][field]):
+                    campaign_dsts[i]['text'] = campaign_dsts[i]['text'].replace(
+                        '{' + field + '}', campaign_dsts[i][field]
+                    )
     count = await crud.campaign_dst.get_count(db=db, filters=filters)
     return JSONResponse({'data' : campaign_dsts, 'total': count})
 

@@ -2,16 +2,15 @@ import asyncio
 import aiohttp
 
 from datetime import datetime, timedelta
-from collections import Counter, defaultdict
+from collections import defaultdict
 
 from celery import Celery
-from sqlalchemy import text, select
+from sqlalchemy import text
 
 from core.config import settings
 from db.session import async_session
 
 import schemas
-import models
 
 celery = Celery(__name__)
 celery.conf.broker_url = settings.CELERY_BROKER_URL
@@ -26,51 +25,39 @@ async def update_expired_messages():
         async with session.begin():
             try:
                 ts = datetime.utcnow()
-                await session.execute(
-                    statement=text(f'''
-                        UPDATE campaign_dst
-                        SET status = {schemas.CampaignDstStatus.UNDELIVERED}
-                        WHERE status NOT IN (
-                            {schemas.CampaignDstStatus.DELIVERED},
-                            {schemas.CampaignDstStatus.UNDELIVERED}
-                        )
-                        AND expire_ts IS NOT NULL
-                        AND expire_ts < '{ts}'
-                    ''')
-                )
-            except Exception as e:
-                await session.rollback()
-                print(f"Ошибка при обновлении истекших сообщений: {e}")
-                raise
-
-
-async def update_sent_messages():
-    async with async_session() as session:
-        async with session.begin():
-            try:
-                ts = datetime.utcnow() - timedelta(
-                    seconds=settings.WAIT_STATUS_TIMEOUT
-                )
                 result = await session.execute(
-                    statement=text(f'''
+                    text('''
                         UPDATE campaign_dst
                         SET status = CASE
-                        WHEN attempts > 0 THEN {schemas.CampaignDstStatus.FAILED}
-                        ELSE {schemas.CampaignDstStatus.UNDELIVERED}
-                        END
-                        WHERE status = {schemas.CampaignDstStatus.SENT}
-                        AND sent_ts IS NOT NULL
-                        AND sent_ts < '{ts}'
-                        RETURNING (campaign_id, status)
-                    ''')
+                            WHEN attempts > 0 AND status > CAST(:created_status AS INTEGER)
+                            THEN CAST(:failed_status AS INTEGER)
+                            ELSE CAST(:undelivered_status AS INTEGER)
+                        END, expire_ts = NULL
+                        WHERE status NOT IN (CAST(:delivered_status AS INTEGER),
+                                             CAST(:undelivered_status AS INTEGER))
+                          AND expire_ts IS NOT NULL
+                          AND expire_ts < :expire_ts
+                        RETURNING ext_id, campaign_id, status
+                    '''),
+                    {
+                        'created_status': schemas.CampaignDstStatus.CREATED,
+                        'failed_status': schemas.CampaignDstStatus.FAILED,
+                        'undelivered_status': schemas.CampaignDstStatus.UNDELIVERED,
+                        'delivered_status': schemas.CampaignDstStatus.DELIVERED,
+                        'expire_ts': ts
+                    }
                 )
                 failed_counts = defaultdict(int)
                 undelivered_counts = defaultdict(int)
-                for campaign_id, status in result.scalars().all():
+                for ext_id, campaign_id, status in result.all():
                     if status == schemas.CampaignDstStatus.FAILED:
                         failed_counts[campaign_id] += 1
                     if status == schemas.CampaignDstStatus.UNDELIVERED:
                         undelivered_counts[campaign_id] += 1
+                        if ext_id:
+                            webhook.delay(data={
+                                'id': ext_id, 'status': 'undelivered'
+                            })
 
                 if failed_counts:
                     case_statements = '\n'.join([
@@ -78,7 +65,7 @@ async def update_sent_messages():
                         for campaign_id, count in failed_counts.items()
                     ])
                     await session.execute(
-                        statement=text(f'''
+                        text(f'''
                             UPDATE campaign
                             SET msg_failed = msg_failed + CASE id
                                 {case_statements}
@@ -91,22 +78,27 @@ async def update_sent_messages():
                 if undelivered_counts:
                     case_statements = '\n'.join([
                         f'WHEN {campaign_id} THEN {count}'
-                        for campaign_id, count in undelivered_counts.items()
+                        for campaign_id, count in
+                        undelivered_counts.items()
                     ])
                     await session.execute(
-                        statement=text(f'''
+                        text(f'''
                             UPDATE campaign
                             SET msg_undelivered = msg_undelivered + CASE id
                                 {case_statements}
                                 ELSE msg_undelivered
+                            END,
+                            status = CASE
+                                WHEN msg_delivered + msg_undelivered + 1 >= msg_total
+                                THEN {schemas.CampaignStatus.COMPLETE}
+                                ELSE status
                             END
                             WHERE id IN ({','.join(map(str, undelivered_counts.keys()))})
                         ''')
                     )
-
             except Exception as e:
                 await session.rollback()
-                print(f"Ошибка при обновлении отправленных сообщений: {e}")
+                print(f"Ошибка при обновлении истекших сообщений: {e}")
                 raise
 
 
@@ -115,12 +107,15 @@ async def update_complete_campaigns():
         async with session.begin():
             try:
                 await session.execute(
-                    statement=text(f'''
+                    text('''
                         UPDATE campaign
-                        SET status = {schemas.CampaignStatus.COMPLETE}
+                        SET status = CAST(:status_complete AS INTEGER)
                         WHERE msg_sent > 0
-                        AND msg_delivered + msg_undelivered >= msg_total
-                    ''')
+                          AND msg_delivered + msg_undelivered >= msg_total
+                    '''),
+                    {
+                        'status_complete': schemas.CampaignStatus.COMPLETE
+                    }
                 )
             except Exception as e:
                 await session.rollback()
@@ -128,17 +123,36 @@ async def update_complete_campaigns():
                 raise
 
 
-async def send_webhook(webhook_url, data):
+async def send_webhook(webhook_url: str = None, *, data: dict):
+    if not webhook_url:
+        async with async_session() as session:
+            result = await session.execute(
+                text('''
+                    SELECT campaign.webhook_url
+                    FROM campaign_dst
+                    JOIN campaign ON campaign.id = campaign_dst.campaign_id
+                    WHERE campaign_dst.ext_id = :ext_id
+                '''),
+                {
+                    'ext_id': data.get(id)
+                }
+            )
+            if not (row := result.fetchone()):
+                return
+            webhook_url = row._mapping.get('webhook_url')
+        if not webhook_url:
+            return
+
     async with aiohttp.ClientSession() as session:
-        async with session.post(webhook_url, data=data) as resp:
-            return await resp.json()
+        async with session.post(webhook_url, json=data) as resp:
+            result = await resp.json()
+            return result
 
 
 @celery.task
 def update_messages():
     loop = asyncio.get_event_loop()
     loop.run_until_complete(update_expired_messages())
-    loop.run_until_complete(update_sent_messages())
 
 
 @celery.task
@@ -148,9 +162,9 @@ def update_campaigns():
 
 
 @celery.task
-def webhook(webhook_url, data):
+def webhook(webhook_url: str = None, *, data: dict):
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(send_webhook(webhook_url, data))
+    loop.run_until_complete(send_webhook(webhook_url, data=data))
 
 
 celery.conf.beat_schedule = {

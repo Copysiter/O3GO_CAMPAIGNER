@@ -24,8 +24,8 @@ class CampaignTags(Base):
     tag_id = Column(BigInteger, ForeignKey(
         'tag.id', ondelete='CASCADE'), primary_key=True)
 
-    campaign = relationship('Campaign', back_populates='campaign_tags')
-    tag = relationship('Tag', lazy='joined')
+    campaign = relationship('Campaign', back_populates='campaign_tags', lazy='joined')
+    tag = relationship('Tag', back_populates='campaigns', lazy='joined')
 
 
 class Campaign(Base):

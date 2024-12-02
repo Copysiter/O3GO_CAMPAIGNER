@@ -20,7 +20,7 @@ window.initWizard = function() {
     };
     */
     window.resetWizard = function() {
-        campaignCreateModel.set("data", { fields: {} });
+        campaignCreateModel.set("data", { data_fields: {} });
         campaignCreateModel.source.fields.data([]);
         $("#wizard").data("kendoWizard").steps().forEach(function(step, index) {
             // if (index < 3) step.form.clear();
@@ -44,7 +44,7 @@ window.initWizard = function() {
         },
         data: {
             user_id: null,
-            fields: {}
+            data_fields: {}
         }
     });
 
@@ -347,7 +347,7 @@ window.initWizard = function() {
                         dataValueField: "value",
                         valuePrimitive: true, 
                     },
-                    validation: { required: true }
+                    validation: { required: false }
                 }, {
                     id: "field_1",
                     field: "field_1",
@@ -398,7 +398,7 @@ window.initWizard = function() {
                         overflow: "auto",
                         rows: 10
                     },
-                    validation: { required: true }
+                    validation: { required: false }
                 }, {
                     field: "sep9",
                     colSpan: 12,
@@ -407,7 +407,7 @@ window.initWizard = function() {
                 }],
                 change(e) {
                     if (e.field == "msg_template") campaignCreateModel.data.set(e.field, e.value);
-                    else campaignCreateModel.data.fields.set(e.field, e.value);
+                    else campaignCreateModel.data.data_fields.set(e.field, e.value);
                 }
             }
         }, {
@@ -589,15 +589,6 @@ window.initWizard = function() {
         },
         done(e) {
             e.originalEvent.preventDefault();
-            /*
-            e.preventDefault();
-            let data = campaignCreateModel.data.toJSON();
-            console.log(data);
-            console.log(JSON.stringify(data));
-            return;
-            */
-           console.log(campaignCreateModel.data)
-           console.log(campaignCreateModel.data.toJSON())
             $.ajax({
                 url: `http://${api_base_url}/api/v1/campaigns/`,
                 type: 'POST',
@@ -632,25 +623,7 @@ window.initWizard = function() {
                 }
             });
         },
-    })/*.data("kendoWizard")*/;
-
-    // Apply the bindings.
-    // kendo.bind($("#wizard-0 form"), campaignCreateModel);
-    // kendo.bind($("#wizard-1 form"), campaignCreateModel);
-
-    // kendo.bind($("#wizard"), campaignCreateModel);
-
-    /*
-    kendo.bind($("#wizard-0 form"), campaignCreateModel);
-    kendo.bind($("#wizard-1 form"), campaignCreateModel);
-    $("#wizard-0 form").kendoValidator({
-        validateOnBlur: false
     });
-    kendoValidator = $("#wizard-0 form").getKendoValidator();
-    campaignCreateModel.bind("change", function(e) {
-        kendoValidator.validate();
-    });
-    */
 
     $("#text-row-sep").closest(".k-form-field").hide();
     $("#text-col-sep").closest(".k-form-field").hide();

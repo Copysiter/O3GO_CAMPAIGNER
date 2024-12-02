@@ -369,4 +369,23 @@ html, body {
   white-space: wrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+
+.short_text {
+  min-width: 249px;
+  max-width: 320px;
+  white-space: wrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+
+.inline-blocks {
+    min-width: 240px;
+    max-width: 480px;
 }
