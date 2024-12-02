@@ -137,7 +137,7 @@ async def get_next(
 
             message = {
                 'id': campaign_dst.get('id'),
-                'dst_addr': campaign_dst.get('dst_addr'),
+                'phone': campaign_dst.get('dst_addr'),
                 'text': campaign_dst.get('text')
             }
             if not message['text']:
