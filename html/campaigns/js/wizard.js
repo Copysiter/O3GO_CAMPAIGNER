@@ -493,6 +493,8 @@ window.initWizard = function() {
                         const row = rows[campaignCreateModel.data.data_text_row_skip ? campaignCreateModel.data.data_text_row_skip : 0].split(campaignCreateModel.data.data_text_col_sep);
                         campaignCreateModel.source.fields.data([]);
                         for (let i = 0; i < row.length; i ++) {
+                            console.log(i)
+                            console.log(row[i])
                             if (row[i].length) campaignCreateModel.source.fields.add({ value: i, text: row[i]});
                             if (i == 0) campaignCreateModel.data.set('dst_addr', i);
                             else if (i <= 3) campaignCreateModel.data.set(`field_${i}`, i);
@@ -588,6 +590,8 @@ window.initWizard = function() {
             if (fields.length) {
                 for (i = 0; i < fields.length; i ++) {
                     campaignCreateModel.source.fields.add({ value: i, text: fields[i]});
+                    if (i == 0) campaignCreateModel.data.set('dst_addr', i);
+                    else if (i <= 3) campaignCreateModel.data.set(`field_${i}`, i);
                 }
             }
             campaignCreateModel.data.set("data_file_name", e.response.filename);
