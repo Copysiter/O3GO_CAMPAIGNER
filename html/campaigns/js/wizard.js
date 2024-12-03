@@ -492,10 +492,10 @@ window.initWizard = function() {
                         const rows = campaignCreateModel.data.data_text.split(campaignCreateModel.data.data_text_row_sep);
                         const row = rows[campaignCreateModel.data.data_text_row_skip ? campaignCreateModel.data.data_text_row_skip : 0].split(campaignCreateModel.data.data_text_col_sep);
                         campaignCreateModel.source.fields.data([]);
-                        for (i = 0; i < row.length; i ++) {
-                            //console.log(i);
+                        for (let i = 0; i < row.length; i ++) {
                             if (row[i].length) campaignCreateModel.source.fields.add({ value: i, text: row[i]});
-                            //console.log(row[i]);
+                            if (i == 0) campaignCreateModel.data.set('dst_addr', i);
+                            else if (i <= 3) campaignCreateModel.data.set(`field_${i}`, i);
                         }
                     }
                 break;
