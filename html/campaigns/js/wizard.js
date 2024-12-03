@@ -42,10 +42,11 @@ window.initWizard = function() {
                 data: []
             })
         },
-        data: {
+        data: kendo.observable({
             user_id: null,
+            data_source: 1,
             data_fields: {}
-        }
+        })
     });
 
     $("#wizard").kendoWizard({
@@ -62,10 +63,7 @@ window.initWizard = function() {
                 },
                 layout: "grid",
                 grid: { cols: 12, gutter: "15px 10px" },
-                //formData: campaignCreateModel.data,
-                formData: {
-                    data_source: 1
-                },
+                formData: campaignCreateModel.data,
                 items: [{
                     field: "sep1",
                     colSpan: 12,
@@ -181,21 +179,6 @@ window.initWizard = function() {
                         downArrow: true,
                         animation: false,
                         autoClose: false,
-                        // noDataTemplate: function (e) {
-                        //     let value = e.instance.input.val();
-                        //     return `
-                        //     <div class='no-data'>
-                        //     <p>Api Key not found.<br>Do you want to add new Api Key ${value} ?</p>
-                        //     <button class="k-button k-button-solid-base k-button-solid k-button-md k-rounded-md" onclick="addNew('${value}', 'campaign-create-window')">Append</button>
-                        //     </p>
-                        //     `;
-                        // },
-                        // tagTemplate: '<span class="k-chip k-chip-md k-rounded-md k-chip-solid k-chip-solid-base" unselectable="on" style="color::color_txt;background::color_bg;">' +
-                        //     '<span unselectable="on" class="k-chip-content"><span class="k-chip-label">:name</span></span>' +
-                        //     '<span class="k-chip-action k-chip-remove-action" unselectable="on" aria-hidden="true" aria-label="delete" title="delete">' +
-                        //     '<span class="k-icon k-i-x-circle"></span>' +
-                        //     '</span>' +
-                        //     '</span>'
                     },
                     colSpan: 12,
                 }, {
@@ -216,9 +199,6 @@ window.initWizard = function() {
                         valuePrimitive: true,
                         value: 1,
                         change: function(e) {
-                            //console.log(e.sender._form);
-                            //campaignCreateModel.data.msg_template = "asdbvadvd asdasdfads sdfasdfas asdfasdf asdfasdfas asfasdfasfasfa asdfasfa fwffffqf";
-                            //campaignCreateModel.data.set("msg_template", "asdbvadvd asdasdfads sdfasdfas asdfasdf asdfasdfas asfasdfasfasfa asdfasfa fwffffqf");
                             switch (e.sender.value()) {
                                 case "1":
                                     $("#text-row-sep").closest(".k-form-field").hide();
@@ -316,11 +296,6 @@ window.initWizard = function() {
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
                 }],
-                change(e) {
-                    if (!["sep1", "sep2", "sep3", "sep4", "file"].includes(e.field)) {
-                        campaignCreateModel.data.set(e.field, e.value);
-                    }
-                }
             }
         }, {
             title: "Message",
@@ -329,7 +304,7 @@ window.initWizard = function() {
                 orientation: "vertical",
                 layout: "grid",
                 grid: { cols: 12, gutter: "15px 10px" },
-                //formData: campaignCreateModel.data,
+                formData: campaignCreateModel.data,
                 items: [{
                     field: "sep7",
                     colSpan: 12,
@@ -405,10 +380,6 @@ window.initWizard = function() {
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
                 }],
-                change(e) {
-                    if (e.field == "msg_template") campaignCreateModel.data.set(e.field, e.value);
-                    else campaignCreateModel.data.data_fields.set(e.field, e.value);
-                }
             }
         }, {
             title: "Schedule",
@@ -418,7 +389,7 @@ window.initWizard = function() {
                 orientation: "vertical",
                 layout: "grid",
                 grid: { cols: 12, gutter: "15px 10px" },
-                //formData: campaignCreateModel.data,
+                formData: campaignCreateModel.data,
                 items: [{
                     field: "sep10",
                     colSpan: 12,
@@ -505,63 +476,12 @@ window.initWizard = function() {
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
                 }],
-                change(e) {
-                    if ((e.field == "start_ts" || e.field == "stop_ts") && e.value != undefined) {
-                        campaignCreateModel.data.set(e.field, kendo.toString(e.value, "yyyy-MM-dd HH:mm:ss"));
-                    } else if (!["sep10", "se11", "sep12", "sep13", "schedule"].includes(e.field)) {
-                        campaignCreateModel.data.set(e.field, e.value);
-                    }
-                }
             }
         }],
-        select(e) {
-            // var validatable = $("#wizard-0 form").kendoValidator().data("kendoValidator");
-            /*
-            var validatable = $("#wizard-0 form").kendoValidator({
-                validate: function(e) {
-                    alert("Validating");
-                }
-            }).getKendoValidator();
-            validatable.validate();
-            */
 
-            /*
-            console.log(e.step.options.index);
-            console.log(campaignCreateModel.data.dst_addr);
-            if (e.step.options.index == 1 && (!campaignCreateModel.data.name || !campaignCreateModel.data.customer_id || !campaignCreateModel.data.peer_id)) e.preventDefault();
-            if (e.step.options.index == 2 && (campaignCreateModel.data.dst_addr == null|| !campaignCreateModel.data.msg_template)) e.preventDefault();
-            */
-
-            //console.log($("#wizard-0 form").data("kendoForm").validate());
-            //$("#wizard-0 form").kendoValidator().data("kendoValidator").validate();
-            //if (!campaignCreateModel.data.name) e.preventDefault();
-            //console.log($("#wizard-0 form").data("kendoForm"));
-            //console.log(e.sender.steps())
-        },
-        /*
-        select(e) {
-            switch (e.step.options.index) {
-                case 0:
-                    //console.log(campaignCreateModel.source.fields);
-                break;
-                case 1:
-                    if (campaignCreateModel.data.data_source == 2 && campaignCreateModel.data.data_text && campaignCreateModel.data.data_text.length) {
-                        const rows = campaignCreateModel.data.data_text.split(campaignCreateModel.data.data_text_row_sep);
-                        const row = rows[campaignCreateModel.data.data_text_row_skip ? campaignCreateModel.data.data_text_row_skip : 0].split(campaignCreateModel.data.data_text_col_sep);
-                        campaignCreateModel.source.fields.data([]);
-                        for (i = 0; i < row.length; i ++) {
-                            if (row[i].length) campaignCreateModel.source.fields.add({ value: i, text: row[i]});
-                        }
-                    }
-                break;
-                case 2:
-
-                break;
-            }
-        },
-        */
         activate(e) {
             $("#campaign-create-window").data("kendoWindow").center();
+
             switch (e.step.options.index) {
                 case 0:
                     //console.log(campaignCreateModel.source.fields);
@@ -589,6 +509,21 @@ window.initWizard = function() {
         },
         done(e) {
             e.originalEvent.preventDefault();
+
+            ['start_ts', 'stop_ts'].forEach((key) => {
+                if (campaignCreateModel.data[key] != undefined) {
+                    campaignCreateModel.data.set(key, kendo.toString(
+                        campaignCreateModel.data[key], "yyyy-MM-dd HH:mm:ss"
+                    ))
+                }
+            });
+            ['dst_addr', 'field_1', 'field_2', 'field_3'].forEach((field) => {
+                campaignCreateModel.data.data_fields.set(
+                    field, campaignCreateModel.data[field]
+                )
+                delete campaignCreateModel.data[field]
+            });
+
             $.ajax({
                 url: `http://${api_base_url}/api/v1/campaigns/`,
                 type: 'POST',

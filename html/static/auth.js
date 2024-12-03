@@ -4,7 +4,6 @@ window.getToken = function () {
     return JSON.parse(localStorage.getItem('token'));
 };
 window.setToken = function (item) {
-    console.log('item', item);
     let { access_token, token_type, ts, user } = item;
     localStorage.setItem(
         'token',
@@ -62,7 +61,6 @@ checkAuth = function () {
                     ts,
                     user,
                 });
-                console.log('ts', ts);
                 window.newDate = new Date(ts);
             })
             .fail(function (data) {
