@@ -109,7 +109,8 @@ async def create_campaign(
                 )
             row = line.split(campaign_in.data_text_col_sep)
             for f in fields:
-                if f in ['dst_addr', 'field_1', 'field_2', 'field_3'] and int(fields[f]) < len(row):
+                if (f in ['dst_addr', 'field_1', 'field_2', 'field_3']
+                        and fields.get(f) and int(fields[f]) < len(row)):
                     campaign_dst[f] = row[int(fields[f])]
             campaign_dst_in.append(campaign_dst)
 

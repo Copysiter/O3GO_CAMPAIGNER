@@ -19,8 +19,15 @@ window.initWizard = function() {
         schedule: null,
     };
     */
+
+    const empty_data = kendo.observable({
+            user_id: null,
+            data_source: 1,
+            data_fields: {}
+        })
+
     window.resetWizard = function() {
-        campaignCreateModel.set("data", { data_fields: {} });
+        campaignCreateModel.set("data", empty_data);
         campaignCreateModel.source.fields.data([]);
         $("#wizard").data("kendoWizard").steps().forEach(function(step, index) {
             // if (index < 3) step.form.clear();
@@ -42,11 +49,7 @@ window.initWizard = function() {
                 data: []
             })
         },
-        data: kendo.observable({
-            user_id: null,
-            data_source: 1,
-            data_fields: {}
-        })
+        data: empty_data
     });
 
     $("#wizard").kendoWizard({
