@@ -80,14 +80,13 @@ async def get_next(
     try:
         async with session.begin():
             result = await session.execute(
-                text('''
+                text(f'''
                     SELECT campaign.* 
                     FROM campaign
                     JOIN campaign_api_keys 
                         ON campaign.id = campaign_api_keys.campaign_id
                         AND campaign_api_keys.api_key = :api_key
-                    WHERE campaign.user_id = :user_id
-                      AND campaign.status = :status
+                    WHERE campaign.status = :status
                       AND (
                           (campaign.start_ts IS NOT NULL AND campaign.stop_ts IS NOT NULL 
                            AND :now BETWEEN campaign.start_ts AND campaign.stop_ts)
@@ -95,6 +94,7 @@ async def get_next(
                           (schedule::jsonb ->> :weekday IS NOT NULL 
                            AND (schedule::jsonb -> :weekday)::jsonb @> to_jsonb(CAST(:hour AS INTEGER)))
                       )
+                      {'AND campaign.user_id = :user_id' if not user.is_superuser else ''}
                     ORDER BY campaign.order, campaign.msg_sent 
                     LIMIT 1;
                 '''),
@@ -215,12 +215,12 @@ async def set_status(
     try:
         async with (session.begin()):
             result = await session.execute(
-                text('''
+                text(f'''
                     SELECT campaign_dst.*, campaign.webhook_url
                     FROM campaign_dst
                     JOIN campaign ON campaign.id = campaign_dst.campaign_id
                     WHERE campaign_dst.id = :id
-                      AND campaign.user_id = :user_id
+                      {'AND campaign.user_id = :user_id' if not user.is_superuser else ''}
                 '''),
                 {
                     'id': id,
