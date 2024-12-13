@@ -133,9 +133,10 @@ async def create_campaign(
                 campaign_dst['expire_ts'] = ts + timedelta(
                     seconds=campaign_in.msg_sending_timeout
                 )
-            for i in fields:
-                if i in ['dst_addr', 'field_1', 'field_2', 'field_3'] and int(fields[i]) in row:
-                    campaign_dst[i] = row[int(fields[i])].strip().strip('"').strip('\'')
+            for f in fields:
+                if (f in ['dst_addr', 'field_1', 'field_2', 'field_3']
+                        and fields.get(f) and int(fields[f]) < len(row)):
+                    campaign_dst[f] = row[int(fields[f])].strip().strip('"').strip('\'')
             campaign_dst_in.append(campaign_dst)
 
     campaign_db_in.msg_total = len(campaign_dst_in)
