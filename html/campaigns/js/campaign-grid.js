@@ -123,7 +123,7 @@ window.initCampaignGrid = function() {
         },
         pageable: {
             refresh: true,
-            pageSizes: [100, 250, 500, 1000],
+            pageSizes: [20, 50, 100, 250, 500, 1000],
         },
         dataBinding: function(e) {
             clearTimeout(campaignTimer);
