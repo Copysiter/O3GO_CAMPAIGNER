@@ -19,6 +19,42 @@ window.initWizard = function() {
         schedule: null,
     };
     */
+    const user_field = window.isAuth.user.is_superuser ? [{
+        field: "sep2",
+        colSpan: 12,
+        label: false,
+        editor: "<div class='separator mx-n15'></div>"
+    }, {
+        field: "user_id",
+        label: "User:",
+        colSpan: 6,
+        editor: "DropDownList",
+        editorOptions: {
+            dataSource: {
+                transport: {
+                    read: {
+                        url: `http://${api_base_url}/api/v1/options/user`,
+                        type: "GET",
+                        beforeSend: function (request) {
+                            request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
+                        },
+                    }
+                }
+            },
+            dataBound: function (e) {
+                // console.log(isAuth.user.id);
+                // campaignCreateModel.data.set("user_id", isAuth.user.id);
+                // this.select(function(item) {
+                //     return item.value === isAuth.user.id;
+                // });
+                //this.trigger("select");
+            },
+            dataTextField: "text",
+            dataValueField: "value",
+            optionLabel: "Select user...",
+            valuePrimitive: true
+        },
+    }] : [];
 
     const empty_data = kendo.observable({
             user_id: null,
@@ -75,44 +111,8 @@ window.initWizard = function() {
                 }, {
                     field: "name",
                     label: "Campaign Name:",
-                    colSpan: 12
-                }, {
-                    field: "sep2",
-                    colSpan: 12,
-                    label: false,
-                    editor: "<div class='separator mx-n15'></div>"
-                }, {
-                    field: "user_id",
-                    label: "User:",
-                    colSpan: 6,
-                    editor: "DropDownList",
-                    editorOptions: {
-                        dataSource: {
-                            transport: {
-                                read: {
-                                    url: `http://${api_base_url}/api/v1/options/user`,
-                                    type: "GET",
-                                    beforeSend: function (request) {
-                                        request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
-                                    },
-                                }
-                            }
-                        },
-                        dataBound: function(e) {
-                            // console.log(isAuth.user.id);
-                            // campaignCreateModel.data.set("user_id", isAuth.user.id);
-                            // this.select(function(item) {
-                            //     return item.value === isAuth.user.id;
-                            // });
-                            //this.trigger("select");
-                        },
-                        dataTextField: "text",
-                        dataValueField: "value",
-                        optionLabel: "Select user...",
-                        valuePrimitive: true
-                    },
-                    // validation: { required: true },
-                }, {
+                    colSpan: window.isAuth.user.is_superuser ? 12 : 6
+                }].concat(user_field).concat([{
                     field: "webhook_url",
                     label: "Webhook URL:",
                     colSpan: 6
@@ -298,7 +298,7 @@ window.initWizard = function() {
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
-                }],
+                }]),
             }
         }, {
             title: "Message",

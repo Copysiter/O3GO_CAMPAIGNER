@@ -16,6 +16,7 @@ class CampaignApiKeys(Base):
         'api_key.value', ondelete='CASCADE'), primary_key=True)
 
     campaign = relationship('Campaign', back_populates='keys')
+    key = relationship('ApiKey', lazy='joined')
 
 class CampaignTags(Base):
     __table_args__ = {'extend_existing': True}
@@ -54,7 +55,7 @@ class Campaign(Base):
         'CampaignApiKeys', lazy='joined',
         cascade='save-update, merge, delete, delete-orphan'
     )
-    api_keys = AssociationProxy('keys', 'api_key')
+    api_keys = AssociationProxy('keys', 'api_key', creator=lambda api_key_value: CampaignApiKeys(api_key=api_key_value))
 
     campaign_tags = relationship(
         'CampaignTags', lazy='joined',

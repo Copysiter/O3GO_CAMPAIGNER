@@ -56,7 +56,7 @@ async def get_api_keys_options(
 async def get_tag_options(
     *,
     db: Session = Depends(deps.get_db),
-    user: models.User = Depends(deps.get_current_active_superuser)
+    user: models.User = Depends(deps.get_current_active_user)
 ) -> Any:
     """
     Retrieve tag options.
@@ -64,7 +64,7 @@ async def get_tag_options(
     filters = [
         {'field': 'user_id', 'operator': 'eq', 'value': user.id}
     ] if not user.is_superuser else []
-    rows = await crud.tag.get_rows(db, limit=None)
+    rows = await crud.tag.get_rows(db, filters=filters, limit=None)
     return JSONResponse([{
         'text': rows[i].name,
         'value': rows[i].id,

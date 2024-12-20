@@ -1,4 +1,40 @@
 window.initForm = function() {
+    const user_field = window.isAuth.user.is_superuser ? [{
+        field: "sep1",
+        colSpan: 12,
+        label: false,
+        editor: "<div class='separator mx-n15'></div>"
+    }, {
+        field: "user_id",
+        label: "User:",
+        colSpan: 6,
+        editor: "DropDownList",
+        editorOptions: {
+            dataSource: {
+                transport: {
+                    read: {
+                        url: `http://${api_base_url}/api/v1/options/user`,
+                        type: "GET",
+                        beforeSend: function (request) {
+                            request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
+                        },
+                    }
+                }
+            },
+            dataBound: function (e) {
+                // console.log(isAuth.user.id);
+                // campaignCreateModel.data.set("user_id", isAuth.user.id);
+                // this.select(function(item) {
+                //     return item.value === isAuth.user.id;
+                // });
+                //this.trigger("select");
+            },
+            dataTextField: "text",
+            dataValueField: "value",
+            optionLabel: "Select user...",
+            valuePrimitive: true
+        },
+    }] : [];
 
     $("#campaign-edit-form").kendoForm({
         orientation: "vertical",
@@ -7,45 +43,8 @@ window.initForm = function() {
         items: [{
             field: "name",
             label: "Campaign Name:",
-            colSpan: 12
-        }, {
-            field: "sep1",
-            colSpan: 12,
-            label: false,
-            editor: "<div class='separator mx-n15'></div>"
-        }, {
-            field: "user_id",
-            label: "User:",
-            colSpan: 6,
-            editor: "DropDownList",
-            editorOptions: {
-                dataSource: {
-                    transport: {
-                        read: {
-                            url: `http://${api_base_url}/api/v1/options/user`,
-                            type: "GET",
-                            beforeSend: function (request) {
-                                request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
-                            },
-                        }
-                    }
-                },
-                dataBound: function(e) {
-                    // console.log(campaignCreateModel.data)
-                    // console.log(isAuth.user.id);
-                    //campaignCreateModel.data.set("user_id", isAuth.user.id);
-                    // this.select(function(item) {
-                    //     return item.value === isAuth.user.id;
-                    // });
-                    //this.trigger("select");
-                },
-                dataTextField: "text",
-                dataValueField: "value",
-                optionLabel: "Select user...",
-                valuePrimitive: true
-            },
-            validation: { required: true }
-        }, {
+            colSpan: window.isAuth.user.is_superuser ? 12 : 6
+        }].concat(user_field).concat([{
             field: "webhook_url",
             label: "Webhook URL:",
             colSpan: 6
@@ -242,7 +241,7 @@ window.initForm = function() {
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
-        }],
+        }]),
         // labelPosition: "before",
         buttonsTemplate: "<div class='w-100 mt-15 mb-n15'><button id='form-save' type='submit' class='k-button k-button-lg k-rounded-md k-button-solid k-button-solid-base me-4'>Submit</button><button id='window-cancel' class='k-button k-button-lg k-rounded-md k-button-solid k-button-solid-base k-form-clear ms-4'>Cancel</button></div>",
         change: function(e) {

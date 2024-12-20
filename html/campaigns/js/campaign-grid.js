@@ -8,6 +8,44 @@ window.initCampaignGrid = function() {
     window.selectedCampaignItem = null;
     window.selectedCampaignItems = null;
 
+    const user_column = window.isAuth.user.is_superuser ? [{
+        field: 'user_id',
+        width: '100px',
+        title: 'User',
+        template: '#: user.name #',
+        filterable: {
+            operators: {
+                string: {
+                    eq: "Equal to",
+                    neq: "Not equal to"
+                }
+            },
+            ui : function(element) {
+                element.kendoDropDownList({
+                    animation: false,
+                    dataSource: new kendo.data.DataSource({
+                        transport: {
+                            read: {
+                                url: `http://${api_base_url}/api/v1/options/user`,
+                                type: 'GET',
+                                beforeSend: function (request) {
+                                    request.setRequestHeader(
+                                        'Authorization',
+                                        `${token_type} ${access_token}`
+                                    );
+                                },
+                            },
+                        },
+                    }),
+                    dataTextField: "text",
+                    dataValueField: "value",
+                    valuePrimitive: true,
+                    optionLabel: "-- Select Customer --"
+                });
+            }
+        }
+    }] : [];
+
     $('#campaign-grid').kendoGrid({
         dataSource: {
             transport: {
@@ -196,45 +234,7 @@ window.initCampaignGrid = function() {
                         });
                     }
                 }
-            },
-            {
-                field: 'user_id',
-                width: '100px',
-                title: 'User',
-                template: '#: user.name #',
-                filterable: {
-                    operators: {
-                        string: {
-                            eq: "Equal to",
-                            neq: "Not equal to"
-                        }
-                    },
-                    ui : function(element) {
-                        element.kendoDropDownList({
-                            animation: false,
-                            dataSource: new kendo.data.DataSource({
-                                transport: {
-                                    read: {
-                                        url: `http://${api_base_url}/api/v1/options/user`,
-                                        type: 'GET',
-                                        beforeSend: function (request) {
-                                            request.setRequestHeader(
-                                                'Authorization',
-                                                `${token_type} ${access_token}`
-                                            );
-                                        },
-                                    },
-                                },
-                            }),
-                            dataTextField: "text",
-                            dataValueField: "value",
-                            valuePrimitive: true,
-                            optionLabel: "-- Select Customer --"
-                        });
-                    }
-                }
-            },
-            {
+            }].concat(user_column).concat([{
                 field: 'tags',
                 title: 'TAGS',
                 maxWidth: 60,
@@ -371,7 +371,7 @@ window.initCampaignGrid = function() {
                 // }
             },
             {}
-        ]
+        ])
     });
 
     jQuery.fn.selectText = function(){

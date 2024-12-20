@@ -1,18 +1,54 @@
 from datetime import datetime, timedelta
 from typing import Union, Any, Dict, List
 
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from crud.base import CRUDBase
 from models.campaign import Campaign, CampaignApiKeys, CampaignTags
 from models.campaign_dst import CampaignDst
 from models.tag import Tag
+from models.api_key import ApiKey
 from schemas.campaign import CampaignCreate, CampaignUpdate
 from schemas.status import CampaignDstStatus
 
 
 class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
+    async def get_rows_by_user(
+        self, db: AsyncSession, *, user_id: int,
+        filters: list = None, orders: list = None,
+        skip: int = 0, limit: int = 100,
+    ) -> List[Campaign]:
+        filter_list = self.get_filters(filters) if filters else []
+        order_list = self.get_orders(orders) if orders else []
+        statement = (select(Campaign).
+                     where(Campaign.user_id == user_id).
+                     where(*filter_list).order_by(*order_list).
+                     offset(skip).limit(limit))
+        results = await db.execute(statement=statement)
+        campaigns = results.unique().scalars().all()
+        for campaign in campaigns:
+            campaign.campaign_tags = [
+                campaign_tag for campaign_tag in campaign.campaign_tags if
+                campaign_tag.tag.user_id == user_id
+            ]
+            campaign.keys = [
+                api_key for api_key in campaign.keys if
+                api_key.key.user_id == user_id
+            ]
+            campaign.api_keys = [key.api_key for key in campaign.keys]
+        return campaigns
+
+    async def get_count_by_user(
+        self, db: AsyncSession, *, user_id: int, filters: dict = None
+    ) -> int:
+        filter_list = self.get_filters(filters) if filters else []
+        statement = (select(func.count(self.model.id)).
+                     where(self.model.user_id == user_id).
+                     where(*filter_list))
+        results = await db.execute(statement=statement)
+        return results.scalar_one()
+
     async def update_keys(
         self, db: AsyncSession, *, db_obj: Campaign, removed_keys: list = None
     ) -> Campaign:

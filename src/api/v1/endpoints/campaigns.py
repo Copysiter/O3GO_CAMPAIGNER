@@ -35,10 +35,6 @@ async def read_campaigns(
     '''
     if not orders:
         orders = [{'field': 'id', 'dir': 'desc'}]
-    if not current_user.is_superuser:
-        filters.append(
-            {'field': 'user_id', 'operator': 'eq', 'value': current_user.id}
-        )
     tags_idx = None
     for i in range(len(filters)):
         if filters[i]['field'] == 'tags':
@@ -50,8 +46,18 @@ async def read_campaigns(
                 filters[i]['value'] = [filters[i]['value']]
             else:
                 filters[tags_idx]['value'].append(filters.pop(i)['value'])
-    campaigns = await crud.campaign.get_rows(db, skip=skip, limit=limit, filters=filters, orders=orders)
-    count = await crud.campaign.get_count(db, filters=filters)
+    if current_user.is_superuser:
+        campaigns = await crud.campaign.get_rows(
+            db, skip=skip, limit=limit, filters=filters, orders=orders)
+        count = await crud.campaign.get_count(db, filters=filters)
+    else:
+        campaigns = await crud.campaign.get_rows_by_user(
+            db, user_id=current_user.id, filters=filters,
+            orders=orders, skip=skip, limit=limit
+        )
+        count = await crud.campaign.get_count_by_user(
+            db, user_id=current_user.id, filters=filters
+        )
     return {'data' : campaigns, 'total': count}
 
 
