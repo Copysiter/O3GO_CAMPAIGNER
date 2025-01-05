@@ -11,6 +11,7 @@ from .campaign import Campaign
 class CampaignDstBase(BaseModel):
     ext_id: Optional[str]
     campaign_id: Optional[int]
+    src_addr: Optional[str] = None
     dst_addr: Optional[int]
     text: Optional[str] = None
     field_1: Optional[str] = None

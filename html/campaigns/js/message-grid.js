@@ -104,8 +104,19 @@ window.initMessageGrid = function(id) {
             {
                 field: 'dst_addr',
                 width: '100px',
-                title: 'Phone',
+                title: 'DST Number',
                 template: '<b>#: dst_addr #</b>',
+                filterable: {
+                    cell: {
+                        showOperators: false,
+                    },
+                },
+            },
+            {
+                field: 'src_addr',
+                width: '100px',
+                title: 'SRC Number',
+                // template: '<b>#: dst_addr #</b>',
                 filterable: {
                     cell: {
                         showOperators: false,

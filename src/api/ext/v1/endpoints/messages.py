@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Any, Literal, List
+from typing import Any, Optional, Literal, List
 from collections import defaultdict
 
 from alembic.util import status
@@ -207,6 +207,7 @@ async def get_next(
 async def set_status(
     *, session: AsyncSession = Depends(deps.get_db), id: int,
     status: Literal['delivered', 'undelivered', 'failed'],
+    src_addr: Optional[str] = None,
     user = Depends(deps.get_user_by_api_key)
 ) -> Any:
     '''
@@ -263,12 +264,14 @@ async def set_status(
                     text('''
                         UPDATE campaign_dst
                         SET status = :status,
+                            src_addr = :src_addr,
                             update_ts = :update_ts,
                             expire_ts = NULL
                         WHERE id = :id
                     '''),
                     {
                         'status': new_status,
+                        'src_addr': src_addr,
                         'update_ts': datetime.utcnow(),
                         'id': id
                     }

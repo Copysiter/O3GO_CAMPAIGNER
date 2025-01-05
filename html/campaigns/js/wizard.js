@@ -56,14 +56,26 @@ window.initWizard = function() {
         },
     }] : [];
 
-    const empty_data = kendo.observable({
-            user_id: null,
-            data_source: 1,
-            data_fields: {}
-        })
+    let empty_data = kendo.observable({
+        user_id: null,
+        data_source: 1,
+        data_fields: {}
+    })
+
+    console.log('-------------')
+    console.log(empty_data)
+    console.log('-------------')
+
+    function clearData(data, excludeKeys) {
+        const keys = Object.keys(data.toJSON());
+        keys.forEach(function (key) {
+            if (!excludeKeys.includes(key)) {
+                data.unset(key);
+            }
+        });
+    }
 
     window.resetWizard = function() {
-        campaignCreateModel.set("data", empty_data);
         campaignCreateModel.source.fields.data([]);
         $("#wizard").data("kendoWizard").steps().forEach(function(step, index) {
             // if (index < 3) step.form.clear();
@@ -73,6 +85,11 @@ window.initWizard = function() {
         });
         $("#wizard").data("kendoWizard").select(0);
         $('#campaign-create-schedule').scheduler('val', {});
+        for (const [key, value] of Object.entries(campaignCreateModel.data)) {
+            if (!value) {
+                delete campaignCreateModel.data[key];
+            }
+        }
     }
 
     window.campaignCreateModel = kendo.observable({
@@ -496,8 +513,6 @@ window.initWizard = function() {
                         const row = rows[campaignCreateModel.data.data_text_row_skip ? campaignCreateModel.data.data_text_row_skip : 0].split(campaignCreateModel.data.data_text_col_sep);
                         campaignCreateModel.source.fields.data([]);
                         for (let i = 0; i < row.length; i ++) {
-                            console.log(i)
-                            console.log(row[i])
                             if (row[i].length) campaignCreateModel.source.fields.add({ value: i, text: row[i]});
                             if (i == 0) campaignCreateModel.data.set('dst_addr', i);
                             else if (i <= 3) campaignCreateModel.data.set(`field_${i}`, i);
