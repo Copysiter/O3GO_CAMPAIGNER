@@ -106,6 +106,10 @@ body {
     background-color: #3597d3 !important;
 }
 
+.k-grid td.k-state-selected, .k-grid tr.k-state-selected > td {
+    background: rgba(53, 151, 211, 0.25) !important;
+}
+
 .k-window {
     border-radius: 5px;
     overflow: hidden;
