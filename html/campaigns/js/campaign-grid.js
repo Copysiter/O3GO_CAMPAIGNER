@@ -319,7 +319,10 @@ window.initCampaignGrid = function() {
             {
                 field: 'msg_delivered',
                 title: 'Delivered',
-                filterable: false
+                filterable: false,
+                attributes: {
+                    style: 'font-weight:bold;color:rgba(0, 161, 0, 1);background:rgba(0, 161, 0, 0.1);'
+                }
             },
             {
                 field: 'msg_undelivered',
@@ -329,7 +332,10 @@ window.initCampaignGrid = function() {
             {
                 field: 'msg_failed',
                 title: 'Failed',
-                filterable: false
+                filterable: false,
+                attributes: {
+                    style: 'font-weight:bold;color:rgba(256, 0, 0, 1);background:rgba(256, 0, 0, 0.1);'
+                }
             },
             {
                 field: 'create_ts',
