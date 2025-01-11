@@ -321,7 +321,7 @@ window.initCampaignGrid = function() {
                 title: 'Delivered',
                 filterable: false,
                 attributes: {
-                    style: 'font-weight:bold;color:rgba(0, 161, 0, 1);background:rgba(0, 161, 0, 0.1);'
+                    style: 'font-weight:bold;color:rgba(0, 161, 0, 1);background:rgba(0, 161, 0, 0.05);'
                 }
             },
             {
@@ -334,7 +334,7 @@ window.initCampaignGrid = function() {
                 title: 'Failed',
                 filterable: false,
                 attributes: {
-                    style: 'font-weight:bold;color:rgba(256, 0, 0, 1);background:rgba(256, 0, 0, 0.1);'
+                    style: 'font-weight:bold;color:rgba(256, 0, 0, 1);background:rgba(256, 0, 0, 0.05);'
                 }
             },
             {
