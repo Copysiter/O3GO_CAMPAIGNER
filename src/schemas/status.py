@@ -21,6 +21,7 @@ class CampaignStatus(Status):
 
 @dataclass
 class CampaignDstStatus(Status):
+    WAITING: int = -1
     CREATED: int = 0
     SENT: int = 1
     DELIVERED: int = 2

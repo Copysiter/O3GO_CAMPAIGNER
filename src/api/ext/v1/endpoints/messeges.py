@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 from typing import Any, Optional, Literal, List
 from collections import defaultdict
 
-from alembic.util import status
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text, insert, update, case
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,9 +18,9 @@ router = APIRouter()
 
 @router.post('/send') #, response_model=schemas.CampaignDst)
 async def send(
-    *, db: AsyncSession = Depends(deps.get_db),
-    user = Depends(deps.get_user_by_api_key),
-    messages: List[schemas.MessageCreate]
+        *, db: AsyncSession = Depends(deps.get_db),
+        user = Depends(deps.get_user_by_api_key),
+        messages: List[schemas.MessageCreate]
 ) -> Any:
     '''
     Send batch messages.
@@ -65,10 +64,81 @@ async def send(
     return entries_data
 
 
+@router.get('/get') #, response_model=schemas.CampaignDst)
+async def get(
+        *, session: AsyncSession = Depends(deps.get_db),
+        campaign_id: int, dst_addr: str,
+        user = Depends(deps.get_user_by_api_key)
+) -> Any:
+    '''
+    Get message.
+    '''
+    try:
+        async with session.begin():
+            result = await session.execute(
+                text(f'''
+                    SELECT campaign_dst.*, campaign.msg_status_timeout
+                    FROM campaign_dst
+                    JOIN campaign ON campaign.id = campaign_dst.campaign_id
+                    WHERE campaign_dst.dst_addr = :dst_addr
+                    AND campaign_dst.campaign_id = :campaign_id
+                    {'AND campaign.user_id = :user_id' if not user.is_superuser else ''}
+                '''),
+                {
+                    'dst_addr': dst_addr,
+                    'campaign_id': campaign_id,
+                    'user_id': user.id
+                }
+            )
+            if not (row := result.fetchone()):
+                raise HTTPException(
+                    status_code=404, detail='Message not found'
+                )
+            campaign_dst = row._mapping  # noqa
+
+        sent_ts = datetime.utcnow()
+        expire_ts = sent_ts + timedelta(
+            seconds=campaign_dst.msg_status_timeout
+        ) if campaign_dst.msg_status_timeout else None
+
+        r = await session.execute(
+            text('''
+                UPDATE campaign_dst
+                SET status = :status,
+                    sent_ts = :sent_ts,
+                    expire_ts = :expire_ts
+                WHERE id = :id
+                AND campaign_id = :campaign_id
+            '''),
+            {
+                'status': schemas.CampaignDstStatus.SENT,
+                'sent_ts': sent_ts,
+                'expire_ts': expire_ts,
+                'id': campaign_dst.id,
+                'campaign_id': campaign_id,
+            }
+        )
+
+        await session.commit()
+
+        return {
+            'id': campaign_dst.id,
+            'phone': campaign_dst.dst_addr,
+            'text': campaign_dst.text
+        }
+
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=getattr(e, 'status_code', 500), detail=str(e)
+        )
+
+
 @router.get('/next') #, response_model=schemas.CampaignDst)
 async def get_next(
-    *, session: AsyncSession = Depends(deps.get_db), api_key: str = None,
-    user = Depends(deps.get_user_by_api_key)
+        *, session: AsyncSession = Depends(deps.get_db),
+        api_key: str = None, status: int = schemas.CampaignDstStatus.SENT,
+        user = Depends(deps.get_user_by_api_key)
 ) -> Any:
     '''
     Get next message.
@@ -165,7 +235,7 @@ async def get_next(
                     WHERE id = :id
                 '''),
                 {
-                    'status': schemas.CampaignDstStatus.SENT,
+                    'status': status,
                     'text': message.get('text'),
                     'sent_ts': sent_ts,
                     'expire_ts': expire_ts,
@@ -195,6 +265,8 @@ async def get_next(
                 }
             )
 
+            await session.commit()
+
             return message
     except Exception as e:
         await session.rollback()
@@ -205,10 +277,10 @@ async def get_next(
 
 @router.get('/status')
 async def set_status(
-    *, session: AsyncSession = Depends(deps.get_db), id: int,
-    status: Literal['delivered', 'undelivered', 'failed'],
-    src_addr: Optional[str] = None,
-    user = Depends(deps.get_user_by_api_key)
+        *, session: AsyncSession = Depends(deps.get_db), id: int,
+        status: Literal['delivered', 'undelivered', 'failed'],
+        src_addr: Optional[str] = None,
+        user = Depends(deps.get_user_by_api_key)
 ) -> Any:
     '''
     Update message status
@@ -235,9 +307,9 @@ async def set_status(
             campaign_dst = row._mapping  # noqa
 
             if campaign_dst.status in (
-                schemas.CampaignDstStatus.DELIVERED,
-                schemas.CampaignDstStatus.UNDELIVERED,
-                schemas.CampaignDstStatus.FAILED
+                    schemas.CampaignDstStatus.DELIVERED,
+                    schemas.CampaignDstStatus.UNDELIVERED,
+                    schemas.CampaignDstStatus.FAILED
             ):
                 raise HTTPException(
                     status_code=422,
@@ -256,9 +328,9 @@ async def set_status(
             ''' if status in ('delivered', 'undelivered') else 'status'
 
             if campaign_dst.status != (
-                new_status := getattr(
-                    schemas.CampaignDstStatus, status.upper()
-                )
+                    new_status := getattr(
+                        schemas.CampaignDstStatus, status.upper()
+                    )
             ):
                 await session.execute(
                     text('''

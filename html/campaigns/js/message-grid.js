@@ -129,7 +129,10 @@ window.initMessageGrid = function(id) {
                 title: 'Status',
                 template: function(item) {
                     if(item.status == 0) {
-                        return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-dark'>CREATED</span>"
+                        return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-dark'>WAITING</span>"
+                    }
+                    if(item.status == 0) {
+                        return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-light'>CREATED</span>"
                     }
                     else if(item.status == 1) {
                         return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-primary'>SUBMITTED</span>"

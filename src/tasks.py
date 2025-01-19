@@ -33,7 +33,8 @@ async def update_expired_messages():
                             THEN CAST(:failed_status AS INTEGER)
                             ELSE CAST(:undelivered_status AS INTEGER)
                         END, expire_ts = NULL
-                        WHERE status NOT IN (CAST(:delivered_status AS INTEGER),
+                        WHERE status > 0
+                          AND status NOT IN (CAST(:delivered_status AS INTEGER),
                                              CAST(:undelivered_status AS INTEGER))
                           AND expire_ts IS NOT NULL
                           AND expire_ts < :expire_ts
