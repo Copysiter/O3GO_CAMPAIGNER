@@ -24,7 +24,7 @@ class Tag(Base):
     description = Column(String, index=True)
 
     user = relationship('User', lazy='joined')
-    campaigns = relationship('CampaignTags', lazy='joined', join_depth=5)
+    # campaigns = relationship('CampaignTags', lazy='joined', join_depth=5)
     keys = relationship(
         'TagApiKeys', lazy='joined',
         cascade='save-update, merge, delete, delete-orphan'

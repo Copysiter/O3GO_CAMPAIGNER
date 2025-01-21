@@ -389,3 +389,7 @@ html, body {
     min-width: 240px;
     max-width: 480px;
 }
+
+.k-loading-mask {
+    display: none;
+}

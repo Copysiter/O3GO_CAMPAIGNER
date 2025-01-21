@@ -97,7 +97,7 @@ window.initCampaignGrid = function() {
             //     {id: "", name: 'second', status: 'complete', route: 'Default', message: 'abcdef', created: '2022-05-25 11:38:36', started: '2022-05-25 11:38:36', stopped: '2022-06-25 11:48:36', actions: ''},
             //     {id: "", name: 'third', status: 'low balance', route: 'Default', message: 'abcdef', created: '2022-05-25 11:38:36', started: '2022-05-25 11:38:36', stopped: '2022-06-25 11:48:36', actions: ''}
             // ],
-            pageSize: 20,
+            pageSize: 50,
             serverPaging: true, // true
             serverFiltering: true, // true
             serverSorting: true, // true

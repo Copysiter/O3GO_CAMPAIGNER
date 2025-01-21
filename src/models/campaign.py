@@ -15,7 +15,7 @@ class CampaignApiKeys(Base):
     api_key = Column(String, ForeignKey(
         'api_key.value', ondelete='CASCADE'), primary_key=True)
 
-    campaign = relationship('Campaign', back_populates='keys')
+    #campaign = relationship('Campaign', back_populates='keys')
     key = relationship('ApiKey', lazy='joined')
 
 class CampaignTags(Base):
@@ -25,8 +25,8 @@ class CampaignTags(Base):
     tag_id = Column(BigInteger, ForeignKey(
         'tag.id', ondelete='CASCADE'), primary_key=True)
 
-    campaign = relationship('Campaign', back_populates='campaign_tags', lazy='joined')
-    tag = relationship('Tag', back_populates='campaigns', lazy='joined')
+    #campaign = relationship('Campaign', back_populates='campaign_tags', lazy='joined')
+    tag = relationship('Tag', lazy='joined')
 
 
 class Campaign(Base):
