@@ -137,13 +137,13 @@ async def get(
 @router.get('/next') #, response_model=schemas.CampaignDst)
 async def get_next(
         *, session: AsyncSession = Depends(deps.get_db),
-        api_key: str = None, status: int = schemas.CampaignDstStatus.SENT,
+        api_key: str = None, status: Literal['sent', 'waiting'] = 'sent',
         user = Depends(deps.get_user_by_api_key)
 ) -> Any:
     '''
     Get next message.
     '''
-
+    status = getattr(schemas.CampaignDstStatus, status.upper())
     now = datetime.utcnow()
     weekday = str(now.isoweekday())
     hour = now.hour

@@ -128,7 +128,7 @@ window.initMessageGrid = function(id) {
                 width: '100px',
                 title: 'Status',
                 template: function(item) {
-                    if(item.status == 0) {
+                    if(item.status == -1) {
                         return "<span class='badge badge-sm k-badge k-badge-solid k-badge-md k-badge-rounded k-badge-dark'>WAITING</span>"
                     }
                     if(item.status == 0) {
@@ -158,6 +158,7 @@ window.initMessageGrid = function(id) {
                         element.kendoDropDownList({
                             animation: false,
                             dataSource: [
+                                {value: -1, text: "WAITING"},
                                 {value: 0, text: "CREATED"},
                                 {value: 1, text: "SUBMITTED"},
                                 {value: 2, text: "DELIVERED"},
