@@ -149,14 +149,15 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
 
     async def delete_rows(
         self, db: AsyncSession, *, ids: List[int], user_id: int = None
-    ) -> Campaign:
-        statement = delete(self.model).where(self.model.id.in_(ids))
+    ) -> List[int]:
+        statement = delete(Campaign).where(Campaign.id.in_(ids))
         if user_id is not None:
             statement = statement.where(Campaign.user_id == user_id)
-        statement = statement.returning(self.model.id)
+        statement = statement.returning(Campaign.id)
         result = await db.execute(statement=statement)
         await db.commit()
-        return result.scalars().all()
+        r = result.scalars().all()
+        return r
 
 
 campaign = CRUDCampaign(Campaign)

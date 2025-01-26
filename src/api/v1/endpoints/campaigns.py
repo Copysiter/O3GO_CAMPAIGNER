@@ -346,6 +346,34 @@ async def read_campaign_campaign_dsts(
     return JSONResponse({'data' : campaign_dsts, 'total': count})
 
 
+@router.delete('/{id}/campaign_dst', response_model=schemas.Campaign)
+async def read_campaign_campaign_dsts(
+        *,
+        db: Session = Depends(deps.get_db),
+        current_user: models.User = Depends(deps.get_current_active_user),
+        id: int,
+) -> Any:
+    '''
+    Get campaign campaign_dsts.
+    '''
+    campaign = await crud.campaign.get(db=db, id=id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail='Campaign not found')
+    if campaign.user_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=400, detail='The user doesn\'t have enough privileges'
+        )
+    user_id = None if current_user.is_superuser else current_user.id
+    await crud.campaign_dst.delete_rows(db, campaign_id=id, user_id=user_id)
+    campaign = await crud.campaign.update(
+        db=db, db_obj=campaign, obj_in={
+            'msg_total': 0, 'msg_sent': 0, 'msg_delivered': 0,
+            'msg_undelivered': 0, 'msg_failed': 0
+        }
+    )
+    return campaign
+
+
 @router.get('/{campaign_id}/report')
 async def download_campaign_report(
     *,

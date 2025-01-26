@@ -284,6 +284,43 @@ window.campaignDelete = function() {
     }
 }
 
+window.campaignClear = function() {
+    kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to clear Campaign ?</div>`).done(function() {
+        $.ajax({
+            url: `http://${api_base_url}/api/v1/campaigns/${selectedCampaignItem.id}/campaign_dst`,
+            type: "DELETE",
+            beforeSend: function (xhr) {
+                xhr.setRequestHeader ("Authorization", `${token_type} ${access_token}`);
+            },
+            success: function(data) {
+
+            },
+            error: function(jqXHR, textStatus, ex) {
+
+            }
+        }).then(function(data) {
+            if (data.id) {
+                $("#campaign-notification").kendoNotification({
+                    type: "warning",
+                    position: {
+                        top: 54,
+                        right: 8
+                    },
+                    width: "auto",
+                    allowHideAfter: 1000,
+                    autoHideAfter: 5000
+                });
+                // $("#campaign-window").data("kendoWindow").close();
+                $("#message-grid").data("kendoGrid").dataSource.read();
+                $("#campaign-grid").data("kendoGrid").dataSource.read();
+                $("#campaign-notification").getKendoNotification().show("Campaign has been cleared.");
+            }
+        });
+    }).fail(function() {
+
+    });
+}
+
 window.exportCampaignReport = function(id) {
     kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Download campaign report?</div>`).done(function() {
         window.open(`http://${api_base_url}/api/v1/campaigns/${id}/report`, '_blank');

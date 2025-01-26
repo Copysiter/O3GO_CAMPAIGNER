@@ -1,10 +1,7 @@
 from typing import List
 
-from fastapi.encoders import jsonable_encoder
-from sqlalchemy import insert
+from sqlalchemy import insert, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from fastapi.encoders import jsonable_encoder
 
 from crud.base import CRUDBase
 from models.campaign_dst import CampaignDst
@@ -12,6 +9,7 @@ from models.campaign import Campaign
 from schemas.campaign_dst import CampaignDstCreate, CampaignDstUpdate
 
 from core.config import settings
+
 
 class CRUDCampaignDst(CRUDBase[CampaignDst, CampaignDstCreate, CampaignDstUpdate]):
     async def create_rows(
@@ -23,6 +21,15 @@ class CRUDCampaignDst(CRUDBase[CampaignDst, CampaignDstCreate, CampaignDstUpdate
             await db.execute(statement, batch)
         await db.commit()
         return len(obj_in)
+
+    async def delete_rows(
+            self, db: AsyncSession, *, campaign_id: int, user_id: int = None
+    ) -> None:
+        statement = delete(CampaignDst).where(CampaignDst.campaign_id == campaign_id)
+        if user_id is not None:
+            statement = statement.where(CampaignDst.user_id == user_id)
+        await db.execute(statement=statement)
+        await db.commit()
     
     #def get_one(
     #    self, db: Session, *, campaign_id: int

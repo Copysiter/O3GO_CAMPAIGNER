@@ -94,6 +94,14 @@ window.initToolbar = function() {
             }, {
                 type: "button",
                 themeColor: "error",
+                fillMode: "outline",
+                text: "Clear campaign",
+                click: function() {
+                    campaignClear(selectedCampaignItem.id);
+                }
+            }, {
+                type: "button",
+                themeColor: "error",
                 //icon: "close-circle",
                 text: "Delete campaign",
                 click: function() {
