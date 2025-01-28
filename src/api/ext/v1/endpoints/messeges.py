@@ -66,9 +66,9 @@ async def send(
 
 @router.get('/get') #, response_model=schemas.CampaignDst)
 async def get(
-        *, session: AsyncSession = Depends(deps.get_db),
-        campaign_id: int, dst_addr: str,
-        user = Depends(deps.get_user_by_api_key)
+    *, session: AsyncSession = Depends(deps.get_db),
+    campaign_id: int, dst_addr: str,
+    user = Depends(deps.get_user_by_api_key)
 ) -> Any:
     '''
     Get message.
@@ -82,11 +82,13 @@ async def get(
                     JOIN campaign ON campaign.id = campaign_dst.campaign_id
                     WHERE campaign_dst.dst_addr = :dst_addr
                     AND campaign_dst.campaign_id = :campaign_id
+                    AND campaign_dst.status = :status
                     {'AND campaign.user_id = :user_id' if not user.is_superuser else ''}
                 '''),
                 {
                     'dst_addr': dst_addr,
                     'campaign_id': campaign_id,
+                    'status': schemas.CampaignDstStatus.WAITING,
                     'user_id': user.id
                 }
             )

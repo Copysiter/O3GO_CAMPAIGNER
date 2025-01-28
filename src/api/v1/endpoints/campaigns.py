@@ -1,5 +1,4 @@
 import os
-from dataclasses import field
 
 import pandas as pd
 import openpyxl
@@ -11,7 +10,7 @@ from io import BytesIO
 
 from fastapi import APIRouter, Body, Depends, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.encoders import jsonable_encoder
 
 from api import deps
@@ -23,7 +22,7 @@ router = APIRouter()
 
 @router.get('/', response_model=schemas.CampaignRows)
 async def read_campaigns(
-    db: Session = Depends(deps.get_db),
+    db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_active_user),
     filters: List[schemas.Filter] = Depends(deps.request_filters),
     orders: List[schemas.Order] = Depends(deps.request_orders),
@@ -64,7 +63,7 @@ async def read_campaigns(
 @router.post('/', response_model=schemas.Campaign)
 async def create_campaign(
     *,
-    db: Session = Depends(deps.get_db),
+    db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_active_user),
     campaign_in: schemas.CampaignCreate
 ) -> Any:
@@ -160,7 +159,7 @@ async def create_campaign(
 async def update_campaign_rows(
     *,
     current_user: models.User = Depends(deps.get_current_active_user),
-    db: Session = Depends(deps.get_db),
+    db: AsyncSession = Depends(deps.get_db),
     ids: List[int] = Body(..., embed=True)
 ) -> Any:
     '''
@@ -177,7 +176,7 @@ async def update_campaign_rows(
 async def update_campaign_rows(
     *,
     current_user: models.User = Depends(deps.get_current_active_user),
-    db: Session = Depends(deps.get_db),
+    db: AsyncSession = Depends(deps.get_db),
     ids: List[int] = Body(..., embed=True)
 ) -> Any:
     '''
@@ -194,7 +193,7 @@ async def update_campaign_rows(
 async def delete_campaign_rows(
     *,
     current_user: models.User = Depends(deps.get_current_active_user),
-    db: Session = Depends(deps.get_db),
+    db: AsyncSession = Depends(deps.get_db),
     ids: List[int] = Body(..., embed=True)
 ) -> Any:
     '''
@@ -208,7 +207,7 @@ async def delete_campaign_rows(
 @router.put('/{id}', response_model=schemas.Campaign)
 async def update_campaign(
     *,
-    db: Session = Depends(deps.get_db),
+    db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_active_user),
     id: int,
     campaign_in: schemas.CampaignUpdate
@@ -234,7 +233,7 @@ async def update_campaign(
 async def update_campaign(
     *,
     current_user: models.User = Depends(deps.get_current_active_user),
-    db: Session = Depends(deps.get_db),
+    db: AsyncSession = Depends(deps.get_db),
     id: int
 ) -> Any:
     '''
@@ -255,7 +254,7 @@ async def update_campaign(
 @router.post('/{id}/stop', response_model=schemas.Campaign)
 async def update_campaign(
     *,
-    db: Session = Depends(deps.get_db),
+    db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_active_user),
     id: int
 ) -> Any:
@@ -277,7 +276,7 @@ async def update_campaign(
 @router.get('/{id}', response_model=schemas.Campaign)
 async def read_campaign(
     *,
-    db: Session = Depends(deps.get_db),
+    db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_active_user),
     id: int
 ) -> Any:
@@ -293,7 +292,7 @@ async def read_campaign(
 @router.delete('/{id}', response_model=schemas.Campaign)
 async def delete_campaign(
     *,
-    db: Session = Depends(deps.get_db),
+    db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_active_user),
     id: int
 ) -> Any:
@@ -310,7 +309,7 @@ async def delete_campaign(
 @router.get('/{id}/campaign_dst', response_model=schemas.CampaignDstRows)
 async def read_campaign_campaign_dsts(
     *,
-    db: Session = Depends(deps.get_db),
+    db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_active_user),
     id: int,
     filters: List[schemas.Filter] = Depends(deps.request_filters),
@@ -349,7 +348,7 @@ async def read_campaign_campaign_dsts(
 @router.delete('/{id}/campaign_dst', response_model=schemas.Campaign)
 async def read_campaign_campaign_dsts(
         *,
-        db: Session = Depends(deps.get_db),
+        db: AsyncSession = Depends(deps.get_db),
         current_user: models.User = Depends(deps.get_current_active_user),
         id: int,
 ) -> Any:
@@ -377,7 +376,7 @@ async def read_campaign_campaign_dsts(
 @router.get('/{campaign_id}/report')
 async def download_campaign_report(
     *,
-    db: Session = Depends(deps.get_db),
+    db: AsyncSession = Depends(deps.get_db),
     campaign_id: int
 ):
     campaign = await crud.campaign.get(db=db, id=campaign_id)
