@@ -157,7 +157,8 @@ async def get_next(
                     text(f'''
                         SELECT campaign.* 
                         FROM campaign
-                        WHERE campaign.id = :campaign_id 
+                        WHERE campaign.id = :campaign_id
+                        {'AND campaign.user_id = :user_id' if not user.is_superuser else ''}
                         LIMIT 1;
                     '''),
                     {
