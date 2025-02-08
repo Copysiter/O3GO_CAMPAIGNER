@@ -138,9 +138,10 @@ async def get(
 
 @router.get('/next') #, response_model=schemas.CampaignDst)
 async def get_next(
-        *, session: AsyncSession = Depends(deps.get_db),
-        api_key: str = None, status: Literal['sent', 'waiting'] = 'sent',
-        user = Depends(deps.get_user_by_api_key)
+    *, session: AsyncSession = Depends(deps.get_db),
+    campaign_id: int = None, api_key: str = None,
+    status: Literal['sent', 'waiting', 'delivered'] = 'sent',
+    user = Depends(deps.get_user_by_api_key)
 ) -> Any:
     '''
     Get next message.
@@ -151,34 +152,47 @@ async def get_next(
     hour = now.hour
     try:
         async with session.begin():
-            result = await session.execute(
-                text(f'''
-                    SELECT campaign.* 
-                    FROM campaign
-                    JOIN campaign_api_keys 
-                        ON campaign.id = campaign_api_keys.campaign_id
-                        AND campaign_api_keys.api_key = :api_key
-                    WHERE campaign.status = :status
-                      AND (
-                          (campaign.start_ts IS NOT NULL AND campaign.stop_ts IS NOT NULL 
-                           AND :now BETWEEN campaign.start_ts AND campaign.stop_ts)
-                          OR
-                          (schedule::jsonb ->> :weekday IS NOT NULL 
-                           AND (schedule::jsonb -> :weekday)::jsonb @> to_jsonb(CAST(:hour AS INTEGER)))
-                      )
-                      {'AND campaign.user_id = :user_id' if not user.is_superuser else ''}
-                    ORDER BY campaign.order, campaign.msg_sent 
-                    LIMIT 1;
-                '''),
-                {
-                    'api_key': api_key,
-                    'user_id': user.id,
-                    'status': schemas.CampaignStatus.RUNNING,
-                    'now': now,
-                    'weekday': weekday,
-                    'hour': hour
-                }
-            )
+            if campaign_id is not None:
+                result = await session.execute(
+                    text(f'''
+                        SELECT campaign.* 
+                        FROM campaign
+                        WHERE campaign.id = :campaign_id 
+                        LIMIT 1;
+                    '''),
+                    {
+                        'campaign_id': campaign_id
+                    }
+                )
+            else:
+                result = await session.execute(
+                    text(f'''
+                        SELECT campaign.* 
+                        FROM campaign
+                        JOIN campaign_api_keys 
+                            ON campaign.id = campaign_api_keys.campaign_id
+                            AND campaign_api_keys.api_key = :api_key
+                        WHERE campaign.status = :status
+                          AND (
+                              (campaign.start_ts IS NOT NULL AND campaign.stop_ts IS NOT NULL 
+                               AND :now BETWEEN campaign.start_ts AND campaign.stop_ts)
+                              OR
+                              (schedule::jsonb ->> :weekday IS NOT NULL 
+                               AND (schedule::jsonb -> :weekday)::jsonb @> to_jsonb(CAST(:hour AS INTEGER)))
+                          )
+                          {'AND campaign.user_id = :user_id' if not user.is_superuser else ''}
+                        ORDER BY campaign.order, campaign.msg_sent 
+                        LIMIT 1;
+                    '''),
+                    {
+                        'api_key': api_key,
+                        'user_id': user.id,
+                        'status': schemas.CampaignStatus.RUNNING,
+                        'now': now,
+                        'weekday': weekday,
+                        'hour': hour
+                    }
+                )
             if not (row := result.first()):
                 raise HTTPException(
                     status_code=404, detail='Active campaigns not found'
@@ -231,13 +245,18 @@ async def get_next(
                     UPDATE campaign_dst
                     SET status = :status,
                         text = :text,
-                        sent_ts = :sent_ts,
+                        sent_ts = CASE 
+                            WHEN CAST(:status AS INTEGER) = :status_waiting
+                            THEN sent_ts
+                            ELSE :sent_ts
+                        END,
                         expire_ts = :expire_ts,
                         attempts = attempts - 1
                     WHERE id = :id
                 '''),
                 {
                     'status': status,
+                    'status_waiting': schemas.CampaignDstStatus.WAITING,
                     'text': message.get('text'),
                     'sent_ts': sent_ts,
                     'expire_ts': expire_ts,
@@ -253,6 +272,11 @@ async def get_next(
                         THEN msg_sent
                         ELSE msg_sent + 1
                     END,
+                    msg_delivered = CASE 
+                        WHEN CAST(:status AS INTEGER) = :status_delivered
+                        THEN msg_delivered + 1
+                        ELSE msg_delivered
+                    END,
                     msg_failed = CASE 
                         WHEN :current_status = :status_failed
                         THEN msg_failed - 1
@@ -263,6 +287,8 @@ async def get_next(
                 {
                     'current_status': campaign_dst.get('status'),
                     'status_failed': schemas.CampaignDstStatus.FAILED,
+                    'status': status,
+                    'status_delivered': schemas.CampaignDstStatus.DELIVERED,
                     'campaign_id': campaign_dst.get('campaign_id'),
                 }
             )
