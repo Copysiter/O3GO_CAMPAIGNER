@@ -296,6 +296,12 @@ async def get_next(
 
             await session.commit()
 
+            if status == schemas.CampaignDstStatus.DELIVERED \
+                    and campaign.webhook_url is not None:
+                webhook.delay(campaign.webhook_url, data={
+                    'id': campaign_dst.ext_id, 'status': 'delivered'
+                })
+
             return message
     except Exception as e:
         await session.rollback()
@@ -357,9 +363,9 @@ async def set_status(
             ''' if status in ('delivered', 'undelivered') else 'status'
 
             if campaign_dst.status != (
-                    new_status := getattr(
-                        schemas.CampaignDstStatus, status.upper()
-                    )
+                new_status := getattr(
+                    schemas.CampaignDstStatus, status.upper()
+                )
             ):
                 await session.execute(
                     text('''
