@@ -145,9 +145,8 @@ async def send_webhook(webhook_url: str = None, *, data: dict):
             return
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(webhook_url, json=data) as resp:
-            result = await resp.json()
-            return result
+        async with session.post(webhook_url, json=data):
+            pass
 
 
 @celery.task

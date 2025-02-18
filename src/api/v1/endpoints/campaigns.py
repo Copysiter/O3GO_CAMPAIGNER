@@ -35,6 +35,13 @@ async def read_campaigns(
     if not orders:
         orders = [{'field': 'id', 'dir': 'desc'}]
     tags_idx = None
+
+    for filter in filters:
+        if sub_filters := filter.get('filters'):
+            filters.remove(filter)
+            for filter in sub_filters:
+                filters.append(filter)
+
     for i in range(len(filters)):
         if filters[i]['field'] == 'tags':
             if tags_idx is None:
