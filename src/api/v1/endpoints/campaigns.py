@@ -34,24 +34,40 @@ async def read_campaigns(
     '''
     if not orders:
         orders = [{'field': 'id', 'dir': 'desc'}]
+    filters_modified = []
     tags_idx = None
+    status_idx = None
 
     for filter in filters:
         if sub_filters := filter.get('filters'):
-            filters.remove(filter)
             for filter in sub_filters:
-                filters.append(filter)
+                filters_modified.append(filter)
+        else:
+            filters_modified.append(filter)
 
-    for i in range(len(filters)):
-        if filters[i]['field'] == 'tags':
+    filters = []
+    for i in range(len(filters_modified)):
+        if filters_modified[i]['field'] == 'tags':
             if tags_idx is None:
-                tags_idx = i
-                filters[i]['relationship'] = models.Campaign.campaign_tags
-                filters[i]['field'] = models.CampaignTags.tag_id
-                filters[i]['operator'] = 'overlaps'
-                filters[i]['value'] = [filters[i]['value']]
+                tags_idx = len(filters)
+                filters.append({
+                    'relationship': models.Campaign.campaign_tags,
+                    'field': models.CampaignTags.tag_id,
+                    'operator': 'overlaps',
+                    'value': [filters_modified[i]['value']]
+                })
             else:
-                filters[tags_idx]['value'].append(filters.pop(i)['value'])
+                filters[tags_idx]['value'].append(filters_modified[i]['value'])
+        if filters_modified[i]['field'] == 'status':
+            if status_idx is None:
+                status_idx = len(filters)
+                filters.append({
+                    'field': 'status',
+                    'operator': 'overlaps',
+                    'value': [filters_modified[i]['value']]
+                })
+            else:
+                filters[status_idx]['value'].append(filters_modified[i]['value'])
     if current_user.is_superuser:
         campaigns = await crud.campaign.get_rows(
             db, skip=skip, limit=limit, filters=filters, orders=orders)
@@ -257,6 +273,25 @@ async def update_campaign(
         })
     return campaign
 
+@router.post('/{id}/pause', response_model=schemas.Campaign)
+async def update_campaign(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_user),
+    id: int
+) -> Any:
+    '''
+    Pause an campaign.
+    '''
+    campaign = await crud.campaign.get(db=db, id=id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail='Campaign not found')
+    stop_ts = campaign.stop_ts if campaign.stop_ts else datetime.utcnow()
+    campaign = await crud.campaign.update(
+        db=db, db_obj=campaign, obj_in={
+            'status': schemas.CampaignStatus.PAUSED
+        })
+    return campaign
 
 @router.post('/{id}/stop', response_model=schemas.Campaign)
 async def update_campaign(

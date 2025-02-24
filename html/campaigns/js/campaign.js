@@ -148,7 +148,7 @@ window.updateCampaignStat = function(item) {
 }
 
 window.updateCampaignStatus = function(status) {
-    const action = status == 1 ? 'start' : 'stop';
+    const action = status == 1 ? 'start' : (status == 2 ? 'pause' : 'stop');
     if (window.selectedCampaignItems.length > 1) {
         kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to ${action} Campaigns?</div>`).done(function () {
             $.ajax({

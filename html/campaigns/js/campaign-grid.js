@@ -209,6 +209,8 @@ window.initCampaignGrid = function() {
                 template: function(item) {
                     if (item.status == 0) {
                         return "<span class='info info-sm info-light'>Created</span>"
+                    } else if(item.status == -1) {
+                        return "<span class='info info-sm info-light'>Paused</span>"
                     } else if(item.status == 1) {
                         return "<span class='info info-sm info-green'>Running</span>"
                     } else if(item.status == 2) {
@@ -217,21 +219,43 @@ window.initCampaignGrid = function() {
                         return "<span class='info info-sm info-blue'>Complete</span>"
                     }
                 },
+
+                // filterable: {
+                //     operators: {
+                //         string: {
+                //             eq: "is",
+                //         }
+                //     },
+                //     ui : function(element) {
+                //         element.kendoDropDownList({
+                //             animation: false,
+                //             dataSource: [{value: 0, text: "Created"}, {value: 1, text: "Running"}, {value: 2, text: "Stopped"}, {value: 3, text: "Complete"}],
+                //             dataTextField: "text",
+                //             dataValueField: "value",
+                //             valuePrimitive: true,
+                //             optionLabel: "-- Select Status --"
+                //         });
+                //     }
+                // }
+
                 filterable: {
-                    operators: {
-                        string: {
-                            eq: "is",
+                    multi: true,
+                    dataSource: [
+                        {value:  0, text: "Created"},
+                        {value:  1, text: "Running"},
+                        {value: -1, text: "Paused"},
+                        {value:  2, text: "Stopped"},
+                        {value:  3, text: "Complete"}
+                    ],
+                    itemTemplate: function(e) {
+                        console.log(e);
+                        if (e.field == "all") {
+                            //handle the check-all checkbox template
+                            return "";
+                        } else {
+                            //handle the other checkboxes
+                            return "<div class=''><label class='d-flex align-items-center py-8 ps-3 border-bottom cursor-pointer'><input type='checkbox' name='" + e.field + "' value='#=value#' class='k-checkbox k-checkbox-md k-rounded-md'/><span class='ms-8'>#=text#</span></label></div>"
                         }
-                    },
-                    ui : function(element) {
-                        element.kendoDropDownList({
-                            animation: false,
-                            dataSource: [{value: 0, text: "Created"}, {value: 1, text: "Running"}, {value: 2, text: "Stopped"}, {value: 3, text: "Complete"}],
-                            dataTextField: "text",
-                            dataValueField: "value",
-                            valuePrimitive: true,
-                            optionLabel: "-- Select Status --"
-                        });
                     }
                 }
             }].concat(user_column).concat([{

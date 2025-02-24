@@ -39,6 +39,15 @@ window.initContextMenu = function() {
                 }
             },
             {
+                text: "Pause Campaign",
+                cssClass: "campaignStart",
+                //spriteCssClass: "famfamfam-silk tick",
+                spriteCssClass: "famfamfam-silk control_pause_blue",
+                attr: {
+                    "onclick": "updateCampaignStatus(2);"
+                }
+            },
+            {
                 text: "Stop Campaign",
                 cssClass: "campaignStop",
                 //spriteCssClass: "famfamfam-silk cross",

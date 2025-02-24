@@ -13,6 +13,7 @@ class Status:
 
 @dataclass
 class CampaignStatus(Status):
+    PAUSED: int = -1
     CREATED: int = 0
     RUNNING: int = 1
     STOPPED: int = 2
