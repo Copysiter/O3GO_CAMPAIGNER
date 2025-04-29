@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from api import deps
 from tasks import webhook
+from utils.text import safe_replace
 
 import crud, models, schemas
 
@@ -126,7 +127,7 @@ async def get(
         return {
             'id': campaign_dst.id,
             'phone': campaign_dst.dst_addr,
-            'text': campaign_dst.text.replace('\'', ' ')
+            'text': safe_replace(campaign_dst.text)
         }
 
     except Exception as e:
@@ -225,7 +226,7 @@ async def get_next(
             message = {
                 'id': campaign_dst.get('id'),
                 'phone': campaign_dst.get('dst_addr'),
-                'text': campaign_dst.get('text').replace('\'', ' ')
+                'text': safe_replace(campaign_dst.get('text'))
             }
             if not message['text']:
                 message['text'] = campaign.get('msg_template')
@@ -258,7 +259,7 @@ async def get_next(
                 {
                     'status': status,
                     'status_waiting': schemas.CampaignDstStatus.WAITING,
-                    'text': message.get('text').replace('\'', ' '),
+                    'text': safe_replace(message.get('text')),
                     'sent_ts': sent_ts,
                     'expire_ts': expire_ts,
                     'id': campaign_dst.get('id'),
@@ -406,7 +407,7 @@ async def set_status(
                 'id': campaign_dst.id,
                 'dst_addr': campaign_dst.dst_addr,
                 'src_addr': src_addr,
-                'text': campaign_dst.text.replace('\'', ' '),
+                'text': safe_replace(campaign_dst.text),
                 'status': status,
             }
     except Exception as e:
