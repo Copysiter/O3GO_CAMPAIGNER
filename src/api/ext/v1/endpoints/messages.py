@@ -126,7 +126,7 @@ async def get(
         return {
             'id': campaign_dst.id,
             'phone': campaign_dst.dst_addr,
-            'text': campaign_dst.text
+            'text': campaign_dst.text.replace('\'', ' ')
         }
 
     except Exception as e:
@@ -225,7 +225,7 @@ async def get_next(
             message = {
                 'id': campaign_dst.get('id'),
                 'phone': campaign_dst.get('dst_addr'),
-                'text': campaign_dst.get('text')
+                'text': campaign_dst.get('text').replace('\'', ' ')
             }
             if not message['text']:
                 message['text'] = campaign.get('msg_template')
@@ -258,7 +258,7 @@ async def get_next(
                 {
                     'status': status,
                     'status_waiting': schemas.CampaignDstStatus.WAITING,
-                    'text': message.get('text'),
+                    'text': message.get('text').replace('\'', ' '),
                     'sent_ts': sent_ts,
                     'expire_ts': expire_ts,
                     'id': campaign_dst.get('id'),
@@ -312,10 +312,10 @@ async def get_next(
 
 @router.get('/status')
 async def set_status(
-        *, session: AsyncSession = Depends(deps.get_db), id: int,
-        status: Literal['delivered', 'undelivered', 'failed'],
-        src_addr: Optional[str] = None,
-        user = Depends(deps.get_user_by_api_key)
+    *, session: AsyncSession = Depends(deps.get_db), id: int,
+    status: Literal['delivered', 'undelivered', 'failed'],
+    src_addr: Optional[str] = None,
+    user = Depends(deps.get_user_by_api_key)
 ) -> Any:
     '''
     Update message status
@@ -406,7 +406,7 @@ async def set_status(
                 'id': campaign_dst.id,
                 'dst_addr': campaign_dst.dst_addr,
                 'src_addr': src_addr,
-                'text': campaign_dst.text,
+                'text': campaign_dst.text.replace('\'', ' '),
                 'status': status,
             }
     except Exception as e:
