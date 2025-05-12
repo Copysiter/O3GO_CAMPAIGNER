@@ -13,6 +13,8 @@ from db.init_db import init_db
 from api.v1.api_router import api_router
 from api.ext.v1.api_router import api_router as ext_api_router
 
+from middlewares.http import HttpLoggingMiddleware
+
 
 def init_app() -> FastAPI:
     @asynccontextmanager
@@ -37,6 +39,8 @@ def init_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    app.add_middleware(HttpLoggingMiddleware)
 
     app.include_router(api_router, prefix=settings.API_VERSION_PREFIX)
 
