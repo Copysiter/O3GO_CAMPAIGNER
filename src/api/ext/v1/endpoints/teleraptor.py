@@ -27,7 +27,7 @@ STATE_MAP = {
 @router.get('/next')
 async def proxy_get_next(
     *, session: AsyncSession = Depends(deps.get_db),
-    background_id: int, md5: str
+    md5: str, background_id: int
 ) -> Any:
     '''
     Get next message.
@@ -38,20 +38,21 @@ async def proxy_get_next(
     )
 
     return [{
-        'id_message': r['id'], 'phone': r['phone'], 'text_sms': r['text']
+        'id_message': str(r['id']), 'phone': r['phone'], 'text_sms': r['text']
     }]
 
 
 @router.get('/status')
 async def proxy_set_status(
-    *, session: AsyncSession = Depends(deps.get_db), id_message: int,
-    state: Literal['deliver', 'not_deliver', 'not_send', 'expired'], md5: str
+    *, session: AsyncSession = Depends(deps.get_db), md5: str, id_message: str,
+    state: Literal['deliver', 'not_deliver', 'not_send', 'expired']
 ) -> Any:
     '''
     Update message status
     '''
     user = await deps.get_user_by_api_key(session=session, api_key=md5)
     state = STATE_MAP.get(state, state)
-    return await set_status(
-        session=session, id=id_message, status=state, user=user
+    r = await set_status(
+        session=session, id=int(id_message), status=state, user=user
     )
+    return [{'id_message': id_message, 'error': '0'}]
