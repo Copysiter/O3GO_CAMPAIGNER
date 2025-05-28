@@ -33,9 +33,13 @@ async def proxy_get_next(
     Get next message.
     '''
     user = await deps.get_user_by_api_key(session=session, api_key=md5)
-    return await get_next(
+    r = await get_next(
         session=session, campaign_id=background_id, user=user
     )
+
+    return [{
+        'id_message': r['id'], 'phone': r['phone'], 'text_sms': r['text']
+    }]
 
 
 @router.get('/status')
