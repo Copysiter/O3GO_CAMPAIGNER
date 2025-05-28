@@ -163,7 +163,8 @@ async def get_next(
                         LIMIT 1;
                     '''),
                     {
-                        'campaign_id': campaign_id
+                        'campaign_id': campaign_id,
+                        'user_id': user.id
                     }
                 )
             else:
