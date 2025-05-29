@@ -27,14 +27,14 @@ STATE_MAP = {
 @router.get('/next')
 async def proxy_get_next(
     *, session: AsyncSession = Depends(deps.get_db),
-    md5: str, background_id: int
+    md5: str, id_background: int
 ) -> Any:
     '''
     Get next message.
     '''
     user = await deps.get_user_by_api_key(session=session, api_key=md5)
     r = await get_next(
-        session=session, campaign_id=background_id, user=user
+        session=session, campaign_id=id_background, user=user
     )
 
     return [{
