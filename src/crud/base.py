@@ -142,6 +142,15 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         result = await db.execute(statement=statement)
         return result.unique().scalar_one_or_none()
 
+    async def get_by(
+        self, db: AsyncSession, **kwargs: Dict[str, Any]
+    ) -> Optional[ModelType]:
+        statement = select(self.model)
+        for attr, val in kwargs.items():
+            statement = statement.where(getattr(self.model, attr) == val)
+        results = await db.execute(statement=statement)
+        return results.unique().scalar_one_or_none()
+
     async def create(
         self, db: AsyncSession, *, obj_in: CreateSchemaType
     ) -> ModelType:

@@ -1,9 +1,11 @@
-﻿from typing import List, Dict
-from fastapi import Request, Depends, HTTPException, Security, status
+﻿import inspect
+from typing import List, Dict, Type, Callable, Any, Union, get_args, get_origin
+from fastapi import Request, Depends, HTTPException, Security, Form, status
 from fastapi.security import OAuth2PasswordBearer, HTTPBasic, HTTPBasicCredentials
 from fastapi.security.api_key import APIKey, APIKeyQuery, APIKeyHeader
 from jose import jwt
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings  # noqa
@@ -147,3 +149,72 @@ def request_orders(
     if not orders:
         orders = params.get('sort')
     return orders or []
+
+
+# --------------------------------------------------------------------------- #
+#  helpers
+# --------------------------------------------------------------------------- #
+def _strip_annotated(annotation: Any) -> Any:
+    """Удаляет оболочку Annotated[..., …], если она есть."""
+    from typing import Annotated
+
+    while get_origin(annotation) is Annotated:
+        annotation = get_args(annotation)[0]
+    return annotation
+
+
+def _is_optional(annotation: Any) -> bool:
+    """
+    True, если аннотация допускает None
+    (Optional[T]  |  T | None  |  Union[T, None]).
+
+    Работает и с вложенным Annotated[…].
+    """
+    annotation = _strip_annotated(annotation)
+    origin = get_origin(annotation)
+
+    if origin is Union:
+        return type(None) in get_args(annotation)
+
+    # PEP 604 «T | None» → origin is None  → проверим напрямую
+    return annotation is type(None)  # noqa: E721
+
+
+# --------------------------------------------------------------------------- #
+#  main factory
+# --------------------------------------------------------------------------- #
+def as_form(model_cls: Type[BaseModel]) -> Callable[..., Any]:
+    """
+    Возвращает функцию-зависимость для FastAPI, собирающую экземпляр
+    `model_cls` из `application/x-www-form-urlencoded` / `multipart/form-data`.
+    """
+    params: list[inspect.Parameter] = []
+
+    for name, field in model_cls.model_fields.items():
+        annotation = field.annotation
+        required = not _is_optional(annotation)
+
+        default_for_form = ... if required else None  # ... → обязательный
+
+        form_param = Form(
+            default_for_form,
+            alias=field.alias or name,
+            description=field.description or None,
+            examples=field.examples or None,
+        )
+
+        params.append(
+            inspect.Parameter(
+                name,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                default=form_param,
+                annotation=annotation,
+            )
+        )
+
+    async def dependency(**data):
+        return model_cls(**data)
+
+    # подменяем сигнатуру, чтобы FastAPI «увидел» Form-параметры
+    dependency.__signature__ = inspect.Signature(params)  # type: ignore[attr-defined]
+    return dependency

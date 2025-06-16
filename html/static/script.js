@@ -43,6 +43,14 @@ $(document).ready(function () {
     </a>
     </li>
     <li>
+    <a href='/android/' data-role='drawer-item' class='${
+        $('body').attr('data-id') == 'android' ? 'k-selected ' : ''
+    }d-flex align-items-center text-decoration-none p-0'>
+    <span><i class='mdi mdi-android fs-24'></i></span>
+    <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='manual'>Android</span>
+    </a>
+    </li>
+    <li>
     <a href='/manual/' data-role='drawer-item' class='${
         $('body').attr('data-id') == 'manual' ? 'k-selected ' : ''
     }d-flex align-items-center text-decoration-none p-0'>
@@ -76,6 +84,14 @@ $(document).ready(function () {
     <span><i class='mdi mdi-key-variant fs-24'></i></span>
     <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='Keys'>API Keys</span>
     </a> 
+    </li>
+    <li>
+    <a href='/android/' data-role='drawer-item' class='${
+        $('body').attr('data-id') == 'android' ? 'k-selected ' : ''
+    }d-flex align-items-center text-decoration-none p-0'>
+    <span><i class='mdi mdi-android fs-24'></i></span>
+    <span class='k-item-text flex-grow-1 fs-14 ps-0 pe-20 pt-2' data-id='manual'>Android</span>
+    </a>
     </li>
     <li>
     <a href='/manual/' data-role='drawer-item' class='${
