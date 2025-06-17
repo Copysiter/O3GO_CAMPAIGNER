@@ -77,7 +77,7 @@ async def power_device(
     return schemas.AndroidCodeResponse(code='0')
 
 
-@router.get(
+@router.post(
     '/messages',
     response_model=schemas.AndroidMessageResponse,
     status_code=status.HTTP_201_CREATED
@@ -85,7 +85,8 @@ async def power_device(
 async def get_messages(
     *,
     db: AsyncSession = Depends(deps.get_db),
-    obj_in: schemas.AndroidMessageRequest = Depends(),
+    obj_in: schemas.AndroidMessageRequest = \
+            Depends(deps.as_form(schemas.AndroidMessageRequest)),
     user = Depends(deps.get_user_by_api_key),
 ) -> Any:
     """
