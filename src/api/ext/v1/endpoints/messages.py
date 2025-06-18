@@ -182,6 +182,11 @@ async def get_next(
                        AND (schedule::jsonb -> :weekday)::jsonb @> to_jsonb(CAST(:hour AS INTEGER)))
                   )
                   {'AND campaign.user_id = :user_id' if not user.is_superuser else ''}
+                  AND EXISTS (
+                      SELECT 1 FROM campaign_dst
+                      WHERE campaign_dst.campaign_id = campaign.id
+                        AND campaign_dst.status IN (:status_created, :status_failed)
+                  )
                 ORDER BY campaign.order, campaign.msg_sent 
                 LIMIT 1;
             '''),
@@ -189,6 +194,8 @@ async def get_next(
                 'api_key': api_key,
                 'user_id': user.id,
                 'status': schemas.CampaignStatus.RUNNING,
+                'status_created': schemas.CampaignDstStatus.CREATED,
+                'status_failed': schemas.CampaignDstStatus.FAILED,
                 'now': now,
                 'weekday': weekday,
                 'hour': hour
