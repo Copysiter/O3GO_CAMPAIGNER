@@ -97,19 +97,20 @@ async def get_messages(
         raise HTTPException(
             status_code=404, detail='Android Device not found'
         )
-    message = await get_next(
-        session=db, user=user, api_key=db_obj.device, status='waiting'
-    )
-    if not message:
+    try:
+        message = await get_next(
+            session=db, user=user, api_key=db_obj.device, status='waiting'
+        )
+        return schemas.AndroidMessageResponse(
+            **db_obj.to_dict(),
+            data=[{
+                'id': message.get('id'),
+                'phone': message.get('phone'),
+                'msg': message.get('text')
+            }]
+        )
+    except HTTPException:
         return schemas.AndroidMessageResponse(data=[])
-    return schemas.AndroidMessageResponse(
-        **db_obj.to_dict(),
-        data=[{
-            'id': message.get('id'),
-            'phone': message.get('phone'),
-            'msg': message.get('text')
-        }]
-    )
 
 
 @router.post(
