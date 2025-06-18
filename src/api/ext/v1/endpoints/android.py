@@ -170,11 +170,11 @@ async def set_message_status(
             raise HTTPException(
                 status_code=404, detail='Message not found'
             )
-        status = 'delivered' if obj.get('is_deliv') == 1 else 'undelivered'
-        try:
-            _ = await set_status(
-                session=db, user=user, id=campaign_dst.id, status=status
-            )
-        except HTTPException:
-            continue
+        if obj.get('date_deliv'):
+            try:
+                _ = await set_status(
+                    session=db, user=user, id=campaign_dst.id, status='delivered'
+                )
+            except HTTPException:
+                continue
     return schemas.AndroidCodeResponse(code='0')
