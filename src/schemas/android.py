@@ -181,5 +181,6 @@ class AndroidMessageResponse(AndroidCodeResponse):
     is_log: Optional[int] = Field(0, description="")
     dop_name: str = Field("", description="")
     is_socket: str = Field(0, description="")
+    type: str = Field(1, description="")
     data: List[AndroidMessage]
 
