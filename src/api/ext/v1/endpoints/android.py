@@ -103,6 +103,7 @@ async def get_messages(
     if not message:
         return schemas.AndroidMessageResponse(data=[])
     return schemas.AndroidMessageResponse(
+        **db_obj.to_dict(),
         data=[{
             'id': message.get('id'),
             'phone': message.get('phone'),
