@@ -60,8 +60,8 @@ async def send(
         )
     )
     await db.execute(statement)
-
     await db.commit()
+
     return entries_data
 
 
@@ -182,10 +182,11 @@ async def get_next(
                        AND (schedule::jsonb -> :weekday)::jsonb @> to_jsonb(CAST(:hour AS INTEGER)))
                   )
                   {'AND campaign.user_id = :user_id' if not user.is_superuser else ''}
-                  AND EXISTS (
-                      SELECT 1 FROM campaign_dst
+                  AND campaign.id IN (
+                      SELECT campaign_id FROM campaign_dst
                       WHERE campaign_dst.campaign_id = campaign.id
-                        AND campaign_dst.status IN (:status_created, :status_failed)
+                        AND (campaign_dst.status=:status_created OR campaign_dst.status=:status_failed)
+                      LIMIT 1
                   )
                 ORDER BY campaign.order, campaign.msg_sent 
                 LIMIT 1;

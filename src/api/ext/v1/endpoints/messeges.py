@@ -60,8 +60,8 @@ async def send(
         )
     )
     await db.execute(statement)
-
     await db.commit()
+
     return entries_data
 
 
