@@ -9,7 +9,10 @@ from db.base_class import Base
 
 
 class CampaignApiKeys(Base):
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        Index('campaign_api_keys_api_key', 'api_key'),
+        {'extend_existing': True}
+    )
     campaign_id = Column(BigInteger, ForeignKey(
         'campaign.id', ondelete='CASCADE'), primary_key=True)
     api_key = Column(String, ForeignKey(
@@ -19,7 +22,10 @@ class CampaignApiKeys(Base):
     key = relationship('ApiKey', lazy='joined')
 
 class CampaignTags(Base):
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        Index('campaign_tags_tag_id', 'tag_id'),
+        {'extend_existing': True}
+    )
     campaign_id = Column(BigInteger, ForeignKey(
         'campaign.id', ondelete='CASCADE'), primary_key=True)
     tag_id = Column(BigInteger, ForeignKey(
