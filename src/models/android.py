@@ -9,7 +9,9 @@ class Android(Base):
         Integer, primary_key=True, index=True,
         autoincrement=True, unique=True
     )
-    user_id = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'))
+    user_id = Column(
+        Integer, ForeignKey('user.id', ondelete='CASCADE'), index=True
+    )
     auth_code = Column(String, index=True)
     device = Column(String, index=True)
     device_origin = Column(String, index=True)

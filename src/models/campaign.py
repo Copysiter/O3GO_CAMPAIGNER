@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, ForeignKey, Integer, BigInteger, String, DateTime, Index
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.associationproxy import AssociationProxy
 
 from db.base_class import Base
@@ -36,9 +36,16 @@ class CampaignTags(Base):
 
 
 class Campaign(Base):
-    id = Column(BigInteger, primary_key=True, index=True, autoincrement=True, unique=True)
+    id = Column(
+        BigInteger, primary_key=True, index=True,
+        autoincrement=True, unique=True
+    )
     name = Column(String, index=True)
-    user_id = Column(BigInteger, ForeignKey('user.id', ondelete='CASCADE'))
+    user_id = Column(
+        BigInteger, ForeignKey(
+            'user.id', ondelete='CASCADE'
+        ), index=True
+    )
     schedule = Column(JSONB, nullable=False, default={})
     msg_template = Column(String, index=True)
     msg_attempts = Column(Integer, index=True, default=1)
@@ -61,7 +68,10 @@ class Campaign(Base):
         'CampaignApiKeys', lazy='joined',
         cascade='save-update, merge, delete, delete-orphan'
     )
-    api_keys = AssociationProxy('keys', 'api_key', creator=lambda api_key_value: CampaignApiKeys(api_key=api_key_value))
+    api_keys = AssociationProxy(
+        'keys', 'api_key',
+        creator=lambda api_key_value: CampaignApiKeys(api_key=api_key_value)
+    )
 
     campaign_tags = relationship(
         'CampaignTags', lazy='joined',

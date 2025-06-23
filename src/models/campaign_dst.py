@@ -17,7 +17,7 @@ class CampaignDst(Base):
     )
     ext_id = Column(String, index=True)
     campaign_id = Column(
-        Integer, ForeignKey('campaign.id', ondelete='CASCADE')
+        Integer, ForeignKey('campaign.id', ondelete='CASCADE'), index=True
     )
     src_addr = Column(String, index=True)
     dst_addr = Column(String, index=True)
