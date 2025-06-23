@@ -170,7 +170,7 @@ def webhook(webhook_url: str = None, *, data: dict):
 celery.conf.beat_schedule = {
     'update_messages': {
         'task': 'tasks.update_messages',
-        'schedule': timedelta(seconds=10),
+        'schedule': timedelta(seconds=15),
     },
     'update_campaigns': {
         'task': 'tasks.update_campaigns',
