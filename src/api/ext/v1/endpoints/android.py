@@ -9,9 +9,9 @@ from fastapi import APIRouter, Depends, Form, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models, schemas, crud
+import services.message
 
 from api import deps
-
 from .messages import get_next, set_status
 
 
@@ -84,7 +84,7 @@ async def power_device(
 )
 async def get_messages(
     *,
-    db: AsyncSession = Depends(deps.get_db),
+    session: AsyncSession = Depends(deps.get_db),
     obj_in: schemas.AndroidMessageRequest = \
             Depends(deps.as_form(schemas.AndroidMessageRequest)),
     user = Depends(deps.get_user_by_api_key),
@@ -92,24 +92,32 @@ async def get_messages(
     """
     Get Messages.
     """
-    db_obj = await crud.android.get_by(db=db, device=obj_in.device)
-    if not db_obj:
-        raise HTTPException(
-            status_code=404, detail='Android Device not found'
-        )
+    now = datetime.utcnow()
+    weekday = str(now.isoweekday())
+    hour = now.hour
     try:
-        message = await get_next(
-            session=db, user=user, api_key=db_obj.device, status='waiting'
-        )
-        return schemas.AndroidMessageResponse(
-            **db_obj.to_dict(),
-            data=[{
-                'id': message.get('id'),
-                'phone': message.get('phone'),
-                'msg': message.get('text')
-            }]
-        )
-    except HTTPException:
+        async with session.begin():
+            db_obj = await crud.android.get_by(db=session, device=obj_in.device)
+            if not db_obj:
+                raise HTTPException(
+                    status_code=404, detail='Android Device not found'
+                )
+            message = await services.message.get_next_processing(
+                session=session, user=user, api_key=db_obj.device,
+                status=schemas.CampaignDstStatus.WAITING,
+                now=now, weekday=weekday, hour=hour
+            )
+            return schemas.AndroidMessageResponse(
+                **db_obj.to_dict(),
+                data=[{
+                    'id': message.get('id'),
+                    'phone': message.get('phone'),
+                    'msg': message.get('text')
+                }]
+            )
+    except Exception as e:
+        await session.rollback()
+        print(type(e).__name__, e, sep=', ')
         return schemas.AndroidMessageResponse(data=[])
 
 
@@ -153,7 +161,7 @@ async def confirm_message(
 )
 async def set_message_status(
     *,
-    db: AsyncSession = Depends(deps.get_db),
+    session: AsyncSession = Depends(deps.get_db),
     # obj_in: schemas.AndroidMessageWebhook = \
     #         Depends(deps.as_form(schemas.AndroidMessageWebhook)),
     device: str = Form(...),
@@ -161,20 +169,28 @@ async def set_message_status(
     user = Depends(deps.get_user_by_api_key),
 ) -> Any:
     """
-    Confirm message receive.
+    Set message status.
     """
-    for obj in json.loads(param_json):
-        campaign_dst = \
-            await crud.campaign_dst.get(db=db, id=obj.get('id'))
-        if not campaign_dst:
-            raise HTTPException(
-                status_code=404, detail='Message not found'
-            )
-        if obj.get('date_deliv'):
-            try:
-                _ = await set_status(
-                    session=db, user=user, id=campaign_dst.id, status='delivered'
-                )
-            except HTTPException:
-                continue
-    return schemas.AndroidCodeResponse(code='0')
+    try:
+        async with session.begin():
+            for obj in json.loads(param_json):
+                campaign_dst = \
+                    await crud.campaign_dst.get(db=session, id=obj.get('id'))
+                if not campaign_dst:
+                    raise HTTPException(
+                        status_code=404, detail='Message not found'
+                    )
+                if obj.get('date_deliv'):
+                    try:
+                        _ = await services.message.set_status_processing(
+                            session=session, user=user,
+                            id=campaign_dst.id, status='delivered'
+                        )
+                    except Exception as e:
+                        print(type(e).__name__, e, sep=', ')
+                        continue
+            return schemas.AndroidCodeResponse(code='0')
+    except Exception as e:
+        await session.rollback()
+        print(type(e).__name__, e, sep=', ')
+        return schemas.AndroidMessageResponse(data=[])
