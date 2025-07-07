@@ -2,13 +2,12 @@ from datetime import datetime, timedelta
 from typing import Any, Optional, Literal, List
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy import text, insert, update, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from api import deps
-from tasks import webhook
 from utils.text import safe_replace
 import services.message
 
@@ -172,7 +171,8 @@ async def set_status(
     *, session: AsyncSession = Depends(deps.get_db), id: int,
     status: Literal['delivered', 'undelivered', 'failed'],
     src_addr: Optional[str] = None,
-    user = Depends(deps.get_user_by_api_key)
+    user = Depends(deps.get_user_by_api_key),
+    background_tasks: BackgroundTasks
 ) -> Any:
     '''
     Update message status
@@ -181,7 +181,8 @@ async def set_status(
         async with session.begin():
             return await services.message.set_status_processing(
                 session=session, user=user,
-                id=id, src_addr=src_addr, status=status
+                id=id, src_addr=src_addr, status=status,
+                background_tasks=background_tasks
             )
     except Exception as e:
         await session.rollback()

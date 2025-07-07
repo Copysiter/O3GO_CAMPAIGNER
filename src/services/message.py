@@ -1,13 +1,13 @@
 from typing import Any, Optional, List
 from datetime import datetime, timedelta
 
-from fastapi import HTTPException
+from fastapi import HTTPException, BackgroundTasks
 from sqlalchemy import text, insert, update, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models, schemas, crud
 
-from tasks import webhook
+from tasks import webhook, send_webhook
 from utils.text import safe_replace
 
 
@@ -194,7 +194,8 @@ async def get_next_processing(
 async def set_status_processing(
     session: AsyncSession, user: models.User,
     id: int, src_addr: Optional[str] = None,
-    status: schemas.CampaignDstStatus = schemas.CampaignDstStatus.SENT
+    status: schemas.CampaignDstStatus = schemas.CampaignDstStatus.SENT,
+    background_tasks: BackgroundTasks = None
 ) -> Any:
     result = await session.execute(
         text(f'''
@@ -237,9 +238,9 @@ async def set_status_processing(
         ''' if status in ('delivered', 'undelivered') else 'status'
 
     if campaign_dst.status != (
-            new_status := getattr(
-                schemas.CampaignDstStatus, status.upper()
-            )
+        new_status := getattr(
+            schemas.CampaignDstStatus, status.upper()
+        )
     ):
         await session.execute(
             text('''
@@ -274,9 +275,14 @@ async def set_status_processing(
 
     if campaign_dst.webhook_url and campaign_dst.ext_id \
             and status in ('delivered', 'undelivered'):
-        webhook.delay(campaign_dst.webhook_url, data={
-            'id': campaign_dst.ext_id, 'status': status
-        })
+        # webhook.delay(campaign_dst.webhook_url, data={
+        #     'id': campaign_dst.ext_id, 'status': status
+        # })
+        background_tasks.add_task(
+            send_webhook,
+            campaign_dst.webhook_url,
+            data={'id': campaign_dst.ext_id, 'status': status}
+        )
 
     return {
         'id': campaign_dst.id,

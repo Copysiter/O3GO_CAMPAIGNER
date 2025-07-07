@@ -1,5 +1,6 @@
 import asyncio
 import aiohttp
+import logging
 
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -18,6 +19,8 @@ celery.conf.result_backend = settings.CELERY_RESULT_BACKEND
 celery.conf.broker_connection_retry_on_startup = True
 celery.conf.timezone = 'UTC'
 celery.conf.enable_utc = True
+
+logger = logging.getLogger(__name__)
 
 
 async def update_expired_messages():
@@ -144,9 +147,22 @@ async def send_webhook(webhook_url: str = None, *, data: dict):
         if not webhook_url:
             return
 
-    async with aiohttp.ClientSession() as session:
-        async with session.post(webhook_url, json=data):
-            pass
+    logger.info(
+        'Sending webhook to %s with payload: %s',
+        webhook_url, data
+    )
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(webhook_url, json=data) as resp:
+                    resp_text = await resp.text()
+                    logger.info(
+                        "Received response from %s: %s %s",
+                        webhook_url, resp.status, resp_text
+                    )
+    except Exception as e:
+        logger.exception(
+            "Failed to send webhook to %s: %s", webhook_url, e
+        )
 
 
 @celery.task

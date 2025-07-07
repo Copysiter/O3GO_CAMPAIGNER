@@ -5,7 +5,7 @@ import string
 from datetime import datetime
 from typing import Any, List
 
-from fastapi import APIRouter, Depends, Form, HTTPException, status
+from fastapi import APIRouter, Depends, Form, HTTPException, BackgroundTasks, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models, schemas, crud
@@ -167,6 +167,7 @@ async def set_message_status(
     device: str = Form(...),
     param_json: str = Form(...),
     user = Depends(deps.get_user_by_api_key),
+    background_tasks: BackgroundTasks
 ) -> Any:
     """
     Set message status.
@@ -184,7 +185,8 @@ async def set_message_status(
                     try:
                         _ = await services.message.set_status_processing(
                             session=session, user=user,
-                            id=campaign_dst.id, status='delivered'
+                            id=campaign_dst.id, status='delivered',
+                            background_tasks=background_tasks
                         )
                     except Exception as e:
                         print(type(e).__name__, e, sep=', ')
