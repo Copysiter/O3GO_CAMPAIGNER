@@ -20,10 +20,11 @@ celery.conf.broker_connection_retry_on_startup = True
 celery.conf.timezone = 'UTC'
 celery.conf.enable_utc = True
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 
-async def update_expired_messages():
+@celery.task(name='tasks.update_messages')
+async def update_messages():
     async with async_session() as session:
         async with session.begin():
             try:
@@ -106,7 +107,8 @@ async def update_expired_messages():
                 raise
 
 
-async def update_complete_campaigns():
+@celery.task(name='tasks.update_campaigns')
+async def update_campaigns():
     async with async_session() as session:
         async with session.begin():
             try:
@@ -138,7 +140,7 @@ async def send_webhook(webhook_url: str = None, *, data: dict):
                     WHERE campaign_dst.ext_id = :ext_id
                 '''),
                 {
-                    'ext_id': data.get(id)
+                    'ext_id': data.get('id')
                 }
             )
             if not (row := result.fetchone()):
@@ -147,7 +149,7 @@ async def send_webhook(webhook_url: str = None, *, data: dict):
         if not webhook_url:
             return
 
-    logger.info(
+    logging.info(
         'Sending webhook to %s with payload: %s',
         webhook_url, data
     )
@@ -155,32 +157,19 @@ async def send_webhook(webhook_url: str = None, *, data: dict):
         async with aiohttp.ClientSession() as session:
             async with session.post(webhook_url, json=data) as resp:
                     resp_text = await resp.text()
-                    logger.info(
+                    logging.info(
                         "Received response from %s: %s %s",
                         webhook_url, resp.status, resp_text
                     )
     except Exception as e:
-        logger.exception(
+        logging.exception(
             "Failed to send webhook to %s: %s", webhook_url, e
         )
 
 
-@celery.task
-def update_messages():
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(update_expired_messages())
-
-
-@celery.task
-def update_campaigns():
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(update_complete_campaigns())
-
-
-@celery.task
-def webhook(webhook_url: str = None, *, data: dict):
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(send_webhook(webhook_url, data=data))
+@celery.task(name='tasks.webhook')
+async def webhook(webhook_url: str = None, *, data: dict):
+    await send_webhook(webhook_url, data=data)
 
 
 celery.conf.beat_schedule = {

@@ -275,14 +275,14 @@ async def set_status_processing(
 
     if campaign_dst.webhook_url and campaign_dst.ext_id \
             and status in ('delivered', 'undelivered'):
-        # webhook.delay(campaign_dst.webhook_url, data={
-        #     'id': campaign_dst.ext_id, 'status': status
-        # })
-        background_tasks.add_task(
-            send_webhook,
-            campaign_dst.webhook_url,
-            data={'id': campaign_dst.ext_id, 'status': status}
-        )
+        webhook.delay(campaign_dst.webhook_url, data={
+            'id': campaign_dst.ext_id, 'status': status
+        })
+        # background_tasks.add_task(
+        #     send_webhook,
+        #     campaign_dst.webhook_url,
+        #     data={'id': campaign_dst.ext_id, 'status': status}
+        # )
 
     return {
         'id': campaign_dst.id,
