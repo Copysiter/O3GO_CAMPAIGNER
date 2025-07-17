@@ -161,7 +161,7 @@ class AndroidMessageWebhook(BaseModel):
 
 # Response with code
 class AndroidCodeResponse(BaseModel):
-    code: str = Field(0, description="Код успешности операции")
+    code: str = Field("0", description="Код успешности операции")
 
 
 # Response for android device register
