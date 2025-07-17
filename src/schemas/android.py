@@ -180,7 +180,7 @@ class AndroidMessageResponse(AndroidCodeResponse):
     ost: Optional[int] = Field(None, description="")
     is_log: Optional[int] = Field(0, description="")
     dop_name: str = Field("", description="")
-    is_socket: str = Field(0, description="")
-    type: str = Field(1, description="")
+    is_socket: int = Field(0, description="")
+    type: int = Field(1, description="")
     data: List[AndroidMessage]
 
