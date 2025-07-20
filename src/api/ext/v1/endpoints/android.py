@@ -3,22 +3,26 @@ import random
 import string
 
 from datetime import datetime
-from typing import Any, List
+from typing import Any
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, BackgroundTasks, status
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models, schemas, crud
 import services.message
 
 from api import deps
-from .messages import get_next, set_status
 
 
 def generate_auth_code(length=6):
     characters = string.ascii_uppercase + string.digits
     return ''.join(random.choices(characters, k=length))
 
+
+UPLOAD_DIR = Path('upload/apk')
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 router = APIRouter()
 
@@ -196,3 +200,29 @@ async def set_message_status(
         await session.rollback()
         print(type(e).__name__, e, sep=', ')
         return schemas.AndroidMessageResponse(data=[])
+
+
+@router.get("/apk")
+async def download_apk(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    _ = Depends(deps.get_user_by_api_key)
+):
+    version = await crud.version.get_last(db=db)
+    if not version:
+        raise HTTPException(status_code=404, detail="Apk Version not found")
+    if not version.file_name:
+        raise HTTPException(
+            status_code=404, detail="Apk filename not specified"
+        )
+
+    file_path = UPLOAD_DIR / version.file_name
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Apk File not found")
+
+    return FileResponse(
+        path=file_path,
+        filename=version.file_name,
+        media_type="application/vnd.android.package-archive"
+    )

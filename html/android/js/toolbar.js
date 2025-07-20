@@ -92,3 +92,39 @@ window.initToolbar = function() {
         ],
     });
 }
+
+window.initVersionToolbar = function() {
+    $('#versions-toolbar').kendoToolBar({
+        items: [
+            {
+                template: "<div class='k-window-title ps-6'>Android App Versions</div>",
+            },
+            {
+                type: 'spacer',
+            },
+            {
+                type: 'button',
+                text: 'Refresh',
+                click: function (e) {
+                    $('#versions-grid').data('kendoGrid').dataSource.read();
+                },
+            },
+            {
+                type: 'button',
+                text: 'Clear Filter',
+                click: function (e) {
+                    $('#versions-grid').data('kendoGrid').dataSource.filter({});
+                },
+            },
+            {
+                type: 'button',
+                text: 'New Version',
+                icon: 'plus',
+                click: function (e) {
+                    let grid = $('#versions-grid').data('kendoGrid');
+                    grid.addRow();
+                },
+            }
+        ],
+    });
+}

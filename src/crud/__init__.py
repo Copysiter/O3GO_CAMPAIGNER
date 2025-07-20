@@ -4,3 +4,4 @@ from .api_key import api_key  # noqa
 from .campaign import campaign  # noqa
 from .campaign_dst import campaign_dst  # noqa
 from .android import android  # noqa
+from .version import version  # noqa

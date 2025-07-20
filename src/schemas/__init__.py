@@ -12,3 +12,4 @@ from .status import CampaignStatus, CampaignDstStatus  # noqa
 
 from .android import Android, AndroidCreate,AndroidInDB, AndroidUpdate, AndroidRows
 from .android import *
+from .version import Version, VersionCreate, VersionInDB, VersionUpdate, VersionRows
