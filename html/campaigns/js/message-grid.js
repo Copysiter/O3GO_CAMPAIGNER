@@ -176,6 +176,7 @@ window.initMessageGrid = function(id) {
             {
                 field: 'attempts',
                 title: 'Attempts',
+                filterable: false,
                 sortable: false
             },
             {

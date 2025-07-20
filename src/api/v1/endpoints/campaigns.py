@@ -44,7 +44,6 @@ async def read_campaigns(
                 filters_modified.append(filter)
         else:
             filters_modified.append(filter)
-
     filters = []
     for i in range(len(filters_modified)):
         if filters_modified[i]['field'] == 'tags':
@@ -58,7 +57,7 @@ async def read_campaigns(
                 })
             else:
                 filters[tags_idx]['value'].append(filters_modified[i]['value'])
-        if filters_modified[i]['field'] == 'status':
+        elif filters_modified[i]['field'] == 'status':
             if status_idx is None:
                 status_idx = len(filters)
                 filters.append({
@@ -68,6 +67,9 @@ async def read_campaigns(
                 })
             else:
                 filters[status_idx]['value'].append(filters_modified[i]['value'])
+        else:
+            filters.append(filters_modified[i])
+
     if current_user.is_superuser:
         campaigns = await crud.campaign.get_rows(
             db, skip=skip, limit=limit, filters=filters, orders=orders)
