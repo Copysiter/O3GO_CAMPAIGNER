@@ -56,11 +56,16 @@ async def reg_device(
         auth_code=auth_code, id_device=db_obj.id
     )
     if version:
-        server_host, server_port = request.url.hostname, request.url.port
+        scheme, host, port = \
+            request.url.scheme, request.url.hostname, request.url.port
+        if (scheme == 'http' and port != 80) \
+                or (scheme == 'https' and port != 443):
+            base_url = f'{scheme}://{host}:{port}'
+        else:
+            base_url = f'{scheme}://{host}'
         response.version = version.id
         response.apk_url = (
-            f'http://{server_host}:{server_port}'
-            f'/ext/api/v1/android/apk?x_api_key={user.ext_api_key}'
+            f'{base_url}/ext/api/v1/android/apk?x_api_key={user.ext_api_key}'
         )
     return response
 
