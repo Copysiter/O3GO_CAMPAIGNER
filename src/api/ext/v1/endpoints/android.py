@@ -6,7 +6,9 @@ from datetime import datetime
 from typing import Any
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, HTTPException, BackgroundTasks, status
+from fastapi import (
+    Request, APIRouter, Depends, Form, HTTPException, BackgroundTasks, status
+)
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,6 +40,7 @@ async def reg_device(
     obj_in: schemas.AndroidCreate = \
             Depends(deps.as_form(schemas.AndroidCreate)),
     user = Depends(deps.get_user_by_api_key),
+    request: Request
 ) -> Any:
     """
     Register new Device.
@@ -48,9 +51,18 @@ async def reg_device(
         obj_in.user_id = user.id
         auth_code = obj_in.auth_code = generate_auth_code()
         db_obj = await crud.android.create(db=db, obj_in=obj_in)
-    return schemas.AndroidRegResponse(
+    version = await crud.version.get_last(db=db)
+    response = schemas.AndroidRegResponse(
         auth_code=auth_code, id_device=db_obj.id
     )
+    if version:
+        server_host, server_port = request.url.hostname, request.url.port
+        response.version = version.id
+        response.apk_url = (
+            f'http://{server_host}:{server_port}'
+            f'/ext/api/v1/android/apk?x_api_key={user.ext_api_key}'
+        )
+    return response
 
 
 @router.post(

@@ -170,6 +170,7 @@ class AndroidRegResponse(AndroidCodeResponse):
     is_socket: int = Field(0, description="")
     version: int = Field(1, description="")
     id_device: int = Field(0, description="ID зарегистрированного устройства в БД")
+    apk_url: str = Field(None, description="URL для скачивания .apk")
 
 
 class AndroidMessageResponse(AndroidCodeResponse):
