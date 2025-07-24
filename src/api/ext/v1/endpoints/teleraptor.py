@@ -1,11 +1,12 @@
 from typing import Any, Literal
+from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import deps
 
-from .messages import get_next, set_status
+import services.message
 
 
 router = APIRouter()
@@ -27,28 +28,49 @@ async def proxy_get_next(
     '''
     Get next message.
     '''
-    # user = await deps.get_user_by_api_key(session=session, api_key=md5)
-    r = await get_next(
-        session=session, campaign_id=id_background, user=user
-    )
-
-    return [{
-        'id_message': str(r['id']), 'phone': r['phone'], 'text_sms': r['text']
-    }]
+    now = datetime.utcnow()
+    weekday = str(now.isoweekday())
+    hour = now.hour
+    try:
+        async with session.begin():
+            message = await services.message.get_next_processing(
+                session=session, user=user, campaign_id=id_background,
+                now=now, weekday=weekday, hour=hour
+            )
+            if not message:
+                return []
+            return [{
+                'id_message': str(message.get('id')),
+                'phone': message.get('phone'),
+                'text_sms': message.get('text'), 'error': '0'
+            }]
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500, detail=f'{type(e).__name__}: {str(e)}'
+        )
 
 
 @router.get('/status')
 async def proxy_set_status(
-    *, session: AsyncSession = Depends(deps.get_db), md5: str = None, id_message: str,
+    *, session: AsyncSession = Depends(deps.get_db),
+    md5: str = None, id_message: str,
     state: Literal['deliver', 'not_deliver', 'not_send', 'expired'],
     user = Depends(deps.get_user_by_api_key)
 ) -> Any:
     '''
     Update message status
     '''
-    # user = await deps.get_user_by_api_key(session=session, api_key=md5)
-    state = STATE_MAP.get(state, state)
-    r = await set_status(
-        session=session, id=int(id_message), status=state, user=user
-    )
-    return [{'id_message': id_message, 'error': '0'}]
+    status = STATE_MAP.get(state, state)
+    try:
+        async with session.begin():
+            _ = await services.message.set_status_processing(
+                session=session, user=user,
+                id=int(id_message), status=status
+            )
+            return [{'id_message': id_message, 'error': '0'}]
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500, detail=f'{type(e).__name__}: {str(e)}'
+        )
