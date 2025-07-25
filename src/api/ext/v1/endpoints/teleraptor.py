@@ -37,13 +37,13 @@ async def proxy_get_next(
                 session=session, user=user, campaign_id=id_background,
                 now=now, weekday=weekday, hour=hour
             )
-            if not message:
-                return []
             return [{
                 'id_message': str(message.get('id')),
                 'phone': message.get('phone'),
                 'text_sms': message.get('text'), 'error': '0'
             }]
+    except HTTPException as e:
+        raise e
     except Exception as e:
         await session.rollback()
         raise HTTPException(
@@ -69,6 +69,8 @@ async def proxy_set_status(
                 id=int(id_message), status=status
             )
             return [{'id_message': id_message, 'error': '0'}]
+    except HTTPException as e:
+        raise e
     except Exception as e:
         await session.rollback()
         raise HTTPException(
