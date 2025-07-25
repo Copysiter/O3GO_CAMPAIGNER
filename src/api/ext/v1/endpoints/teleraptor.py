@@ -34,7 +34,7 @@ async def proxy_get_next(
     try:
         async with session.begin():
             message = await services.message.get_next_processing(
-                session=session, user=user, campaign_id=id_background,
+                session=session, user=user, campaign_id=int(id_background),
                 now=now, weekday=weekday, hour=hour
             )
             return [{
