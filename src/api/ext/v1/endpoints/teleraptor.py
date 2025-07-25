@@ -74,3 +74,25 @@ async def proxy_set_status(
         raise HTTPException(
             status_code=500, detail=f'{type(e).__name__}: {str(e)}'
         )
+
+
+@router.get('/')
+async def proxy_message(
+    *, session: AsyncSession = Depends(deps.get_db),
+    md5: str = None, id_background: int = None, id_message: str = None,
+    state: Literal['deliver', 'not_deliver', 'not_send', 'expired'] = None,
+    user = Depends(deps.get_user_by_api_key)
+) -> Any:
+    '''
+    Get next message.
+    '''
+    if id_message and state:
+        return await proxy_set_status(
+            session=session, id_message=id_message, state=state, user=user
+        )
+    elif id_background:
+        return await proxy_get_next(
+            session=session, md5=md5, id_background=id_background, user=user
+        )
+    else:
+        raise HTTPException(status_code=422, detail='Not enough params')
