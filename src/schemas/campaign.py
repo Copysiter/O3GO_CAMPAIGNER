@@ -31,6 +31,8 @@ class CampaignBase(BaseModel):
     msg_delivered: Optional[int] = 0
     msg_undelivered: Optional[int] = 0
     msg_failed: Optional[int] = 0
+    follow_limit: Optional[int] = 0
+    follow_count: Optional[int] = 0
     webhook_url: Optional[str] = None
     order: Optional[int] = None
     status: Optional[int] = 0

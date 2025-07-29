@@ -111,7 +111,8 @@ async def get_next_processing(
     message = {
         'id': campaign_dst.get('id'),
         'phone': campaign_dst.get('dst_addr'),
-        'text': safe_replace(campaign_dst.get('text'))
+        'text': safe_replace(campaign_dst.get('text')),
+        'follow': campaign.follow_limit > campaign.follow_count
     }
     if not message['text']:
         message['text'] = campaign.get('msg_template')
@@ -168,6 +169,11 @@ async def get_next_processing(
                 WHEN :current_status = :status_failed
                 THEN msg_failed - 1
                 ELSE msg_failed
+            END,
+            follow_count = CASE 
+                WHEN follow_limit > follow_count
+                THEN follow_count + 1
+                ELSE follow_limit
             END
             WHERE id = :campaign_id
         '''),

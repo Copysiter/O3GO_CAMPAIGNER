@@ -63,7 +63,7 @@ window.initForm = function() {
                 max: 100,
                 // value: 1
             },
-            colSpan: 6
+            colSpan: 4
         }, {
             field: "msg_attempts",
             label: "Message Attempts:",
@@ -74,7 +74,18 @@ window.initForm = function() {
                 max: 100,
                 // value: 1
             },
-            colSpan: 6
+            colSpan: 4
+        }, {
+            field: "follow_limit",
+            label: "Follow Limit:",
+            editor: 'NumericTextBox',
+            editorOptions: {
+                format: "n0",
+                min: 0,
+                // max: 100,
+                // value: 1
+            },
+            colSpan: 4
         }, {
             field: "sep3",
             colSpan: 12,

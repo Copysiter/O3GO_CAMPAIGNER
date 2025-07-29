@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from sqlalchemy import Column, ForeignKey, Integer, BigInteger, String, DateTime, Index
+from sqlalchemy import (
+    Column, ForeignKey, Integer, BigInteger, String, DateTime, Index, text
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.associationproxy import AssociationProxy
@@ -56,6 +58,8 @@ class Campaign(Base):
     msg_delivered = Column(Integer, index=True, default=0)
     msg_undelivered = Column(Integer, index=True, default=0)
     msg_failed = Column(Integer, index=True, default=0)
+    follow_limit = Column(Integer, default=0, server_default=text("0"))
+    follow_count = Column(Integer, default=0, server_default=text("0"))
     webhook_url = Column(String)
     create_ts = Column(DateTime, index=True, default=datetime.utcnow)
     start_ts = Column(DateTime, index=True)

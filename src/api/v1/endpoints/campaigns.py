@@ -109,6 +109,7 @@ async def create_campaign(
         msg_sending_timeout=campaign_in.msg_sending_timeout,
         msg_status_timeout=campaign_in.msg_status_timeout,
         msg_template = campaign_in.msg_template,
+        follow_limit=campaign_in.follow_limit,
         msg_total = 0,
         order=campaign_in.order,
         create_ts = ts,
