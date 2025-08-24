@@ -24,21 +24,21 @@ class CampaignApiKeys(Base):
     key = relationship('ApiKey', lazy='joined')
 
 
-class CampaignAndroids(Base):
-    __table_args__ = (
-        Index("campaign_android_device", "device"),
-        Index("campaign_android_campaign_id", "campaign_id"),
-        {'extend_existing': True}
-    )
-
-    campaign_id = Column(BigInteger, ForeignKey(
-        'campaign.id', ondelete='CASCADE'), primary_key=True)
-
-    device = Column(String, ForeignKey(
-        'android.device', ondelete='CASCADE'), primary_key=True)
-
-    # campaign = relationship("Campaign", back_populates="android_links", lazy="joined")
-    android  = relationship("Android", lazy="joined")
+# class CampaignAndroids(Base):
+#     __table_args__ = (
+#         Index("campaign_android_device", "device"),
+#         Index("campaign_android_campaign_id", "campaign_id"),
+#         {'extend_existing': True}
+#     )
+#
+#     campaign_id = Column(BigInteger, ForeignKey(
+#         'campaign.id', ondelete='CASCADE'), primary_key=True)
+#
+#     device = Column(String, ForeignKey(
+#         'android.device', ondelete='CASCADE'), primary_key=True)
+#
+#     # campaign = relationship("Campaign", back_populates="android_links", lazy="joined")
+#     android  = relationship("Android", lazy="joined")
 
 
 class CampaignTags(Base):
@@ -102,14 +102,14 @@ class Campaign(Base):
     # tag_ids = AssociationProxy('campaign_tags', 'id')
     tags = AssociationProxy('campaign_tags', 'tag')
 
-    campaign_androids = relationship(
-        'CampaignAndroids', lazy='selectin',
-        cascade='save-update, merge, delete, delete-orphan'
-    )
-    androids = AssociationProxy(
-        'campaign_androids', 'device',
-        creator=lambda android_device: CampaignAndroids(device=android_device)
-    )
+    # campaign_androids = relationship(
+    #     'CampaignAndroids', lazy='selectin',
+    #     cascade='save-update, merge, delete, delete-orphan'
+    # )
+    # androids = AssociationProxy(
+    #     'campaign_androids', 'device',
+    #     creator=lambda android_device: CampaignAndroids(device=android_device)
+    # )
 
     __table_args__ = (
         Index(
