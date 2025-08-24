@@ -128,3 +128,41 @@ window.initVersionToolbar = function() {
         ],
     });
 }
+
+window.initAccountToolbar = function() {
+    $('#accounts-toolbar').kendoToolBar({
+        items: [
+            {
+                template: "<div class='k-window-title ps-6'>Android App Accounts</div>",
+            },
+            {
+                type: 'spacer',
+            },
+            {
+                type: 'button',
+                text: 'Refresh',
+                click: function (e) {
+                    $('#accounts-grid').data('kendoGrid').dataSource.read();
+                },
+            },
+            {
+                type: 'button',
+                text: 'Clear Filter',
+                click: function (e) {
+                    $('#accounts-grid').data('kendoGrid').dataSource.filter({});
+                },
+            },
+            {
+                type: 'button',
+                text: 'New Account',
+                icon: 'plus',
+                click: function (e) {
+                    // let grid = $('#accounts-grid').data('kendoGrid');
+                    // grid.addRow();
+                    // Если окно уже создано — просто открываем
+                    $("#account-window").data("kendoWindow").center().open();
+                },
+            }
+        ],
+    });
+}

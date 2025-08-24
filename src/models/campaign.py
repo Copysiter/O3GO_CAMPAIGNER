@@ -23,6 +23,24 @@ class CampaignApiKeys(Base):
     #campaign = relationship('Campaign', back_populates='keys')
     key = relationship('ApiKey', lazy='joined')
 
+
+class CampaignAndroids(Base):
+    __table_args__ = (
+        Index("campaign_android_device", "device"),
+        Index("campaign_android_campaign_id", "campaign_id"),
+        {'extend_existing': True}
+    )
+
+    campaign_id = Column(BigInteger, ForeignKey(
+        'campaign.id', ondelete='CASCADE'), primary_key=True)
+
+    device = Column(String, ForeignKey(
+        'android.device', ondelete='CASCADE'), primary_key=True)
+
+    # campaign = relationship("Campaign", back_populates="android_links", lazy="joined")
+    android  = relationship("Android", lazy="joined")
+
+
 class CampaignTags(Base):
     __table_args__ = (
         Index('campaign_tags_tag_id', 'tag_id'),
@@ -69,7 +87,7 @@ class Campaign(Base):
     user = relationship('User', lazy='joined')
 
     keys = relationship(
-        'CampaignApiKeys', lazy='joined',
+        'CampaignApiKeys', lazy='selectin',
         cascade='save-update, merge, delete, delete-orphan'
     )
     api_keys = AssociationProxy(
@@ -78,12 +96,24 @@ class Campaign(Base):
     )
 
     campaign_tags = relationship(
-        'CampaignTags', lazy='joined',
+        'CampaignTags', lazy='selectin',
         cascade='save-update, merge, delete, delete-orphan'
     )
     # tag_ids = AssociationProxy('campaign_tags', 'id')
     tags = AssociationProxy('campaign_tags', 'tag')
 
+    campaign_androids = relationship(
+        'CampaignAndroids', lazy='selectin',
+        cascade='save-update, merge, delete, delete-orphan'
+    )
+    androids = AssociationProxy(
+        'campaign_androids', 'device',
+        creator=lambda android_device: CampaignAndroids(device=android_device)
+    )
+
     __table_args__ = (
-        Index('ix_campaign_schedule_gin', schedule, postgresql_using='gin'),
+        Index(
+            'ix_campaign_schedule_gin',
+            schedule, postgresql_using='gin'
+        ),
     )

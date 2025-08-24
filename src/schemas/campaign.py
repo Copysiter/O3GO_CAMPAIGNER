@@ -1,9 +1,8 @@
-from optparse import Option
-from typing import Optional, List, Union
+from typing import Optional, List
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, model_serializer
 
 from .user import User
 from .tag import Tag
@@ -26,13 +25,7 @@ class CampaignBase(BaseModel):
     msg_attempts: Optional[int] = None
     msg_sending_timeout: Optional[int] = None
     msg_status_timeout: Optional[int] = None
-    msg_total: Optional[int] = 0
-    msg_sent: Optional[int] = 0
-    msg_delivered: Optional[int] = 0
-    msg_undelivered: Optional[int] = 0
-    msg_failed: Optional[int] = 0
     follow_limit: Optional[int] = 0
-    follow_count: Optional[int] = 0
     webhook_url: Optional[str] = None
     order: Optional[int] = None
     status: Optional[int] = 0
@@ -40,6 +33,7 @@ class CampaignBase(BaseModel):
     start_ts: Optional[datetime] = None
     stop_ts: Optional[datetime] = None
     api_keys: Optional[list] = []
+    androids: Optional[list] = []
 
 
 # Properties to receive on item creation
@@ -59,16 +53,17 @@ class CampaignCreate(CampaignBase):
     keys: Optional[list] = []
     api_keys: Optional[list] = []
     tags: Optional[list] = []
+    androids: Optional[list] = []
 
 
 # Properties to receive on item update
 class CampaignUpdate(CampaignBase):
+    model_config = ConfigDict(from_attributes=True)
+
     keys: Optional[list] = []
     api_keys: Optional[list] = []
     tags: Optional[list] = []
-
-    class Config:
-        from_attributes = True
+    androids: Optional[list] = []
 
 
 # Properties shared by models stored in DB
@@ -81,8 +76,16 @@ class CampaignInDBBase(CampaignBase):
 
 # Properties to return to client
 class Campaign(CampaignInDBBase):
+    msg_total: Optional[int] = 0
+    msg_sent: Optional[int] = 0
+    msg_delivered: Optional[int] = 0
+    msg_undelivered: Optional[int] = 0
+    msg_failed: Optional[int] = 0
+    follow_count: Optional[int] = 0
+
     user: User
     api_keys: list = []
+    androids: list = []
     tags: List[Tag] = []
 
 # Properties stored in DB

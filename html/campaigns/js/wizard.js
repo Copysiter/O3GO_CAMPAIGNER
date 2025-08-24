@@ -175,6 +175,33 @@ window.initWizard = function() {
                     },
                     colSpan: 12,
                 }, {
+                    field: 'androids',
+                    label: 'Android Devices',
+                    editor: 'MultiSelect',
+                    editorOptions: {
+                        dataSource: new kendo.data.DataSource({
+                            transport: {
+                                read: {
+                                    url: `http://${api_base_url}/api/v1/options/android`,
+                                    type: 'GET',
+                                    beforeSend: function (request) {
+                                        request.setRequestHeader(
+                                            'Authorization',
+                                            `${token_type} ${access_token}`
+                                        );
+                                    },
+                                },
+                            },
+                        }),
+                        dataTextField: 'text',
+                        dataValueField: 'value',
+                        valuePrimitive: true,
+                        downArrow: true,
+                        animation: false,
+                        autoClose: false
+                    },
+                    colSpan: 12,
+                }, {
                     field: 'tags',
                     label: 'Tags',
                     editor: 'MultiSelect',

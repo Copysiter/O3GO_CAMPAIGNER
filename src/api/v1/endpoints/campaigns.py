@@ -173,7 +173,7 @@ async def create_campaign(
     campaign_db_in.msg_total = len(campaign_dst_in)
     campaign = await crud.campaign.create(db=db, obj_in=campaign_db_in)
 
-    if (campaign.id and len(campaign_dst_in) > 0):
+    if campaign.id and len(campaign_dst_in) > 0:
         for i in range(len(campaign_dst_in)):
             campaign_dst_in[i]['campaign_id'] = campaign.id
         _ = await crud.campaign_dst.create_rows(db=db, obj_in=campaign_dst_in)

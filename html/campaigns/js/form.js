@@ -22,12 +22,7 @@ window.initForm = function() {
                 }
             },
             dataBound: function (e) {
-                // console.log(isAuth.user.id);
-                // campaignCreateModel.data.set("user_id", isAuth.user.id);
-                // this.select(function(item) {
-                //     return item.value === isAuth.user.id;
-                // });
-                //this.trigger("select");
+
             },
             dataTextField: "text",
             dataValueField: "value",
@@ -61,7 +56,6 @@ window.initForm = function() {
                 format: "n0",
                 min: 1,
                 max: 100,
-                // value: 1
             },
             colSpan: 4
         }, {
@@ -72,7 +66,6 @@ window.initForm = function() {
                 format: "n0",
                 min: 1,
                 max: 100,
-                // value: 1
             },
             colSpan: 4
         }, {
@@ -82,8 +75,6 @@ window.initForm = function() {
             editorOptions: {
                 format: "n0",
                 min: 0,
-                // max: 100,
-                // value: 1
             },
             colSpan: 4
         }, {
@@ -148,6 +139,38 @@ window.initForm = function() {
             label: false,
             editor: "<div class='separator mx-n15'></div>"
         }, {
+            field: 'androids',
+            label: 'Android Devices',
+            editor: 'MultiSelect',
+            editorOptions: {
+                dataSource: new kendo.data.DataSource({
+                    transport: {
+                        read: {
+                            url: `http://${api_base_url}/api/v1/options/android`,
+                            type: 'GET',
+                            beforeSend: function (request) {
+                                request.setRequestHeader(
+                                    'Authorization',
+                                    `${token_type} ${access_token}`
+                                );
+                            },
+                        },
+                    },
+                }),
+                dataTextField: 'text',
+                dataValueField: 'value',
+                valuePrimitive: true,
+                downArrow: true,
+                animation: false,
+                autoClose: false
+            },
+            colSpan: 12,
+        }, {
+            field: "sep6",
+            colSpan: 12,
+            label: false,
+            editor: "<div class='separator mx-n15'></div>"
+        }, {
             field: 'tags',
             label: 'Tags',
             editor: 'MultiSelect',
@@ -172,25 +195,10 @@ window.initForm = function() {
                 downArrow: true,
                 animation: false,
                 autoClose: false,
-                // noDataTemplate: function (e) {
-                //     let value = e.instance.input.val();
-                //     return `
-                //     <div class='no-data'>
-                //     <p>Api Key not found.<br>Do you want to add new Api Key ${value} ?</p>
-                //     <button class="k-button k-button-solid-base k-button-solid k-button-md k-rounded-md" onclick="addNew('${value}', 'campaign-create-window')">Append</button>
-                //     </p>
-                //     `;
-                // },
-                // tagTemplate: '<span class="k-chip k-chip-md k-rounded-md k-chip-solid k-chip-solid-base" unselectable="on" style="color::color_txt;background::color_bg;">' +
-                //     '<span unselectable="on" class="k-chip-content"><span class="k-chip-label">:name</span></span>' +
-                //     '<span class="k-chip-action k-chip-remove-action" unselectable="on" aria-hidden="true" aria-label="delete" title="delete">' +
-                //     '<span class="k-icon k-i-x-circle"></span>' +
-                //     '</span>' +
-                //     '</span>'
             },
             colSpan: 12,
         }, {
-            field: "sep6",
+            field: "sep7",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -213,7 +221,7 @@ window.initForm = function() {
             },
             colSpan: 6
         }, {
-            field: "sep7",
+            field: "sep8",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -238,7 +246,7 @@ window.initForm = function() {
                 timeFormat: "HH:mm"
             }
         }, {
-            field: "sep8",
+            field: "sep9",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -248,7 +256,7 @@ window.initForm = function() {
             label: false,
             editor: "<div id='campaign-edit-schedule' class='schedule'></div>"
         }, {
-            field: "sep9",
+            field: "sep10",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -346,6 +354,7 @@ function addNew(value, id) {
         widget.trigger('change');
         widget.close();
         document.querySelector(`#${id} .k-selection-multiple`).lastChild.value = '';
+        $("#campaign-grid").data("kendoGrid").dataSource.read();
     })
     .fail(function (result) {
 

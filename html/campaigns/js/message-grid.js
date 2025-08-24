@@ -43,15 +43,13 @@ window.initMessageGrid = function(id) {
                         field_2: { type: 'string' },
                         field_3: { type: 'string' },
                         status: { type: 'number' },
+                        create_ts: { type: 'date' },
+                        sent_ts: { type: 'date' },
+                        expire_ts: { type: 'date' },
                         // empty: {}
                     },
                 },
             },
-            // data: [
-            //     {number: '1', phone: '89083645021', message: 'abcdef', status: 'New', sms_count: '10'},
-            //     {number: '2', phone: '89108301114', message: 'yythtg', status: 'New', sms_count: '10'},
-            //     {number: '3', phone: '89650987652', message: 'ffffff', status: 'New', sms_count: '10'},
-            // ],
             pageSize: 100,
             serverPaging: true, // true
             serverFiltering: true, // true
@@ -239,6 +237,27 @@ window.initMessageGrid = function(id) {
                             ${item.field_3.replaceAll("\n", "<br>")}
                             </div>`
                 },
+            },
+            {
+                field: 'create_ts',
+                title: 'Created',
+                format: '{0: yyyy-MM-dd HH:mm:ss}',
+                filterable: false,
+                sortable: false
+            },
+            {
+                field: 'sent_ts',
+                title: 'Sent',
+                format: '{0: yyyy-MM-dd HH:mm:ss}',
+                filterable: false,
+                sortable: false
+            },
+            {
+                field: 'expire_ts',
+                title: 'Expire',
+                format: '{0: yyyy-MM-dd HH:mm:ss}',
+                filterable: false,
+                sortable: false
             },
             {}
         ]

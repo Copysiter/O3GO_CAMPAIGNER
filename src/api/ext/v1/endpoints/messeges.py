@@ -171,8 +171,7 @@ async def set_status(
     *, session: AsyncSession = Depends(deps.get_db), id: int,
     status: Literal['delivered', 'undelivered', 'failed'],
     src_addr: Optional[str] = None,
-    user = Depends(deps.get_user_by_api_key),
-    background_tasks: BackgroundTasks
+    user = Depends(deps.get_user_by_api_key)
 ) -> Any:
     '''
     Update message status
@@ -181,8 +180,7 @@ async def set_status(
         async with session.begin():
             return await services.message.set_status_processing(
                 session=session, user=user,
-                id=id, src_addr=src_addr, status=status,
-                background_tasks=background_tasks
+                id=id, src_addr=src_addr, status=status
             )
     except Exception as e:
         await session.rollback()

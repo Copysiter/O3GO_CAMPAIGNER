@@ -52,6 +52,25 @@ async def get_api_keys_options(
     } for i in range(len(rows))])
 
 
+@router.get('/android', response_model=List[schemas.OptionInt])
+async def get_api_keys_options(
+    *,
+    db: Session = Depends(deps.get_db),
+    user: models.User = Depends(deps.get_current_active_user)
+) -> Any:
+    """
+    Retrieve android_device options.
+    """
+    filters = [
+        {'field': 'user_id', 'operator': 'eq', 'value': user.id}
+    ] if not user.is_superuser else []
+    rows = await crud.android.get_rows(db, filters=filters, limit=None)
+    return JSONResponse([{
+        'text': rows[i].device_name or rows[i].device,
+        'value': rows[i].device
+    } for i in range(len(rows))])
+
+
 @router.get('/tag', response_model=List[schemas.OptionInt])
 async def get_tag_options(
     *,

@@ -28,3 +28,10 @@ class CampaignDstStatus(Status):
     DELIVERED: int = 2
     UNDELIVERED: int = 3
     FAILED: int = 4
+
+@dataclass
+class AccountStatus(Status):
+    BANNED: int = -1
+    AVAILABLE: int = 0
+    ACTIVE: int = 1
+    PAUSED: int = 2

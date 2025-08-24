@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from crud.base import CRUDBase
 from models.campaign_dst import CampaignDst
-from models.campaign import Campaign
 from schemas.campaign_dst import CampaignDstCreate, CampaignDstUpdate
 
 from core.config import settings

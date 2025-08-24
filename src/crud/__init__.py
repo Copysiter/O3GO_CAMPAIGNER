@@ -5,3 +5,4 @@ from .campaign import campaign  # noqa
 from .campaign_dst import campaign_dst  # noqa
 from .android import android  # noqa
 from .version import version  # noqa
+from .account import account  # noqa

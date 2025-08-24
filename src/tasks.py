@@ -1,9 +1,7 @@
-import asyncio
 import aiohttp
 import logging
 
-from datetime import datetime, timedelta
-from collections import defaultdict
+from datetime import timedelta
 
 from celery import Celery
 from sqlalchemy import text
@@ -20,116 +18,117 @@ celery.conf.broker_connection_retry_on_startup = True
 celery.conf.timezone = 'UTC'
 celery.conf.enable_utc = True
 
-# logger = logging.getLogger(__name__)
+
+SQL_UPDATE_EXPIRED_MESSAGES = text("""
+WITH updated AS (
+  UPDATE campaign_dst d
+  SET status = CASE
+                 WHEN d.attempts > 0
+                 THEN CAST(:failed_status AS INTEGER)
+                 ELSE CAST(:undelivered_status AS INTEGER)
+               END,
+      expire_ts = NULL,
+      update_ts = NOW()
+  WHERE d.status IN (CAST(:created_status AS INTEGER), CAST(:sent_status AS INTEGER)) 
+    AND d.expire_ts IS NOT NULL
+    AND d.expire_ts < NOW()
+  RETURNING d.ext_id, d.campaign_id, d.status
+),
+agg AS (
+  SELECT campaign_id,
+         COUNT(*) FILTER (WHERE status = CAST(:failed_status AS INTEGER))      AS add_failed,
+         COUNT(*) FILTER (WHERE status = CAST(:undelivered_status AS INTEGER)) AS add_undelivered
+  FROM updated
+  GROUP BY campaign_id
+),
+apply AS (
+  UPDATE campaign c
+  SET msg_failed      = c.msg_failed + COALESCE(a.add_failed, 0),
+      msg_undelivered = c.msg_undelivered + COALESCE(a.add_undelivered, 0),
+      status = CASE
+                 WHEN c.msg_delivered + c.msg_undelivered + COALESCE(a.add_undelivered, 0) >= c.msg_total
+                 THEN CAST(:status_complete AS INTEGER)
+                 ELSE c.status
+               END
+  FROM agg a
+  WHERE c.id = a.campaign_id
+  RETURNING c.id
+)
+SELECT * FROM updated;
+""")
+
+SQL_UPDATE_CAMPAIGNS_COMPLETE = text("""
+UPDATE campaign
+SET status = CAST(:status_complete AS INTEGER)
+WHERE msg_sent > 0
+  AND msg_delivered + msg_undelivered >= msg_total
+RETURNING id;
+""")
 
 
 @celery.task(name='tasks.update_messages')
 async def update_messages():
+    """
+    Каждые 15 сек:
+      - переводим все протухшие сообщения в FAILED/UNDELIVERED
+        (по attempts и прежнему статусу);
+      - одним запросом считаем инкременты по кампаниям и обновляем campaign;
+      - шлём вебхуки со статусом EXPIRED.
+    """
     async with async_session() as session:
         async with session.begin():
+            params = {
+                "created_status": int(schemas.CampaignDstStatus.CREATED),
+                "sent_status": int(schemas.CampaignDstStatus.SENT),
+                "failed_status": int(schemas.CampaignDstStatus.FAILED),
+                "undelivered_status": int(schemas.CampaignDstStatus.UNDELIVERED),
+                "status_complete":     int(schemas.CampaignStatus.COMPLETE)
+            }
             try:
-                ts = datetime.utcnow()
                 result = await session.execute(
-                    text('''
-                        UPDATE campaign_dst
-                        SET status = CASE
-                            WHEN attempts > 0 AND status > CAST(:created_status AS INTEGER)
-                            THEN CAST(:failed_status AS INTEGER)
-                            ELSE CAST(:undelivered_status AS INTEGER)
-                        END, expire_ts = NULL
-                        WHERE status > 0
-                          AND status NOT IN (CAST(:delivered_status AS INTEGER),
-                                             CAST(:undelivered_status AS INTEGER))
-                          AND expire_ts IS NOT NULL
-                          AND expire_ts < :expire_ts
-                        RETURNING ext_id, campaign_id, status
-                    '''),
-                    {
-                        'created_status': schemas.CampaignDstStatus.CREATED,
-                        'failed_status': schemas.CampaignDstStatus.FAILED,
-                        'undelivered_status': schemas.CampaignDstStatus.UNDELIVERED,
-                        'delivered_status': schemas.CampaignDstStatus.DELIVERED,
-                        'expire_ts': ts
-                    }
+                    SQL_UPDATE_EXPIRED_MESSAGES, params
                 )
-                failed_counts = defaultdict(int)
-                undelivered_counts = defaultdict(int)
-                for ext_id, campaign_id, status in result.all():
-                    if status == schemas.CampaignDstStatus.FAILED:
-                        failed_counts[campaign_id] += 1
-                    if status == schemas.CampaignDstStatus.UNDELIVERED:
-                        undelivered_counts[campaign_id] += 1
-                        if ext_id:
-                            webhook.delay(data={
-                                'id': ext_id, 'status': 'undelivered'
-                            })
+                rows = result.mappings().all()
 
-                if failed_counts:
-                    case_statements = '\n'.join([
-                        f'WHEN {campaign_id} THEN {count}'
-                        for campaign_id, count in failed_counts.items()
-                    ])
-                    await session.execute(
-                        text(f'''
-                            UPDATE campaign
-                            SET msg_failed = msg_failed + CASE id
-                                {case_statements}
-                                ELSE msg_failed
-                            END
-                            WHERE id IN ({','.join(map(str, failed_counts.keys()))})
-                        ''')
-                    )
+                # Отправляем вебхуки только для UNDELIVERED, если есть ext_id
+                undelivered_code = int(schemas.CampaignDstStatus.UNDELIVERED)
+                for r in rows:
+                    if r['status'] == undelivered_code and r['ext_id']:
+                        webhook.delay(
+                            data={'id': r['ext_id'], 'status': 'expired'}
+                        )
 
-                if undelivered_counts:
-                    case_statements = '\n'.join([
-                        f'WHEN {campaign_id} THEN {count}'
-                        for campaign_id, count in
-                        undelivered_counts.items()
-                    ])
-                    await session.execute(
-                        text(f'''
-                            UPDATE campaign
-                            SET msg_undelivered = msg_undelivered + CASE id
-                                {case_statements}
-                                ELSE msg_undelivered
-                            END,
-                            status = CASE
-                                WHEN msg_delivered + msg_undelivered + 1 >= msg_total
-                                THEN {schemas.CampaignStatus.COMPLETE}
-                                ELSE status
-                            END
-                            WHERE id IN ({','.join(map(str, undelivered_counts.keys()))})
-                        ''')
-                    )
             except Exception as e:
-                await session.rollback()
-                print(f"Ошибка при обновлении истекших сообщений: {e}")
+                logging.exception(
+                    "Ошибка при обновлении истекших сообщений: %s",e
+                )
                 raise
 
 
 @celery.task(name='tasks.update_campaigns')
 async def update_campaigns():
+    """
+    Каждую минуту: подстраховочно закрываем кампании, в которых
+    суммарно доставленных + недоставленных >= всего.
+    """
     async with async_session() as session:
         async with session.begin():
             try:
                 await session.execute(
-                    text('''
-                        UPDATE campaign
-                        SET status = CAST(:status_complete AS INTEGER)
-                        WHERE msg_sent > 0
-                          AND msg_delivered + msg_undelivered >= msg_total
-                    '''),
-                    {
-                        'status_complete': schemas.CampaignStatus.COMPLETE
-                    }
+                    SQL_UPDATE_CAMPAIGNS_COMPLETE,
+                    {'status_complete': int(schemas.CampaignStatus.COMPLETE)}
                 )
             except Exception as e:
-                await session.rollback()
-                print(f"Ошибка при обновлении завершенных кампаний: {e}")
+                logging.exception(
+                    "Ошибка при обновлении завершенных кампаний: %s",e
+                )
                 raise
 
 
 async def send_webhook(webhook_url: str = None, *, data: dict):
+    """
+    Отправка вебхука. Если URL не передан — находим по ext_id.
+    """
     if not webhook_url:
         async with async_session() as session:
             result = await session.execute(
@@ -139,11 +138,10 @@ async def send_webhook(webhook_url: str = None, *, data: dict):
                     JOIN campaign ON campaign.id = campaign_dst.campaign_id
                     WHERE campaign_dst.ext_id = :ext_id
                 '''),
-                {
-                    'ext_id': data.get('id')
-                }
+                {'ext_id': data.get('id')}
             )
-            if not (row := result.fetchone()):
+            row = result.fetchone()
+            if not row:
                 return
             webhook_url = row._mapping.get('webhook_url')
         if not webhook_url:
@@ -154,16 +152,17 @@ async def send_webhook(webhook_url: str = None, *, data: dict):
         webhook_url, data
     )
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(webhook_url, json=data) as resp:
-                    resp_text = await resp.text()
-                    logging.info(
-                        "Received response from %s: %s %s",
-                        webhook_url, resp.status, resp_text
-                    )
+        async with aiohttp.ClientSession() as http:
+            async with http.post(webhook_url, json=data) as resp:
+                resp_text = await resp.text()
+                logging.info(
+                    "Received response from %s: %s %s",
+                    webhook_url, resp.status, resp_text
+                )
     except Exception as e:
         logging.exception(
-            "Failed to send webhook to %s: %s", webhook_url, e
+            "Failed to send webhook to %s: %s",
+            webhook_url, e
         )
 
 
@@ -180,5 +179,5 @@ celery.conf.beat_schedule = {
     'update_campaigns': {
         'task': 'tasks.update_campaigns',
         'schedule': timedelta(seconds=60),
-    },
+    }
 }
