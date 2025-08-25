@@ -36,8 +36,8 @@ class CampaignBase(BaseModel):
     androids: Optional[list] = []
 
 
-# Properties to receive on item creation
-class CampaignCreate(CampaignBase):
+# Properties to receive on item request
+class CampaignRequest(CampaignBase):
     # data_file_upload:  Optional[bool] = False
     data_file_name: Optional[str] = None
     data_text: Optional[str] = None
@@ -64,6 +64,13 @@ class CampaignUpdate(CampaignBase):
     api_keys: Optional[list] = []
     tags: Optional[list] = []
     androids: Optional[list] = []
+
+
+# Properties to receive on item create
+class CampaignCreate(CampaignUpdate):
+    model_config = ConfigDict(from_attributes=True)
+
+    msg_total: Optional[int] = 0
 
 
 # Properties shared by models stored in DB

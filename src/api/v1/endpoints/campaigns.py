@@ -90,7 +90,7 @@ async def create_campaign(
     *,
     db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_active_user),
-    campaign_in: schemas.CampaignCreate
+    campaign_in: schemas.CampaignRequest
 ) -> Any:
     '''
     Create new campaign.
@@ -98,7 +98,7 @@ async def create_campaign(
 
     ts = datetime.utcnow()
 
-    campaign_db_in = schemas.CampaignUpdate(
+    campaign_db_in = schemas.CampaignCreate(
         name = campaign_in.name,
         user_id = campaign_in.user_id if campaign_in.user_id else current_user.id,
         webhook_url=campaign_in.webhook_url,
@@ -110,7 +110,6 @@ async def create_campaign(
         msg_status_timeout=campaign_in.msg_status_timeout,
         msg_template = campaign_in.msg_template,
         follow_limit=campaign_in.follow_limit,
-        msg_total = 0,
         order=campaign_in.order,
         create_ts = ts,
         start_ts=campaign_in.start_ts,

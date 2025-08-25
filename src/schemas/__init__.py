@@ -10,7 +10,7 @@ from .api_key import (
     ApiKey, ApiKeyCreate, ApiKeyInDB, ApiKeyUpdate, ApiKeyRows
 )  # noqa
 from .campaign import (
-    Campaign, CampaignCreate, CampaignInDB, CampaignUpdate, CampaignRows
+    Campaign, CampaignRequest, CampaignCreate, CampaignInDB, CampaignUpdate, CampaignRows
 )  # noqa
 from .campaign_dst import (
     CampaignDst, CampaignDstCreate, CampaignDstInDB,
