@@ -145,13 +145,7 @@ async def link_account(
             android.account_id = account.id
             await session.flush()
 
-            scheme, host, port = \
-                request.url.scheme, request.url.hostname, request.url.port
-            if (scheme == 'http' and port != 80) \
-                    or (scheme == 'https' and port != 443):
-                base_url = f'{scheme}://{host}:{port}'
-            else:
-                base_url = f'{scheme}://{host}'
+            base_url = str(request.base_url)
             url = f'{base_url}/ext/api/v1/android/accounts/{account.uuid}'
 
             return {
