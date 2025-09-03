@@ -148,7 +148,7 @@ async def link_account(
 
             url = urljoin(
                 str(request.base_url),
-                f'/ext/api/v1/android/accounts/{account.uuid}'
+                f'/ext/api/v1/account/{account.uuid}?x_api_key={user.ext_api_key}'
             )
 
             return {
@@ -203,8 +203,8 @@ async def ban_account(
 @router.get("/{uuid}")
 async def download_archive(
     *,
-    db: AsyncSession = Depends(deps.get_db),
-    uuid: str, _ = Depends(deps.get_user_by_api_key)
+    db: AsyncSession = Depends(deps.get_db), uuid: str,
+    _ = Depends(deps.get_user_by_api_key)
 ):
     account = await crud.account.get_by(db=db, uuid=uuid)
     if not account:
