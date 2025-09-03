@@ -5,6 +5,7 @@ import logging
 from typing import Any, Union
 from pathlib import Path
 from datetime import datetime
+from urllib.parse import urljoin
 
 from fastapi import (
     Request, APIRouter, Depends, status
@@ -145,8 +146,10 @@ async def link_account(
             android.account_id = account.id
             await session.flush()
 
-            base_url = str(request.base_url)
-            url = f'{base_url}/ext/api/v1/android/accounts/{account.uuid}'
+            url = urljoin(
+                str(request.base_url),
+                f'/ext/api/v1/android/accounts/{account.uuid}'
+            )
 
             return {
                 'id_task': account.id,

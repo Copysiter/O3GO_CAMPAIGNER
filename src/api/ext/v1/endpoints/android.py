@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 from typing import Any
 from pathlib import Path
+from urllib.parse import urljoin
 
 from fastapi import (
     Request, APIRouter, Depends, Form, HTTPException, status
@@ -57,10 +58,10 @@ async def reg_device(
         auth_code=auth_code, id_device=db_obj.id
     )
     if version:
-        base_url = str(request.base_url)
         response.version = version.id
-        response.apk_url = (
-            f'{base_url}/ext/api/v1/android/apk?x_api_key={user.ext_api_key}'
+        response.apk_url = urljoin(
+            str(request.base_url),
+            f'ext/api/v1/android/apk?x_api_key={user.ext_api_key}'
         )
     return response
 
