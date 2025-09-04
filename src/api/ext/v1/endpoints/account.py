@@ -146,9 +146,12 @@ async def link_account(
             android.account_id = account.id
             await session.flush()
 
+            base = (
+                request.headers.get("x-base-url") or str(request.base_url)
+            ).strip()
             url = urljoin(
-                str(request.base_url),
-                f'/ext/api/v1/account/{account.uuid}?x_api_key={user.ext_api_key}'
+                base if base.endswith('/') else base + '/',
+                f'ext/api/v1/account/{account.uuid}?x_api_key={user.ext_api_key}'
             )
 
             return {

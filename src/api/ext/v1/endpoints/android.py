@@ -59,8 +59,11 @@ async def reg_device(
     )
     if version:
         response.version = version.id
+        base = (
+            request.headers.get("x-base-url") or str(request.base_url)
+        ).strip()
         response.apk_url = urljoin(
-            str(request.base_url),
+            base if base.endswith('/') else base + '/',
             f'ext/api/v1/android/apk?x_api_key={user.ext_api_key}'
         )
     return response
