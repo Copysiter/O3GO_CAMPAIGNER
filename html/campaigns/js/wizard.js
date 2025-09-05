@@ -1,24 +1,4 @@
 window.initWizard = function() {
-    /*
-    window.wizard_data_blank = {
-        name: null,
-        customer_id: null,
-        peer_id: null,
-        data_source: 1,
-        data_skip_rows: null,
-        data_file_name: null,
-        data_text: null,
-        data_text_row_skip: null,
-        data_text_row_sep: null,
-        data_text_col_sep: null,
-        dst_addr: null,
-        field_1: null,
-        field_2: null,
-        field_3: null,
-        msg_template: null,
-        schedule: null,
-    };
-    */
     const user_field = window.isAuth.user.is_superuser ? [{
         field: "sep2",
         colSpan: 12,
@@ -407,6 +387,30 @@ window.initWizard = function() {
                         valuePrimitive: true, 
                     }
                 }, {
+                    id: "field_4",
+                    field: "field_4",
+                    label: "Custom Field 4:",
+                    colSpan: 6,
+                    editor: "DropDownList",
+                    editorOptions: {
+                        dataSource: campaignCreateModel.source.fields,
+                        dataTextField: "text",
+                        dataValueField: "value",
+                        valuePrimitive: true,
+                    }
+                }, {
+                    id: "field_5",
+                    field: "field_5",
+                    label: "Custom Field 5:",
+                    colSpan: 6,
+                    editor: "DropDownList",
+                    editorOptions: {
+                        dataSource: campaignCreateModel.source.fields,
+                        dataTextField: "text",
+                        dataValueField: "value",
+                        valuePrimitive: true,
+                    }
+                }, {
                     field: "sep8",
                     colSpan: 12,
                     label: false,
@@ -553,7 +557,7 @@ window.initWizard = function() {
                         for (let i = 0; i < row.length; i ++) {
                             if (row[i].length) campaignCreateModel.source.fields.add({ value: i, text: row[i]});
                             if (i == 0) campaignCreateModel.data.set('dst_addr', i);
-                            else if (i <= 3) campaignCreateModel.data.set(`field_${i}`, i);
+                            else if (i <= 5) campaignCreateModel.data.set(`field_${i}`, i);
                         }
                     }
                 break;
@@ -575,7 +579,7 @@ window.initWizard = function() {
                     ))
                 }
             });
-            ['dst_addr', 'field_1', 'field_2', 'field_3'].forEach((field) => {
+            ['dst_addr', 'field_1', 'field_2', 'field_3', 'field_4', 'field_5'].forEach((field) => {
                 campaignCreateModel.data.data_fields.set(
                     field, campaignCreateModel.data[field]
                 )
@@ -647,7 +651,7 @@ window.initWizard = function() {
                 for (i = 0; i < fields.length; i ++) {
                     campaignCreateModel.source.fields.add({ value: i, text: fields[i]});
                     if (i == 0) campaignCreateModel.data.set('dst_addr', i);
-                    else if (i <= 3) campaignCreateModel.data.set(`field_${i}`, i);
+                    else if (i <= 5) campaignCreateModel.data.set(`field_${i}`, i);
                 }
             }
             campaignCreateModel.data.set("data_file_name", e.response.filename);

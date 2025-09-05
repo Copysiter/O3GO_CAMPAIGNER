@@ -17,6 +17,8 @@ class MessageCreate(MessageBase):
     field_1: Optional[str] = None
     field_2: Optional[str] = None
     field_3: Optional[str] = None
+    field_4: Optional[str] = None
+    field_5: Optional[str] = None
 
 
 # Message properties to return to client
