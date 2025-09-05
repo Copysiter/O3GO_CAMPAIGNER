@@ -43,7 +43,7 @@ async def proxy_get_next(
                 'text_sms': message.get('text'), 'error': '0'
             }]
     except HTTPException as e:
-        raise e
+        return []
     except Exception as e:
         await session.rollback()
         raise HTTPException(
