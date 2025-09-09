@@ -55,7 +55,7 @@ async def _unlink_with_status(
 
             statement = (
                 update(models.Account)
-                .where(models.Account.id == obj_in.id_task)
+                .where(models.Account.id == int(obj_in.id_task))
                 .values(
                     status=status,
                     sent=func.coalesce(models.Account.sent, 0) + (obj_in.sent or 0)
