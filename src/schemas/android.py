@@ -21,7 +21,7 @@ class AndroidBase(BaseModel):
     push_id: Optional[str] = Field(None, description="Push ID")
     info_data: Optional[str] = Field(None, description="Подробна информация")
     user_id: Optional[int] = Field(None, description="ID учетной записи")
-    auth_code: Optional[str] = Field(None, description="Код авторизации")
+    # auth_code: Optional[str] = Field(None, description="Код авторизации")
     is_active: Optional[bool] = Field(None, description="Активность девайса")
     model_config = ConfigDict(
         json_schema_extra={
@@ -174,7 +174,7 @@ class AndroidCodeResponse(BaseModel):
 
 # Response for android device register
 class AndroidRegResponse(AndroidCodeResponse):
-    auth_code: str = Field("", description="Код привязки устройства")
+    # auth_code: str = Field("", description="Код привязки устройства")
     is_socket: int = Field(0, description="")
     version: int = Field(1, description="")
     id_device: int = Field(0, description="ID зарегистрированного устройства в БД")

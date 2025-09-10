@@ -47,26 +47,27 @@ async def reg_device(
     """
     Register new Device.
     """
-    db_obj = await crud.android.get_by(db=db, device=obj_in.device)
-    auth_code = ""
-    if not db_obj:
-        obj_in.user_id = user.id
-        auth_code = obj_in.auth_code = generate_auth_code()
-        db_obj = await crud.android.create(db=db, obj_in=obj_in)
-    version = await crud.version.get_last(db=db)
-    response = schemas.AndroidRegResponse(
-        auth_code=auth_code, id_device=db_obj.id
-    )
-    if version:
-        response.version = version.id
-        base = (
-            request.headers.get("x-base-url") or str(request.base_url)
-        ).strip()
-        response.apk_url = urljoin(
-            base if base.endswith('/') else base + '/',
-            f'ext/api/v1/android/apk?x_api_key={user.ext_api_key}'
-        )
-    return response
+    try:
+        db_obj = await crud.android.get_by(db=db, device=obj_in.device)
+        if not db_obj:
+            obj_in.user_id = user.id
+            db_obj = await crud.android.create(db=db, obj_in=obj_in)
+        version = await crud.version.get_last(db=db)
+        response = schemas.AndroidRegResponse(id_device=db_obj.id)
+        if version:
+            response.version = version.id
+            base = (
+                request.headers.get("x-base-url") or str(request.base_url)
+            ).strip()
+            response.apk_url = urljoin(
+                base if base.endswith('/') else base + '/',
+                f'ext/api/v1/android/apk?x_api_key={user.ext_api_key}'
+            )
+        return response
+    except Exception as e:
+        print()
+        print(f'{type(e).__name__}: {str(e)}')
+        print()
 
 
 @router.post(
