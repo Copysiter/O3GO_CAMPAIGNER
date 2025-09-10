@@ -14,7 +14,7 @@ class Android(Base):
     )
     account_id = Column(Integer, ForeignKey('account.id'), index=True)
     auth_code = Column(String, index=True)
-    device = Column(String, index=True)
+    device = Column(String, index=True, unique=True)
     device_origin = Column(String, index=True)
     device_name = Column(String, index=True)
     manufacturer = Column(String, index=True)
