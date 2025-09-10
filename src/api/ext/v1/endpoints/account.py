@@ -64,8 +64,8 @@ async def _unlink_with_status(
             )
 
             row = (await session.execute(statement)).first()
-            if row is None:
-                return {'code': '100', 'error': 'Task not found'}
+            # if row is None:
+            #     return {'code': '100', 'error': 'Task not found'}
             return {'code': '0'}
     except Exception as e:
         logging.exception(
