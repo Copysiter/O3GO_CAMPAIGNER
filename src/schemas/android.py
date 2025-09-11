@@ -174,7 +174,7 @@ class AndroidCodeResponse(BaseModel):
 
 # Response for android device register
 class AndroidRegResponse(AndroidCodeResponse):
-    # auth_code: str = Field("", description="Код привязки устройства")
+    auth_code: str = Field("", description="Код привязки устройства")
     is_socket: int = Field(0, description="")
     version: int = Field(1, description="")
     id_device: int = Field(0, description="ID зарегистрированного устройства в БД")
