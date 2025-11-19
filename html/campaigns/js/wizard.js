@@ -39,12 +39,10 @@ window.initWizard = function() {
     let empty_data = kendo.observable({
         user_id: null,
         data_source: 1,
-        data_fields: {}
+        data_fields: {},
+        rewrite: 0,
+        provider: 'openrouter'
     })
-
-    console.log('-------------')
-    console.log(empty_data)
-    console.log('-------------')
 
     function clearData(data, excludeKeys) {
         const keys = Object.keys(data.toJSON());
@@ -341,7 +339,7 @@ window.initWizard = function() {
                     id: "dst_addr",
                     field: "dst_addr",
                     label: "Phone Number:",
-                    colSpan: 6,
+                    colSpan: 4,
                     editor: "DropDownList",
                     editorOptions: {
                         dataSource: campaignCreateModel.source.fields,
@@ -354,7 +352,7 @@ window.initWizard = function() {
                     id: "field_1",
                     field: "field_1",
                     label: "Custom Field 1:",
-                    colSpan: 6,
+                    colSpan: 4,
                     editor: "DropDownList",
                     editorOptions: {
                         dataSource: campaignCreateModel.source.fields,
@@ -366,7 +364,7 @@ window.initWizard = function() {
                     id: "field_2",
                     field: "field_2",
                     label: "Custom Field 2:",
-                    colSpan: 6,
+                    colSpan: 4,
                     editor: "DropDownList",
                     editorOptions: {
                         dataSource: campaignCreateModel.source.fields,
@@ -378,7 +376,7 @@ window.initWizard = function() {
                     id: "field_3",
                     field: "field_3",
                     label: "Custom Field 3:",
-                    colSpan: 6,
+                    colSpan: 4,
                     editor: "DropDownList",
                     editorOptions: {
                         dataSource: campaignCreateModel.source.fields,
@@ -390,7 +388,7 @@ window.initWizard = function() {
                     id: "field_4",
                     field: "field_4",
                     label: "Custom Field 4:",
-                    colSpan: 6,
+                    colSpan: 4,
                     editor: "DropDownList",
                     editorOptions: {
                         dataSource: campaignCreateModel.source.fields,
@@ -402,7 +400,7 @@ window.initWizard = function() {
                     id: "field_5",
                     field: "field_5",
                     label: "Custom Field 5:",
-                    colSpan: 6,
+                    colSpan: 4,
                     editor: "DropDownList",
                     editorOptions: {
                         dataSource: campaignCreateModel.source.fields,
@@ -417,16 +415,91 @@ window.initWizard = function() {
                     editor: "<div class='separator mx-n15'></div>"
                 }, {
                     field: "msg_template",
-                    label: "",
+                    label: "Message Template",
                     colSpan: 12,
                     editor: "TextArea",
                     editorOptions: {
                         overflow: "auto",
-                        rows: 10
+                        rows: 8
                     },
                     validation: { required: false }
                 }, {
                     field: "sep9",
+                    colSpan: 12,
+                    label: false,
+                    editor: "<div class='separator mx-n15'></div>"
+                }, {
+                    field: 'rewrite',
+                    label: 'Rewrite',
+                    colSpan: 4,
+                    editor: 'DropDownList',
+                    editorOptions: {
+                        dataSource: new kendo.data.DataSource({
+                            data: [
+                                { text: 'NO', value: 0 },
+                                { text: 'YES', value: 1 },
+                            ],
+                        }),
+                        value: 0,
+                        select: function (e) {},
+                        dataTextField: 'text',
+                        dataValueField: 'value',
+                        valuePrimitive: true,
+                        downArrow: true,
+                        animation: false,
+                        autoClose: true
+                    }
+                }, {
+                    field: 'provider',
+                    label: 'Provider',
+                    colSpan: 4,
+                    editor: 'DropDownList',
+                    editorOptions: {
+                        dataSource: new kendo.data.DataSource({
+                            data: [
+                                { text: 'OpenRouter', value: 'openrouter' },
+                                { text: 'Local', value: 'ollama' },
+                            ],
+                        }),
+                        value: 'openrouter',
+                        select: function (e) {},
+                        dataTextField: 'text',
+                        dataValueField: 'value',
+                        valuePrimitive: true,
+                        downArrow: true,
+                        animation: false,
+                        autoClose: true
+                    }
+                }, {
+                    field: 'model',
+                    label: 'Model',
+                    colSpan: 4,
+                    editor: 'DropDownList',
+                    editorOptions: {
+                        dataSource: new kendo.data.DataSource({
+                            data: [],
+                        }),
+                        value: '',
+                        select: function (e) {},
+                        dataTextField: 'text',
+                        dataValueField: 'value',
+                        valuePrimitive: true,
+                        downArrow: true,
+                        animation: false,
+                        autoClose: true
+                    }
+                }, {
+                    field: "system_prompt",
+                    label: "System Prompt",
+                    colSpan: 12,
+                    editor: "TextArea",
+                    editorOptions: {
+                        overflow: "auto",
+                        rows: 8
+                    },
+                    validation: { required: false }
+                }, {
+                    field: "sep10",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"

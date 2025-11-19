@@ -10,10 +10,13 @@ from io import BytesIO
 
 from fastapi import APIRouter, Body, Depends, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.encoders import jsonable_encoder
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.config import settings
 from api import deps
+from tasks import rewrite_message
 
 import crud, models, schemas
 
@@ -177,9 +180,60 @@ async def create_campaign(
     campaign = await crud.campaign.create(db=db, obj_in=campaign_db_in)
 
     if campaign.id and len(campaign_dst_in) > 0:
-        for i in range(len(campaign_dst_in)):
-            campaign_dst_in[i]['campaign_id'] = campaign.id
-        _ = await crud.campaign_dst.create_rows(db=db, obj_in=campaign_dst_in)
+        # Добавляем campaign_id ко всем записям
+        for dst_data in campaign_dst_in:
+            dst_data['campaign_id'] = campaign.id
+        
+        # Создаем отдельный словарь dst_addr => подготовленный текст
+        prepared_texts = {}
+        
+        # Единая логика подстановки полей в msg_template
+        for dst_data in campaign_dst_in:
+            text_with_fields = campaign.msg_template or ''
+            for field_name in ['field_1', 'field_2', 'field_3', 'field_4', 'field_5']:
+                if dst_data.get(field_name):
+                    text_with_fields = text_with_fields.replace(
+                        '{' + field_name + '}', dst_data[field_name]
+                    )
+            
+            # Сохраняем в отдельном словаре
+            prepared_texts[dst_data['dst_addr']] = text_with_fields
+
+            # Добавляем text либо статус WAITING в зависимости от рерайтинга
+            if campaign_in.rewrite and campaign_in.provider:  # and campaign_in.model:
+                dst_data['status'] = schemas.CampaignDstStatus.WAITING
+            else:
+                dst_data['text'] = text_with_fields
+        
+        # Создаем записи campaign_dst (возвращает объекты с id и dst_addr)
+        created_objects = await crud.campaign_dst.create_rows(db=db, obj_in=campaign_dst_in)
+        
+        # Если нужен AI-рерайтинг, запускаем Celery задачи
+        if campaign_in.rewrite and campaign_in.provider:  # and campaign_in.model:
+            
+            # Получаем API ключ в зависимости от провайдера
+            api_key = ''
+            if campaign_in.provider.lower() == 'ollama':
+                api_key = settings.AI_OLLAMA_API_KEY
+            elif campaign_in.provider.lower() == 'openrouter':
+                api_key = settings.AI_OPENROUTER_API_KEY
+            
+            config = {
+                'provider': campaign_in.provider,
+                'model': campaign_in.model,
+                'api_key': api_key
+            }
+            
+            # Запускаем Celery задачу для каждого созданного объекта
+            for created_obj in created_objects:
+                dst_id = created_obj['id']
+                dst_addr = created_obj['dst_addr']
+                prepared_text = prepared_texts[dst_addr]
+                
+                rewrite_message.delay(
+                    id=dst_id, config=config, original_text=prepared_text,
+                    prompt=campaign_in.prompt or settings.AI_REWRITE_SYSTEM_PROMPT
+                )
 
     return campaign
 

@@ -54,6 +54,11 @@ class CampaignRequest(CampaignBase):
     api_keys: Optional[list] = []
     tags: Optional[list] = []
     androids: Optional[list] = []
+    # AI rewrite fields
+    rewrite: Optional[int] = 0
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    prompt: Optional[str] = None
 
 
 # Properties to receive on item update
