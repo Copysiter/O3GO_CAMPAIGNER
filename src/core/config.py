@@ -143,12 +143,6 @@ class Settings(BaseSettings):
     AI_OPENROUTER_TITLE: str = Field(
         'O3GO Campaigner', env='AI_OPENROUTER_TITLE'
     )
-    
-    # Default rewrite prompt
-    REWRITE_SYSTEM_PROMPT: str = Field(
-        'Перепиши этот текст, сохраняя смысл и основную информацию, но изменяя формулировки, структуру предложений и стиль. Сделай текст более уникальным, избегая прямого копирования фраз.',
-        env='REWRITE_SYSTEM_PROMPT'
-    )
 
     class Config:
         env_file = '.env'
