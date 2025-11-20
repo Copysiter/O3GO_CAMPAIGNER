@@ -185,7 +185,7 @@ async def webhook(webhook_url: str = None, *, data: dict):
 @celery.task(name='tasks.rewrite')
 async def rewrite_message(
     id: int, config: dict, original_text: str,
-    prompt: str = settings.REWRITE_SYSTEM_PROMPT
+    prompt: str = settings.AI_REWRITE_SYSTEM_PROMPT
 ):
     """
     Задача для AI-рерайта текста сообщения.
