@@ -53,7 +53,7 @@ window.campaignUpdateRows = function(data) {
 
 window.getCampaignStat = function(id) {
     $.ajax({
-        url: `http://${api_base_url}/api/v1/campaigns/${id}`,
+        url: `${api_base_url}/api/v1/campaigns/${id}`,
         type: "GET",
         beforeSend: function (xhr) {
             xhr.setRequestHeader ("Authorization", `${token_type} ${access_token}`);
@@ -152,7 +152,7 @@ window.updateCampaignStatus = function(status) {
     if (window.selectedCampaignItems.length > 1) {
         kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to ${action} Campaigns?</div>`).done(function () {
             $.ajax({
-                url: `http://${api_base_url}/api/v1/campaigns/${action}`,
+                url: `${api_base_url}/api/v1/campaigns/${action}`,
                 type: "POST",
                 contentType: 'application/json; charset=utf-8',
                 data: JSON.stringify({ids: window.selectedCampaignItems.map(obj => parseInt(obj.id))}),
@@ -177,7 +177,7 @@ window.updateCampaignStatus = function(status) {
     } else {
         kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to ${action} Campaign?</div>`).done(function () {
             $.ajax({
-                url: `http://${api_base_url}/api/v1/campaigns/${window.selectedCampaignItem.id}/${action}`,
+                url: `${api_base_url}/api/v1/campaigns/${window.selectedCampaignItem.id}/${action}`,
                 type: "POST",
                 beforeSend: function (xhr) {
                     xhr.setRequestHeader("Authorization", `${token_type} ${access_token}`);
@@ -208,7 +208,7 @@ window.campaignDelete = function() {
     if (window.selectedCampaignItems.length > 1) {
         kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to delete Campaigns ?</div>`).done(function() {
             $.ajax({
-                url: `http://${api_base_url}/api/v1/campaigns/`,
+                url: `${api_base_url}/api/v1/campaigns/`,
                 type: "DELETE",
                 contentType: 'application/json; charset=utf-8',
                 data: JSON.stringify({ids: window.selectedCampaignItems.map(obj => parseInt(obj.id))}),
@@ -249,7 +249,7 @@ window.campaignDelete = function() {
     } else if (window.selectedCampaignItem) {
         kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to delete Campaign ?</div>`).done(function() {
             $.ajax({
-                url: `http://${api_base_url}/api/v1/campaigns/${selectedCampaignItem.id}`,
+                url: `${api_base_url}/api/v1/campaigns/${selectedCampaignItem.id}`,
                 type: "DELETE",
                 beforeSend: function (xhr) {
                     xhr.setRequestHeader ("Authorization", `${token_type} ${access_token}`);
@@ -287,7 +287,7 @@ window.campaignDelete = function() {
 window.campaignClear = function() {
     kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to clear Campaign ?</div>`).done(function() {
         $.ajax({
-            url: `http://${api_base_url}/api/v1/campaigns/${selectedCampaignItem.id}/campaign_dst`,
+            url: `${api_base_url}/api/v1/campaigns/${selectedCampaignItem.id}/campaign_dst`,
             type: "DELETE",
             beforeSend: function (xhr) {
                 xhr.setRequestHeader ("Authorization", `${token_type} ${access_token}`);
@@ -323,8 +323,8 @@ window.campaignClear = function() {
 
 window.exportCampaignReport = function(id) {
     kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Download campaign report?</div>`).done(function() {
-        window.open(`http://${api_base_url}/api/v1/campaigns/${id}/report`, '_blank');
-        // window.location.href = `http://${api_base_url}/api/v1/campaigns/${id}/report`
+        window.open(`${api_base_url}/api/v1/campaigns/${id}/report`, '_blank');
+        // window.location.href = `${api_base_url}/api/v1/campaigns/${id}/report`
     }).fail(function() {
 
     });

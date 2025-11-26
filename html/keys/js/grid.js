@@ -35,7 +35,7 @@ window.initGrid = function() {
                         dataSource: new kendo.data.DataSource({
                             transport: {
                                 read: {
-                                    url: `http://${api_base_url}/api/v1/options/user`,
+                                    url: `${api_base_url}/api/v1/options/user`,
                                     type: 'GET',
                                     beforeSend: function (request) {
                                         request.setRequestHeader(
@@ -59,7 +59,7 @@ window.initGrid = function() {
             dataSource: {
                 transport: {
                     read: {
-                        url: `http://${api_base_url}/api/v1/api_keys/`,
+                        url: `${api_base_url}/api/v1/api_keys/`,
                         type: 'GET',
                         beforeSend: function (request) {
                             request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
@@ -67,7 +67,7 @@ window.initGrid = function() {
                         dataType: 'json',
                     },
                     create: {
-                        url: `http://${api_base_url}/api/v1/api_keys/`,
+                        url: `${api_base_url}/api/v1/api_keys/`,
                         type: 'POST',
                         dataType: 'json',
                         contentType: 'application/json',
@@ -78,7 +78,7 @@ window.initGrid = function() {
                     update: {
                         url: function (options) {
                             console.log(options);
-                            return `http://${api_base_url}/api/v1/api_keys/${options.id}`;
+                            return `${api_base_url}/api/v1/api_keys/${options.id}`;
                         },
 
                         type: 'PUT',
@@ -91,7 +91,7 @@ window.initGrid = function() {
                     destroy: {
                         url: function (options) {
                             console.log(options);
-                            return `http://${api_base_url}/api/v1/api_keys/${options.id}`;
+                            return `${api_base_url}/api/v1/api_keys/${options.id}`;
                         },
 
                         type: 'DELETE',

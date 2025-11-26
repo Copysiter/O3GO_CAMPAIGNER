@@ -40,8 +40,8 @@ function initAccountForm() {
                         .appendTo(container)
                         .kendoUpload({
                             async: {
-                                saveUrl: `http://${api_base_url}/api/v1/android/accounts/upload`,
-                                removeUrl: `http://${api_base_url}/api/v1/android/accounts/remove`,
+                                saveUrl: `${api_base_url}/api/v1/android/accounts/upload`,
+                                removeUrl: `${api_base_url}/api/v1/android/accounts/remove`,
                                 removeField: 'file_name',
                                 autoUpload: true
                             },
@@ -114,7 +114,7 @@ function initAccountForm() {
             try {
                 let { access_token, token_type } = token;
                 $.ajax({
-                    url: `http://${api_base_url}/api/v1/android/accounts/`,
+                    url: `${api_base_url}/api/v1/android/accounts/`,
                     type: "POST",
                     dataType: 'json',
                     data: JSON.stringify(model),

@@ -22,7 +22,7 @@ window.initAccountGrid = function() {
                         dataSource: new kendo.data.DataSource({
                             transport: {
                                 read: {
-                                    url: `http://${api_base_url}/api/v1/options/user`,
+                                    url: `${api_base_url}/api/v1/options/user`,
                                     type: 'GET',
                                     beforeSend: function (request) {
                                         request.setRequestHeader(
@@ -54,7 +54,7 @@ window.initAccountGrid = function() {
             dataSource: {
                 transport: {
                     read: {
-                        url: `http://${api_base_url}/api/v1/android/accounts/`,
+                        url: `${api_base_url}/api/v1/android/accounts/`,
                         type: 'GET',
                         beforeSend: function (request) {
                             request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
@@ -62,7 +62,7 @@ window.initAccountGrid = function() {
                         dataType: 'json',
                     },
                     create: {
-                        url: `http://${api_base_url}/api/v1/android/accounts/`,
+                        url: `${api_base_url}/api/v1/android/accounts/`,
                         type: 'POST',
                         dataType: 'json',
                         contentType: 'application/json',
@@ -73,7 +73,7 @@ window.initAccountGrid = function() {
                     update: {
                         url: function (options) {
                             console.log(options);
-                            return `http://${api_base_url}/api/v1/android/accounts/${options.id}`;
+                            return `${api_base_url}/api/v1/android/accounts/${options.id}`;
                         },
 
                         type: 'PUT',
@@ -86,7 +86,7 @@ window.initAccountGrid = function() {
                     destroy: {
                         url: function (options) {
                             console.log(options);
-                            return `http://${api_base_url}/api/v1/android/accounts/${options.id}`;
+                            return `${api_base_url}/api/v1/android/accounts/${options.id}`;
                         },
 
                         type: 'DELETE',

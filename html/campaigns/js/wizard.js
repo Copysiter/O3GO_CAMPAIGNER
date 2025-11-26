@@ -13,7 +13,7 @@ window.initWizard = function() {
             dataSource: {
                 transport: {
                     read: {
-                        url: `http://${api_base_url}/api/v1/options/user`,
+                        url: `${api_base_url}/api/v1/options/user`,
                         type: "GET",
                         beforeSend: function (request) {
                             request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
@@ -124,7 +124,7 @@ window.initWizard = function() {
                         dataSource: new kendo.data.DataSource({
                             transport: {
                                 read: {
-                                    url: `http://${api_base_url}/api/v1/options/api_key`,
+                                    url: `${api_base_url}/api/v1/options/api_key`,
                                     type: 'GET',
                                     beforeSend: function (request) {
                                         request.setRequestHeader(
@@ -160,7 +160,7 @@ window.initWizard = function() {
                         dataSource: new kendo.data.DataSource({
                             transport: {
                                 read: {
-                                    url: `http://${api_base_url}/api/v1/options/android`,
+                                    url: `${api_base_url}/api/v1/options/android`,
                                     type: 'GET',
                                     beforeSend: function (request) {
                                         request.setRequestHeader(
@@ -187,7 +187,7 @@ window.initWizard = function() {
                         dataSource: new kendo.data.DataSource({
                             transport: {
                                 read: {
-                                    url: `http://${api_base_url}/api/v1/options/tag`,
+                                    url: `${api_base_url}/api/v1/options/tag`,
                                     type: 'GET',
                                     beforeSend: function (request) {
                                         request.setRequestHeader(
@@ -660,7 +660,7 @@ window.initWizard = function() {
             });
 
             $.ajax({
-                url: `http://${api_base_url}/api/v1/campaigns/`,
+                url: `${api_base_url}/api/v1/campaigns/`,
                 type: 'POST',
                 dataType: 'json',
                 data: JSON.stringify(campaignCreateModel.data.toJSON()),
@@ -704,7 +704,7 @@ window.initWizard = function() {
 
     $("#uploader").kendoUpload({
         async: {
-            saveUrl: `http://${api_base_url}/api/v1/upload/`,
+            saveUrl: `${api_base_url}/api/v1/upload/`,
             // removeUrl: "Home/Remove",
             autoUpload: true,
             withCredentials: false,

@@ -8,7 +8,7 @@ window.initMessageGrid = function(id) {
             transport: {
                 read: {
                     //url: `${campaigner_api_addr}/api/v1/campaigns/${id}`,
-                    url: `http://${api_base_url}/api/v1/campaigns/${id}/campaign_dst`,
+                    url: `${api_base_url}/api/v1/campaigns/${id}/campaign_dst`,
                     beforeSend: function (request) {
                         request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
                     },

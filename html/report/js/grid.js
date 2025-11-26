@@ -25,7 +25,7 @@ window.initGrid = function() {
 
         $.ajax({
             type: 'GET',
-            url: `http://${api_base_url}/api/v1/services/?filters[0][field]=is_active&filters[0][operator]=istrue`,
+            url: `${api_base_url}/api/v1/services/?filters[0][field]=is_active&filters[0][operator]=istrue`,
             headers: {
                 Authorization: `${token_type} ${access_token}`,
                 accept: 'application/json',
@@ -177,7 +177,7 @@ window.initGrid = function() {
                     dataSource: {
                         transport: {
                             read: {
-                                url: `http://${api_base_url}/api/v1/report/`,
+                                url: `${api_base_url}/api/v1/report/`,
                                 type: 'GET',
                                 beforeSend: function (request) {
                                     request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
@@ -323,7 +323,7 @@ window.initGrid = function() {
                                 dataSource: {
                                     transport: {
                                         read: {
-                                            url: `http://${api_base_url}/api/v1/options/device`,
+                                            url: `${api_base_url}/api/v1/options/device`,
                                             type: 'GET',
                                             beforeSend: function (request) {
                                                 request.setRequestHeader('Authorization', `${token_type} ${access_token}`);

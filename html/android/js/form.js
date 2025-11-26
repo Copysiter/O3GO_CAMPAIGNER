@@ -8,7 +8,7 @@ function showEditForm(model) {
             dataSource: {
                 transport: {
                     read: {
-                        url: `http://${api_base_url}/api/v1/options/user`,
+                        url: `${api_base_url}/api/v1/options/user`,
                         type: "GET",
                         beforeSend: function (request) {
                             request.setRequestHeader('Authorization', `${token_type} ${access_token}`);

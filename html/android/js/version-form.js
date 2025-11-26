@@ -19,8 +19,8 @@ function showVersionEditForm(model) {
                 editor: function(container, options) {
                     $('<input type="file" name="' + options.field + '" id="' + options.field + '"/>').appendTo(container).kendoUpload({
                         async: {
-                            saveUrl: `http://${api_base_url}/api/v1/android/versions/upload`,
-                            removeUrl: `http://${api_base_url}/api/v1/android/versions/remove`,
+                            saveUrl: `${api_base_url}/api/v1/android/versions/upload`,
+                            removeUrl: `${api_base_url}/api/v1/android/versions/remove`,
                             removeField: 'file_name',
                             autoUpload: true
                         },
