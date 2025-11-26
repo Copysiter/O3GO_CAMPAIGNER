@@ -25,7 +25,7 @@ window.initToolbar = function() {
                     }
                     kendo.confirm("<div style='padding:5px 10px 0 10px;'>Are you sure you want to delete tags?</div>").done(function() {
                         $.ajax({
-                            url: `http://${api_base_url}/api/v1/tags/delete`,
+                            url: `${api_base_url}/api/v1/tags/delete`,
                             type: "POST",
                             data: JSON.stringify({ ids: ids }),
                             processData: false,

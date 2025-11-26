@@ -111,7 +111,7 @@ function addNew(value, id) {
     let { access_token, token_type } = token;
     $.ajax({
         type: 'POST',
-        url: `http://${api_base_url}/api/v1/api_keys/`,
+        url: `${api_base_url}/api/v1/api_keys/`,
         headers: {
             Authorization: `${token_type} ${access_token}`,
             accept: 'application/json'
