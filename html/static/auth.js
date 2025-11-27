@@ -1,6 +1,6 @@
 // window.api_base_url = `${document.location.hostname}:5001`
 
-window.api_base_url = 'https://compainer.o3go.ru'
+window.api_base_url = 'https://campainer.o3go.ru'
 
 window.getToken = function () {
     return JSON.parse(localStorage.getItem('token'));
