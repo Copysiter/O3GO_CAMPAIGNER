@@ -206,28 +206,6 @@ async def ban_account(
     )
 
 
-@router.get("/{uuid}")
-async def download_archive(
-    *,
-    db: AsyncSession = Depends(deps.get_db), uuid: str,
-    _ = Depends(deps.get_user_by_api_key)
-):
-    account = await crud.account.get_by(db=db, uuid=uuid)
-    if not account:
-        return {'code': '100','error': f'Archive with UUID={uuid} not found'}
-    if not account.file_name:
-        return {'code': '100', 'error': 'Archive filename not specified'}
-
-    file_path = UPLOAD_DIR / account.file_name
-
-    if not file_path.exists():
-        return {'code': '100', 'error': f'Filen {file_path} not found'}
-
-    return FileResponse(
-        path=file_path, filename=account.file_name,
-        media_type='application/gzip'
-    )
-
 @router.post("/upload")
 async def upload_archive(
     *,
@@ -271,3 +249,26 @@ async def upload_archive(
     )
 
     return JSONResponse(result)
+
+
+@router.get("/{uuid}")
+async def download_archive(
+    *,
+    db: AsyncSession = Depends(deps.get_db), uuid: str,
+    _ = Depends(deps.get_user_by_api_key)
+):
+    account = await crud.account.get_by(db=db, uuid=uuid)
+    if not account:
+        return {'code': '100','error': f'Archive with UUID={uuid} not found'}
+    if not account.file_name:
+        return {'code': '100', 'error': 'Archive filename not specified'}
+
+    file_path = UPLOAD_DIR / account.file_name
+
+    if not file_path.exists():
+        return {'code': '100', 'error': f'Filen {file_path} not found'}
+
+    return FileResponse(
+        path=file_path, filename=account.file_name,
+        media_type='application/gzip'
+    )
