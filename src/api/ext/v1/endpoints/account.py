@@ -1,6 +1,9 @@
 import random
 import string
 import logging
+import aiofiles
+import uuid
+import time
 
 from typing import Any, Union
 from pathlib import Path
@@ -8,9 +11,9 @@ from datetime import datetime
 from urllib.parse import urljoin
 
 from fastapi import (
-    Request, APIRouter, Depends, status
+    Request, APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 )
-from fastapi.responses import FileResponse
+from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy import select, update, func, or_
 from sqlalchemy.orm import aliased
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -224,3 +227,47 @@ async def download_archive(
         path=file_path, filename=account.file_name,
         media_type='application/gzip'
     )
+
+@router.post("/upload")
+async def upload_archive(
+    *,
+    file: UploadFile = File(...),
+    phone: str = Form(...),
+    task_id: str | None = Form(None),
+    db: AsyncSession = Depends(deps.get_db),
+    user = Depends(deps.get_user_by_api_key)
+):
+    """
+    Upload Account Archive.
+    """
+    result = {"code": 0, "error": ""}
+
+    if not file.filename.endswith('.tar.gz'):
+        result = {"code": 1, "error": "The file must have a .apk extension"}
+    if not phone:
+        result = {"code": 1, "error": "Phone number is required"}
+
+    timestamp = int(time.time())
+    file_name = f"{phone}_{timestamp}.tar.gz"
+    file_path = UPLOAD_DIR / file_name
+
+    # Сохранение файла
+    try:
+        content = await file.read()
+        async with aiofiles.open(file_path, "wb") as f:
+            await f.write(content)
+    except Exception as e:
+        result = {"code": 1, "error": f"Failed to save file: {e}"}
+
+    # Добавление записи в БД
+    await crud.account.create(
+        db=db, obj_in=schemas.AccountCreate(
+            uuid=str(uuid.uuid4()),
+            user_id=user.id,
+            file_name=file_name,
+            limit=None,
+            cooldown=None
+        )
+    )
+
+    return JSONResponse(result)

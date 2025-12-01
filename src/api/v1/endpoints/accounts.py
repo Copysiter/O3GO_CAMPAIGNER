@@ -141,7 +141,7 @@ async def delete_account(
 
 
 @router.post('/upload')
-async def upload_apk(file: UploadFile = File(...)):
+async def upload_archive(file: UploadFile = File(...)):
     if not file.filename.endswith('.tar.gz'):
         raise HTTPException(
             status_code=400, detail='The file must have a .apk extension'
