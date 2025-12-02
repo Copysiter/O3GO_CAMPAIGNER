@@ -228,13 +228,7 @@ async def upload_archive(
         file_name = f"{phone}_{timestamp}.tar.gz"
     else:
         # Используем исходное имя файла, если phone не передан
-        original_name = file.filename
-        if original_name.endswith('.tar.gz'):
-            # Убираем расширение и добавляем timestamp
-            base_name = original_name[:-7]  # Убираем .tar.gz
-            file_name = f"{base_name}_{timestamp}.tar.gz"
-        else:
-            file_name = f"{original_name}_{timestamp}.tar.gz"
+        file_name = file.filename
     
     file_path = UPLOAD_DIR / file_name
 
