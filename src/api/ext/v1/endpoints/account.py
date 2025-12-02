@@ -210,7 +210,7 @@ async def ban_account(
 async def upload_archive(
     *,
     file: UploadFile = File(...),
-    phone: str = Form(...),
+    phone: str | None = Form(None),
     task_id: str | None = Form(None),
     db: AsyncSession = Depends(deps.get_db),
     user = Depends(deps.get_user_by_api_key)
@@ -222,11 +222,20 @@ async def upload_archive(
 
     if not file.filename.endswith('.tar.gz'):
         result = {"code": 1, "error": "The file must have a .tar.gz extension"}
-    if not phone:
-        result = {"code": 1, "error": "Phone number is required"}
 
     timestamp = int(time.time())
-    file_name = f"{phone}_{timestamp}.tar.gz"
+    if phone:
+        file_name = f"{phone}_{timestamp}.tar.gz"
+    else:
+        # Используем исходное имя файла, если phone не передан
+        original_name = file.filename
+        if original_name.endswith('.tar.gz'):
+            # Убираем расширение и добавляем timestamp
+            base_name = original_name[:-7]  # Убираем .tar.gz
+            file_name = f"{base_name}_{timestamp}.tar.gz"
+        else:
+            file_name = f"{original_name}_{timestamp}.tar.gz"
+    
     file_path = UPLOAD_DIR / file_name
 
     # Сохранение файла
