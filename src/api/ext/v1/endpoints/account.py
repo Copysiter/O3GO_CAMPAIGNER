@@ -221,7 +221,7 @@ async def upload_archive(
     result = {"code": 0, "error": ""}
 
     if not file.filename.endswith('.tar.gz'):
-        result = {"code": 1, "error": "The file must have a .apk extension"}
+        result = {"code": 1, "error": "The file must have a .tar.gz extension"}
     if not phone:
         result = {"code": 1, "error": "Phone number is required"}
 
