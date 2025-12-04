@@ -1,4 +1,5 @@
 import aiohttp
+import asyncio
 import logging
 
 from datetime import timedelta
@@ -182,101 +183,128 @@ async def webhook(webhook_url: str = None, *, data: dict):
     await send_webhook(webhook_url, data=data)
 
 
-@celery.task(name='tasks.rewrite')
-async def rewrite_message(
-    id: int, config: dict, original_text: str,
-    prompt: str = settings.AI_REWRITE_SYSTEM_PROMPT
-):
+async def rewrite(id: int, original_text: str, ai_provider, prompt: str):
     """
-    Задача для AI-рерайта текста сообщения.
-
+    Обработка одного рерайта в рамках батча.
+    
     Args:
-        id: ID записи campaign_dst для обработки
-        config: Конфигурация AI провайдера
+        id: ID записи campaign_dst
         original_text: Исходный текст для рерайта
-        prompt: Системный промпт с инструкциями для AI
-
+        ai_provider: Экземпляр AI провайдера
+        prompt: Системный промпт
+        
     Returns:
-        dict: Результат обработки с информацией об успехе/ошибке
+        dict: Результат обработки одной записи
     """
-
-    ai_provider = None
+    # Создаем отдельную сессию для каждой async задачи
     async with async_session() as session:
         try:
-            # Проверяем существование записи campaign_dst
+            # Проверяем существование записи
             result = await session.execute(
-                text(
-                    "SELECT id FROM campaign_dst WHERE id = :id"),
+                text("SELECT id FROM campaign_dst WHERE id = :id"),
                 {"id": id}
             )
             row = result.fetchone()
-
+            
             if not row:
                 logging.error(f"CampaignDst с ID {id} не найден")
-                return {"success": False, "error": "Record not found"}
-
-            # Создаем AI провайдер
-            try:
-                ai_provider = AIProviderFactory.create(
-                    provider=config.get('provider'), config=config
-                )
-            except Exception as e:
-                logging.error(f"Ошибка создания AI провайдера: {e}")
-                return {
-                    "success": False,
-                    "error": f"Provider creation failed: {e}"
-                }
-
-            # Выполняем рерайт с системным промптом
-            try:
-                rewritten_text = await ai_provider.rewrite(
-                    prompt=prompt, text=original_text
-                )
-
-            except Exception as e:
-                logging.error(
-                    f"Ошибка AI рерайта для campaign_dst {id}: {e}"
-                )
-                return {"success": False, "error": f"AI rewrite failed: {e}"}
-
-            # Сохраняем результат в базу данных
+                return {"success": False, "id": id, "error": "Record not found"}
+            
+            # Выполняем рерайт
+            rewritten_text = await ai_provider.rewrite(prompt=prompt, text=original_text)
+            
+            # Сохраняем результат
             await session.execute(
                 text("""
                     UPDATE campaign_dst
-                    SET text = :text, status= 0 , update_ts = NOW()
+                    SET text = :text, status = 0, update_ts = NOW()
                     WHERE id = :id
                 """),
-                {
-                    "text": rewritten_text, "id": id
-                }
+                {"text": rewritten_text, "id": id}
             )
+            
+            # Коммитим изменения для текущей сессии
             await session.commit()
-
-            logging.info(
-                f"Успешно переписан текст для campaign_dst {id}"
-            )
-
+            
+            logging.info(f"Успешно переписан текст для campaign_dst {id}")
+            return {"success": True, "id": id}
+            
+        except Exception as e:
+            logging.error(f"Ошибка AI рерайта для campaign_dst {id}: {e}")
+            await session.rollback()
             return {
-                "success": True,
-                "message": original_text,
-                "rewritten_text": rewritten_text,
-                "provider": config.get('provider'),
-                "model": config.get('model')
+                "success": False,
+                "id": id,
+                "error": str(e)
             }
 
-        except Exception as e:
-            logging.exception(
-                f"Ошибка при рерайте campaign_dst {id}: {e}"
+
+@celery.task(name='tasks.rewrite')
+async def rewrite_message(
+    data: list, config: dict,
+    prompt: str = settings.AI_REWRITE_SYSTEM_PROMPT
+):
+    """
+    Задача для AI-рерайта текста сообщений (поддерживает батчевую обработку).
+
+    Args:
+        data: Список словарей [{"id": int, "original_text": str}, ...]
+        config: Конфигурация AI провайдера
+        prompt: Системный промпт с инструкциями для AI
+    """
+    ai_provider = None
+    try:
+        # Создаем AI провайдер один раз для всего батча
+        try:
+            ai_provider = AIProviderFactory.create(
+                provider=config.get('provider'), config=config
             )
-            await session.rollback()
-            return {"success": False, "error": str(e)}
-        finally:
-            # Закрываем ресурсы AI провайдера
-            if ai_provider:
-                try:
-                    await ai_provider.close()
-                except Exception as e:
-                    logging.warning(f"Ошибка при закрытии AI провайдера: {e}")
+        except Exception as e:
+            logging.error(f"Ошибка создания AI провайдера: {e}")
+            return
+
+        # Создаем задачи для каждого элемента (asyncio.create_task)
+        tasks = []
+        for item in data:
+            id = item.get("id")
+            original_text = item.get("original_text", "")
+            
+            if not id:
+                logging.warning(f"Отсутствует ID в элементе: {item}")
+                continue
+                
+            if not original_text.strip():
+                logging.warning(f"Пустой текст для campaign_dst {id}")
+                continue
+            
+            task = rewrite(id, original_text, ai_provider, prompt)
+            tasks.append(asyncio.create_task(task))
+        
+        if not tasks:
+            logging.error("Нет валидных данных для обработки")
+            return
+
+        # Выполняем все задачи параллельно через asyncio.gather
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Подсчитываем статистику
+        successful = sum(1 for r in results if isinstance(r, dict) and r.get("success"))
+        failed = len(results) - successful
+        
+        logging.info(
+            f"Батч обработан: {successful} успешно, {failed} с ошибками, "
+            f"провайдер: {config.get('provider')}"
+        )
+
+    except Exception as e:
+        logging.exception(f"Ошибка при батчевом рерайте: {e}")
+    finally:
+        # Закрываем ресурсы AI провайдера
+        if ai_provider:
+            try:
+                await ai_provider.close()
+            except Exception as e:
+                logging.warning(f"Ошибка при закрытии AI провайдера: {e}")
 
 
 celery.conf.beat_schedule = {

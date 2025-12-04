@@ -143,6 +143,7 @@ class Settings(BaseSettings):
     AI_OPENROUTER_TITLE: str = Field(
         'O3GO Campaigner', env='AI_OPENROUTER_TITLE'
     )
+    AI_OPENROUTER_BATCH_SIZE: int = Field(10, env='AI_OPENROUTER_BATCH_SIZE')
 
     class Config:
         env_file = '.env'

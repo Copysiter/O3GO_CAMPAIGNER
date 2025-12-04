@@ -23,6 +23,23 @@ import crud, models, schemas
 router = APIRouter()
 
 
+def create_batches(items: list, batch_size: int) -> list:
+    """
+    Разделяет список на батчи заданного размера.
+    
+    Args:
+        items: Список элементов для разделения
+        batch_size: Размер одного батча
+        
+    Returns:
+        Список батчей (каждый батч - список элементов)
+    """
+    if batch_size <= 0:
+        raise ValueError("Размер батча должен быть больше 0")
+    
+    return [items[i:i + batch_size] for i in range(0, len(items), batch_size)]
+
+
 @router.get('/', response_model=schemas.CampaignRows)
 async def read_campaigns(
     db: AsyncSession = Depends(deps.get_db),
@@ -224,14 +241,32 @@ async def create_campaign(
                 'api_key': api_key
             }
             
-            # Запускаем Celery задачу для каждого созданного объекта
+            # Определяем размер батча в зависимости от провайдера
+            if campaign_in.provider.lower() == 'openrouter':
+                batch_size = settings.AI_OPENROUTER_BATCH_SIZE
+            else:
+                # Для других провайдеров - по одному элементу на таску
+                batch_size = 1
+
+            # Подготавливаем данные для батчевой обработки
+            batch_data = []
             for created_obj in created_objects:
                 dst_id = created_obj['id']
                 dst_addr = created_obj['dst_addr']
                 prepared_text = prepared_texts[dst_addr]
-                
+                batch_data.append({
+                    'id': dst_id,
+                    'original_text': prepared_text
+                })
+
+            # Разделяем на батчи
+            batches = create_batches(batch_data, batch_size)
+
+            # Запускаем celery задачи для батчей
+            for batch in batches:
                 rewrite_message.delay(
-                    id=dst_id, config=config, original_text=prepared_text,
+                    data=batch,  # Список словарей [{"id": int, "original_text": str}, ...]
+                    config=config,
                     prompt=campaign_in.prompt or settings.AI_REWRITE_SYSTEM_PROMPT
                 )
 
