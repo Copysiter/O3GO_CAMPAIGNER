@@ -49,6 +49,7 @@ async def upload_file(file: UploadFile = File(...)):
             fields = [i.strip().strip('"').strip('\'') for i in data.loc[len(data) // 2, :].tolist()]
         return JSONResponse({'filename': filename, 'fields': fields})
     except Exception as e:
-        raise HTTPException(status_code=500, detail={
-            'type': type(e).__name__, 'msg': str(e)
-        })
+        # raise HTTPException(status_code=500, detail={
+        #     'type': type(e).__name__, 'msg': str(e)
+        # })
+        return JSONResponse({'type': type(e).__name__, 'msg': str(e)})
