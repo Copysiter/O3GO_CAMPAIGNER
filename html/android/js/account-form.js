@@ -43,7 +43,8 @@ function initAccountForm() {
                                 saveUrl: `${api_base_url}/api/v1/android/accounts/upload`,
                                 removeUrl: `${api_base_url}/api/v1/android/accounts/remove`,
                                 removeField: 'file_name',
-                                autoUpload: true
+                                autoUpload: true,
+                                withCredentials: false,
                             },
                             validation: { allowedExtensions: [".gz"] },
                             multiple: true,
@@ -54,19 +55,14 @@ function initAccountForm() {
 
                             // Добавляем строки в грид по мере успешной загрузки файлов
                             success: function(e) {
-                                console.log(e.operation);
-                                console.log(e);
                                 if (e.operation !== 'upload') return;
                                 let model = options.model;
-                                console.log(model);
                                 const file_name = e.response.file_name;
                                 if ('files' in model) {
                                     model.files.push(file_name);
                                 } else {
                                     model.set("files", [file_name]);
                                 }
-                                console.log(model.files);
-                                console.log(model.file);
                             },
                             // Пользователь удаляет файл из Upload → удаляем и строку из грида
                             remove: function(e) {
