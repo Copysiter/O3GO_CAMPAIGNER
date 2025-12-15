@@ -80,9 +80,9 @@ async def _unlink_with_status(
 
 @router.post(
     '/',
-    response_model = Union[
-        schemas.AccountLinkResponse, schemas.AndroidCodeResponse
-    ],
+    # response_model = Union[
+    #     schemas.AccountLinkResponse, schemas.AndroidCodeResponse
+    # ],
     status_code = status.HTTP_200_OK
 )
 async def link_account(
