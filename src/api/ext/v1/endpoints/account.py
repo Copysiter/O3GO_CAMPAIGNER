@@ -80,9 +80,9 @@ async def _unlink_with_status(
 
 @router.post(
     '/',
-    # response_model = Union[
-    #     schemas.AccountLinkResponse, schemas.AndroidCodeResponse
-    # ],
+    response_model = Union[
+        schemas.AccountLinkResponse, schemas.AndroidCodeResponse
+    ],
     status_code = status.HTTP_200_OK
 )
 async def link_account(
@@ -162,8 +162,6 @@ async def link_account(
                 'cnt_msg_iteration': account.limit,
                 'status': account.status,
                 'url': url,
-                'x-base-url': request.headers.get("x-base-url"),
-                'base_url': str(request.base_url),
                 'code': '0'
             }
     except Exception as e:

@@ -69,5 +69,8 @@ if __name__ == '__main__':
         'main:app',
         host=settings.PROJECT_HOST, port=settings.PROJECT_PORT,
         workers=settings.ASGI_WORKERS, log_config=LOGGING,
-        access_log=True, reload=False
+        access_log=True, reload=False,
+
+        proxy_headers=True,
+        forwarded_allow_ips="*"
     )
