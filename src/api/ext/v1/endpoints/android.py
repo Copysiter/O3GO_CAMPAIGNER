@@ -74,7 +74,7 @@ async def power_device(
     *,
     db: AsyncSession = Depends(deps.get_db),
     obj_in: schemas.AndroidPowerRequest = \
-            Depends(deps.as_form(schemas.AndroidPowerRequest)),
+        Depends(deps.as_form(schemas.AndroidPowerRequest)),
     _ = Depends(deps.get_user_by_api_key),
 ) -> Any:
     """
