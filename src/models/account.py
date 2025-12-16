@@ -2,7 +2,7 @@ import uuid
 
 from datetime import datetime
 from sqlalchemy import (
-    Column, Integer, String, Boolean, ForeignKey, DateTime, func
+    Column, Integer, String, ForeignKey, DateTime, func
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -22,8 +22,8 @@ class Account(Base):
         UUID(as_uuid=True), default=uuid.uuid4, nullable=False, unique=True
     )
     file_name = Column(String, index=True)
-    limit = Column(Integer)
-    cooldown = Column(Integer)
+    limit = Column(Integer, nullable=False, default=-1)
+    cooldown = Column(Integer, nullable=False, default=0)
     create_ts = Column(DateTime, index=True, default=datetime.utcnow,  server_default=func.now())
     update_ts = Column(DateTime, index=True, onupdate=datetime.utcnow)
     sent = Column(Integer, index=True, default=0)

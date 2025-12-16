@@ -1,9 +1,9 @@
 function initAccountForm() {
     return $('#account-form').kendoForm({
         orientation: 'vertical',
-        // formData: {
-        //     files: []
-        // },
+        formData: {
+            files: []
+        },
         layout: 'grid',
         grid: { cols: 12, gutter: '15px 10px' },
         buttonsTemplate: '',
@@ -56,6 +56,7 @@ function initAccountForm() {
                             // Добавляем строки в грид по мере успешной загрузки файлов
                             success: function(e) {
                                 if (e.operation !== 'upload') return;
+                                let form = $("#account-form").getKendoForm();
                                 let model = options.model;
                                 const file_name = e.response.file_name;
                                 if ('files' in model) {
@@ -66,25 +67,13 @@ function initAccountForm() {
                             },
                             // Пользователь удаляет файл из Upload → удаляем и строку из грида
                             remove: function(e) {
-                                // console.log(e);
-                                // (e.files || []).forEach(file => {
-                                //     const item = link.get(file.uid);
-                                //     if (item) {
-                                //         ds.remove(item);
-                                //         link.delete(file.uid);
-                                //     } else {
-                                //         const name = file._serverFileName || file.name;
-                                //         const toRemove = ds.data().find(it =>
-                                //             it.file_name === name && (it.isNew ? it.isNew() : !it.id)
-                                //         );
-                                //         if (toRemove) ds.remove(toRemove);
-                                //     }
-                                //
-                                //     if (!e.data) e.data = {};
-                                //     e.data.file_name = file._serverFileName || file.name;
-                                // });
-
-                                // sync делается в save грида
+                                let model = options.model;
+                                const file_name = e.files[0].name;
+                                if ('files' in model) {
+                                    model.files = model.files.filter(
+                                        f => f !== file_name
+                                    );
+                                }
                             },
                             error: function(e) {
                                 console.warn('Upload error', e);
@@ -104,8 +93,8 @@ function initAccountForm() {
         submit: function(e) {
             e.preventDefault();
             let model = e.model;
-            console.log(model);
             let grid = $('#accounts-grid').data('kendoGrid');
+            let form = $("#account-form").getKendoForm();
             let token = window.isAuth;
             try {
                 let { access_token, token_type } = token;
@@ -126,20 +115,10 @@ function initAccountForm() {
                     }
                 }).then(function(data) {
                     if (true || data.id) {
-                    //     $("#campaign-notification").kendoNotification({
-                    //         type: "warning",
-                    //         position: {
-                    //             top: 54,
-                    //             right: 8
-                    //         },
-                    //         width: "auto",
-                    //         allowHideAfter: 1000,
-                    //         autoHideAfter: 5000
-                    //     });
-                        // $("#campaign-notification").getKendoNotification().show("All changes are saved");
-                        grid.dataSource.read();
                         $("#account-window").data("kendoWindow").close();
-                        $("#account-form").getKendoForm().clear();
+                        grid.dataSource.read();
+                        delete form._model.files
+                        form.clear();
                     }
                 });
             } catch (error) {

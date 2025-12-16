@@ -116,7 +116,8 @@ async def link_account(
                         A.status == schemas.AccountStatus.AVAILABLE,
                         A.user_id == user.id,
                         or_(
-                            A.update_ts.is_(None), datetime.utcnow() > (
+                            A.update_ts.is_(None), A.cooldown.is_(None),
+                            datetime.utcnow() > (
                                 A.update_ts + func.make_interval(
                                     0, 0, 0, 0, 0, A.cooldown, 0
                                 )
@@ -243,12 +244,8 @@ async def upload_archive(
     # Добавление записи в БД
     await crud.account.create(
         db=db, obj_in=schemas.AccountCreate(
-            uuid=str(uuid.uuid4()),
-            user_id=user.id,
-            file_name=file_name,
-            limit=None,
-            cooldown=None
-        )
+            uuid=str(uuid.uuid4()), user_id=user.id, file_name=file_name
+        ).model_dump(exclude_unset=False)
     )
 
     return JSONResponse(result)

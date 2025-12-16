@@ -18,15 +18,15 @@ class AccountBase(BaseModel):
         None, description='UUID файла для скачивания'
     )
     limit: Optional[int] = Field(
-        -1, description='Лимит отправки сообщений подряд'
+        10, description='Лимит отправки сообщений подряд'
     )
     cooldown: Optional[int] = Field(
-        None, description='Пауза перед повторной отправкой сообщений'
+        10, description='Пауза перед повторной отправкой сообщений'
     )
     create_ts: Optional[datetime] =  Field(
         datetime.utcnow(), description='Дата добавления аккаунта'
     )
-    status_ts: Optional[datetime] = Field(
+    update_ts: Optional[datetime] = Field(
         None, description='Последняя дата использования'
     )
     sent: Optional[int] = Field(
@@ -74,14 +74,14 @@ class AccountRows(BaseModel):
 
 class AccountMultiCreate(BaseModel):
     files: List[str] = Field(description='Список названий файлов')
-    user_id: Optional[int] = Field(
+    user_id: int | None = Field(
         None, description='ID владельца кампании'
     )
-    limit: Optional[int] = Field(
-        -1, description='Лимит отправки сообщений подряд'
+    limit: int | None = Field(
+        10, description='Лимит отправки сообщений подряд'
     )
-    cooldown: Optional[int] = Field(
-        None, description='Пауза перед повторной отправкой сообщений'
+    cooldown: int | None = Field(
+        10, description='Пауза перед повторной отправкой сообщений'
     )
 
 
