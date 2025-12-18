@@ -22,7 +22,8 @@ function showVersionEditForm(model) {
                             saveUrl: `${api_base_url}/api/v1/android/versions/upload`,
                             removeUrl: `${api_base_url}/api/v1/android/versions/remove`,
                             removeField: 'file_name',
-                            autoUpload: true
+                            autoUpload: true,
+                            withCredentials: false
                         },
                         validation: {
                             allowedExtensions: [".apk"],
