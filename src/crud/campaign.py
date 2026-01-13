@@ -5,6 +5,7 @@ from sqlalchemy import select, update, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from crud.base import CRUDBase
+from models.tag import Tag
 from models.campaign import (
     Campaign, CampaignApiKeys, CampaignAndroids, CampaignTags
 )
@@ -86,16 +87,25 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             obj_in_data = obj_in
         else:
             obj_in_data = obj_in.model_dump(exclude_unset=True)
-        
+
+        # Загружаем полные объекты Tag из БД
+        tag_ids = obj_in_data.pop('tags', []) or []
+        loaded_tags = []
+        if tag_ids:
+            statement = select(Tag).where(Tag.id.in_(tag_ids))
+            result = await db.execute(statement)
+            loaded_tags = result.unique().scalars().all()
+
         # Подготавливаем campaign_tags
         obj_in_data['campaign_tags'] = [
-            CampaignTags(tag_id=id)
-            for id in (obj_in_data.pop('tags', []) or [])
+            CampaignTags(tag_id=tag.id)
+            for tag in loaded_tags
         ]
-        
+
         # Используем prepare_api_keys для подготовки ключей
         obj_in_data['keys'] = self.prepare_api_keys(
-            api_keys=obj_in_data.pop('api_keys', []) or []
+            api_keys=obj_in_data.pop('api_keys', []) or [],
+            tags=loaded_tags
         )
         
         campaign = await super().create(db, obj_in=obj_in_data)
@@ -109,16 +119,31 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             update_data = obj_in
         else:
             update_data = obj_in.model_dump(exclude_unset=False)
-        if 'tags' in update_data:
-            update_data['campaign_tags'] = [
-                CampaignTags(tag_id=id)
-                for id in (update_data.pop('tags', []) or [])
-            ]
-        if 'keys' in update_data or 'api_keys' in update_data:
-            update_data['keys'] = self.prepare_api_keys(
-                api_keys=update_data.pop('api_keys', None),
-                tags=db_obj.tags
-            )
+
+        # Загружаем полные объекты Tag из БД
+        tag_ids = update_data.pop('tags', []) or []
+        loaded_tags = []
+        if tag_ids:
+            statement = select(Tag).where(Tag.id.in_(tag_ids))
+            result = await db.execute(statement)
+            loaded_tags = result.unique().scalars().all()
+
+        # Подготавливаем campaign_tags
+        update_data['campaign_tags'] = [
+            CampaignTags(tag_id=tag.id)
+            for tag in loaded_tags
+        ]
+
+        update_data['keys'] = self.prepare_api_keys(
+            api_keys=update_data.pop('api_keys', []) or [],
+            tags=loaded_tags
+        )
+
+        update_data['keys'] = self.prepare_api_keys(
+            api_keys=update_data.pop('api_keys', []) or [],
+            tags=loaded_tags
+        )
+
         if 'msg_attempts' in update_data and \
                 db_obj.msg_attempts != update_data['msg_attempts']:
             statement = update(CampaignDst).where(
@@ -129,7 +154,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
                 ])
             ).values(attempts=update_data['msg_attempts'])
             await db.execute(statement)
-            await db.execute(statement)
+
         if 'msg_sending_timeout' in update_data and \
             db_obj.msg_sending_timeout != \
                 update_data['msg_sending_timeout']:
@@ -142,7 +167,9 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
                 )) if update_data['msg_sending_timeout'] else None
             )
             await db.execute(statement)
+
         campaign = await super().update(db, db_obj=db_obj, obj_in=update_data)
+
         return campaign
 
     async def update_rows(
