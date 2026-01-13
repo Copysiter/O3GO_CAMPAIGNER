@@ -155,7 +155,7 @@ async def upload_archive(file: UploadFile = File(...)):
 
 
 @router.post('/remove')
-async def remove_apk(request: Request):
+async def remove_archive(request: Request):
     form = await request.form()
     filename = form.get('file_name')
     if not filename or not filename.endswith(".tar.gz"):

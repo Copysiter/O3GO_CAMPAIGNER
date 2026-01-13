@@ -5,10 +5,10 @@ from sqlalchemy import select, update, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from crud.base import CRUDBase
-from models.campaign import Campaign, CampaignApiKeys, CampaignTags
+from models.campaign import (
+    Campaign, CampaignApiKeys, CampaignAndroids, CampaignTags
+)
 from models.campaign_dst import CampaignDst
-from models.tag import Tag
-from models.api_key import ApiKey
 from schemas.campaign import CampaignCreate, CampaignUpdate
 from schemas.status import CampaignDstStatus
 
@@ -49,21 +49,35 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         results = await db.execute(statement=statement)
         return results.scalar_one()
 
-    async def update_keys(
-        self, db: AsyncSession, *, db_obj: Campaign, removed_keys: list = None
-    ) -> Campaign:
-        if db_obj.tags:
-            api_keys = [key for key in db_obj.api_keys
-                        if key not in (removed_keys or [])]
-            for tag in db_obj.tags:
+    def prepare_api_keys(
+        self, api_keys: list = None, tags: list = None,
+        removed_keys: list = None
+    ) -> list:
+        """
+        Подготавливает список CampaignApiKeys на основе api_keys и tags
+        
+        Args:
+            api_keys: Список строк с api ключами
+            tags: Список объектов Tag или None
+            removed_keys: Список ключей для исключения
+            
+        Returns:
+            list: Список объектов CampaignApiKeys
+        """
+        result_keys = set(api_keys or [])
+
+        # Добавляем ключи из тегов
+        if tags:
+            for tag in tags:
                 for key in tag.keys:
-                    if key not in api_keys:
-                        api_keys.append(key.api_key)
-            db_obj.keys = [CampaignApiKeys(api_key=key) for key in api_keys]
-            db.add(db_obj)
-            await db.commit()
-            await db.refresh(db_obj)
-        return db_obj
+                    result_keys.add(key.api_key)
+
+        # Удаляем ключи из removed_keys
+        if removed_keys:
+            result_keys = result_keys - set(removed_keys)
+
+        # Возвращаем список моделей CampaignApiKeys
+        return [CampaignApiKeys(api_key=key) for key in result_keys]
 
     async def create(
         self, db: AsyncSession, *, obj_in: CampaignCreate
@@ -72,16 +86,19 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             obj_in_data = obj_in
         else:
             obj_in_data = obj_in.model_dump(exclude_unset=True)
+        
+        # Подготавливаем campaign_tags
         obj_in_data['campaign_tags'] = [
             CampaignTags(tag_id=id)
             for id in (obj_in_data.pop('tags', []) or [])
         ]
-        obj_in_data['keys'] = [
-            CampaignApiKeys(api_key=key)
-            for key in (obj_in_data.pop('api_keys', []) or [])
-        ]
+        
+        # Используем prepare_api_keys для подготовки ключей
+        obj_in_data['keys'] = self.prepare_api_keys(
+            api_keys=obj_in_data.pop('api_keys', []) or []
+        )
+        
         campaign = await super().create(db, obj_in=obj_in_data)
-        campaign = await self.update_keys(db, db_obj=campaign)
         return campaign
 
     async def update(
@@ -97,11 +114,11 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
                 CampaignTags(tag_id=id)
                 for id in (update_data.pop('tags', []) or [])
             ]
-        if 'keys' in update_data:
-            update_data['keys'] = [
-                CampaignApiKeys(api_key=key)
-                for key in (update_data.pop('api_keys', []) or [])
-            ]
+        if 'keys' in update_data or 'api_keys' in update_data:
+            update_data['keys'] = self.prepare_api_keys(
+                api_keys=update_data.pop('api_keys', None),
+                tags=db_obj.tags
+            )
         if 'msg_attempts' in update_data and \
                 db_obj.msg_attempts != update_data['msg_attempts']:
             statement = update(CampaignDst).where(
@@ -125,10 +142,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
                 )) if update_data['msg_sending_timeout'] else None
             )
             await db.execute(statement)
-            await db.execute(statement)
-        campaign = await super().update(
-            db, db_obj=db_obj, obj_in=update_data)
-        campaign = await self.update_keys(db, db_obj=campaign)
+        campaign = await super().update(db, db_obj=db_obj, obj_in=update_data)
         return campaign
 
     async def update_rows(

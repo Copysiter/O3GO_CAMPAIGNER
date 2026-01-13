@@ -6,7 +6,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 import crud, models, schemas  # noqa
+
 from api import deps  # noqa
+from services.android import AndroidService
 
 
 router = APIRouter()
@@ -53,22 +55,16 @@ async def get_api_keys_options(
 
 
 @router.get('/android', response_model=List[schemas.OptionInt])
-async def get_api_keys_options(
+async def get_android_options(
     *,
-    db: Session = Depends(deps.get_db),
     user: models.User = Depends(deps.get_current_active_user)
 ) -> Any:
     """
     Retrieve android_device options.
     """
-    filters = [
-        {'field': 'user_id', 'operator': 'eq', 'value': user.id}
-    ] if not user.is_superuser else []
-    rows = await crud.android.get_rows(db, filters=filters, limit=None)
-    return JSONResponse([{
-        'text': rows[i].device_name or rows[i].device,
-        'value': rows[i].device
-    } for i in range(len(rows))])
+    android = AndroidService()
+    data = await android.get_device_options(x_api_key=user.ext_api_key)
+    return JSONResponse(data)
 
 
 @router.get('/tag', response_model=List[schemas.OptionInt])

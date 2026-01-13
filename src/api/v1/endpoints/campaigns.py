@@ -19,6 +19,7 @@ from api import deps
 from tasks import rewrite_message
 
 import crud, models, schemas
+from services.android import AndroidService
 
 router = APIRouter()
 
@@ -102,6 +103,25 @@ async def read_campaigns(
         count = await crud.campaign.get_count_by_user(
             db, user_id=current_user.id, filters=filters
         )
+    
+    # Получаем данные Android устройств
+    android = AndroidService()
+    data = await android.get_device_options(x_api_key=current_user.ext_api_key)
+    
+    # Создаём словарь для быстрого маппинга value -> text
+    android_map = {
+        item['value']: item['text'] for item in data
+        if 'value' in item and 'text' in item
+    }
+    
+    # Обогащаем каждую кампанию полем android_names
+    for campaign in campaigns:
+        campaign.android_names = []
+        if campaign.androids:
+            for android_id in campaign.androids:
+                android_name = android_map.get(android_id, android_id)
+                campaign.android_names.append(android_name)
+    
     return {'data' : campaigns, 'total': count}
 
 
@@ -119,22 +139,23 @@ async def create_campaign(
     ts = datetime.utcnow()
 
     campaign_db_in = schemas.CampaignCreate(
-        name = campaign_in.name,
-        user_id = campaign_in.user_id if campaign_in.user_id else current_user.id,
+        name=campaign_in.name,
+        user_id=campaign_in.user_id if campaign_in.user_id else current_user.id,
         webhook_url=campaign_in.webhook_url,
-        api_keys = campaign_in.api_keys,
-        tags = campaign_in.tags,
-        schedule = campaign_in.schedule,
+        api_keys=campaign_in.api_keys,
+        androids=campaign_in.androids,
+        tags=campaign_in.tags,
+        schedule=campaign_in.schedule,
         msg_attempts=campaign_in.msg_attempts,
         msg_sending_timeout=campaign_in.msg_sending_timeout,
         msg_status_timeout=campaign_in.msg_status_timeout,
-        msg_template = campaign_in.msg_template,
+        msg_template=campaign_in.msg_template,
         follow_limit=campaign_in.follow_limit,
         order=campaign_in.order,
-        create_ts = ts,
+        create_ts=ts,
         start_ts=campaign_in.start_ts,
         stop_ts=campaign_in.stop_ts,
-        status = campaign_in.status
+        status=campaign_in.status
     )
 
     # campaign_db_in = schemas.CampaignUpdate(
@@ -326,7 +347,7 @@ async def delete_campaign_rows(
 async def update_campaign(
     *,
     db: AsyncSession = Depends(deps.get_db),
-    current_user: models.User = Depends(deps.get_current_active_user),
+    _current_user: models.User = Depends(deps.get_current_active_user),
     id: int,
     campaign_in: schemas.CampaignUpdate
 ) -> Any:

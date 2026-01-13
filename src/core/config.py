@@ -96,6 +96,9 @@ class Settings(BaseSettings):
 
     WAIT_STATUS_TIMEOUT: int = Field(30, env='WAIT_STATUS_TIMEOUT')
 
+    ANDROID_API_URL: str = Field(None, env='ANDROID_API_URL')
+    ANDROID_API_TIMEOUT: int = Field(30, env='ANDROID_API_TIMEOUT')
+
     AI_REWRITE_SYSTEM_PROMPT: str = Field(
         """
         Ты — профессиональный копирайтер и редактор рекламных сообщений.

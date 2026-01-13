@@ -24,6 +24,18 @@ class CampaignApiKeys(Base):
     key = relationship('ApiKey', lazy='joined')
 
 
+class CampaignAndroids(Base):
+    __table_args__ = (
+        Index("campaign_android_device", "device"),
+        Index("campaign_android_campaign_id", "campaign_id"),
+        {'extend_existing': True}
+    )
+
+    campaign_id = Column(BigInteger, ForeignKey(
+        'campaign.id', ondelete='CASCADE'), primary_key=True)
+    device = Column(String, primary_key=True)
+
+
 # class CampaignAndroids(Base):
 #     __table_args__ = (
 #         Index("campaign_android_device", "device"),
@@ -93,6 +105,15 @@ class Campaign(Base):
     api_keys = AssociationProxy(
         'keys', 'api_key',
         creator=lambda api_key_value: CampaignApiKeys(api_key=api_key_value)
+    )
+
+    campaign_androids = relationship(
+        'CampaignAndroids', lazy='selectin',
+        cascade='save-update, merge, delete, delete-orphan'
+    )
+    androids = AssociationProxy(
+        'campaign_androids', 'device',
+        creator=lambda device_value: CampaignAndroids(device=device_value)
     )
 
     campaign_tags = relationship(

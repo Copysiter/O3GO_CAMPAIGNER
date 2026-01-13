@@ -239,6 +239,21 @@ window.initCampaignGrid = function() {
                 }
             },
             {
+                field: "androids",
+                title: "Android Devices",
+                filterable: false,
+                maxWidth: 360,
+                template: function (obj) {
+                    let html = '';
+                    if (obj.android_names) {
+                        obj.android_names.forEach(function (id) {
+                            html += `<span class="k-chip k-chip-sm k-rounded-md k-chip-solid k-chip-solid-base m-3 px-5 py-3 fs-14">${id}</span>`;
+                        });
+                    }
+                    return `<div class="inline-blocks d-flex flex-wrap m-n3">${html}</div>`;
+                }
+            },
+            {
                 field: 'msg_template',
                 // width: 80,
                 title: 'Message',

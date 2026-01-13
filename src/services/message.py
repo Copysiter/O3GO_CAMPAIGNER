@@ -100,6 +100,111 @@ FROM upd u
 JOIN upd_campaign uc ON uc.id = u.picked_campaign_id;
 """)
 
+SQL_GET_NEXT_BY_DEVICE = text("""
+WITH one_campaign AS (
+    SELECT
+        c.id AS campaign_id
+    FROM campaign c
+    JOIN campaign_androids ca
+      ON ca.campaign_id = c.id
+     AND ca.device      = :device
+    WHERE c.status = :status_running
+      AND (
+           (c.start_ts IS NOT NULL AND c.stop_ts IS NOT NULL
+            AND :now BETWEEN c.start_ts AND c.stop_ts)
+           OR
+           (c.schedule::jsonb ->> :weekday_str IS NOT NULL
+            AND (c.schedule::jsonb -> :weekday_str)::jsonb
+                @> TO_JSONB(CAST(:hour AS INTEGER)))
+      )
+      {user_clause}
+      AND EXISTS (
+          SELECT 1
+          FROM campaign_dst d
+          WHERE d.campaign_id = c.id
+            AND d.status IN (:created_status, :failed_status)
+            AND d.attempts > 0
+          LIMIT 1
+      )
+    ORDER BY c."order", c.msg_sent
+    LIMIT 1
+),
+one AS (
+    SELECT
+        d.id,
+        d.status       AS old_status,
+        d.campaign_id  AS campaign_id,
+        (c.follow_limit > c.follow_count) AS follow
+    FROM one_campaign oc
+    JOIN campaign c ON c.id = oc.campaign_id
+    JOIN LATERAL (
+        SELECT
+            d.id, d.status, d.campaign_id,
+            d.dst_addr, d.text, d.ext_id,
+            d.field_1, d.field_2, d.field_3, d.field_4, d.field_5
+        FROM campaign_dst d
+        WHERE d.campaign_id = oc.campaign_id
+          AND d.status IN (:created_status, :failed_status)
+          AND d.attempts > 0
+        ORDER BY d.status, d.id
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED
+    ) d ON TRUE
+),
+upd AS (
+    UPDATE campaign_dst d
+    SET
+        status     = :new_status,
+        sent_ts    = CASE
+                        WHEN CAST(:new_status AS INTEGER) = CAST(:sent_status AS INTEGER)
+                        THEN :sent_ts
+                        ELSE d.sent_ts
+                     END,
+        attempts   = d.attempts - 1,
+        update_ts  = :update_ts
+    FROM one
+    WHERE d.id = one.id
+    RETURNING
+        d.*,
+        one.old_status,
+        one.campaign_id AS picked_campaign_id,
+        one.follow AS follow
+),
+upd_campaign AS (
+    UPDATE campaign c
+    SET
+        msg_sent = c.msg_sent + CASE
+            WHEN (SELECT old_status FROM upd) = :created_status
+            THEN 1 ELSE 0 END,
+        msg_delivered = CASE
+            WHEN CAST(:new_status AS INTEGER) = CAST(:delivered_status AS INTEGER)
+            THEN c.msg_delivered + 1
+            ELSE c.msg_delivered
+        END,
+        msg_failed = c.msg_failed + CASE
+            WHEN (SELECT old_status FROM upd) = :failed_status
+            THEN -1 ELSE 0 END,
+        follow_count = CASE
+            WHEN c.follow_limit > c.follow_count THEN c.follow_count + 1
+            ELSE c.follow_limit
+        END
+    WHERE c.id = (SELECT picked_campaign_id FROM upd)
+    RETURNING
+        c.id,
+        c.webhook_url,
+        c.msg_template,
+        c.msg_status_timeout
+)
+SELECT
+    u.*,
+    uc.webhook_url,
+    uc.msg_template,
+    uc.msg_status_timeout,
+    u.follow
+FROM upd u
+JOIN upd_campaign uc ON uc.id = u.picked_campaign_id;
+""")
+
 SQL_GET_NEXT_BY_API_KEY = text("""
 WITH one_campaign AS (
     SELECT
@@ -336,6 +441,7 @@ async def get_next_processing(
     *,
     campaign_id: Optional[int] = None,
     api_key: Optional[str] = None,
+    device: Optional[str] = None,
     status: schemas.CampaignDstStatus = schemas.CampaignDstStatus.SENT,
     now: datetime,
     weekday: int,
@@ -374,6 +480,21 @@ async def get_next_processing(
         params = {
             **params_common,
             "campaign_id": campaign_id,
+        }
+    elif device is not None:
+        sql = text(
+            SQL_GET_NEXT_BY_DEVICE.text.replace(
+                "{user_clause}", "AND c.user_id = :user_id"
+                if not user.is_superuser else ""
+            )
+        )
+        params = {
+            **params_common,
+            "device": device,
+            "status_running": int(schemas.CampaignStatus.RUNNING),
+            "now": now,
+            "weekday_str": str(weekday),
+            "hour": int(hour),
         }
     else:
         sql = text(

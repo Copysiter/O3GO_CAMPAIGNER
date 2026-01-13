@@ -98,6 +98,7 @@ class Campaign(CampaignInDBBase):
     user: User
     api_keys: list = []
     androids: list = []
+    android_names: list = []
     tags: List[Tag] = []
 
 # Properties stored in DB
