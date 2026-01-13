@@ -139,11 +139,6 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             tags=loaded_tags
         )
 
-        update_data['keys'] = self.prepare_api_keys(
-            api_keys=update_data.pop('api_keys', []) or [],
-            tags=loaded_tags
-        )
-
         if 'msg_attempts' in update_data and \
                 db_obj.msg_attempts != update_data['msg_attempts']:
             statement = update(CampaignDst).where(
