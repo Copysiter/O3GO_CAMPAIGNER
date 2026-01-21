@@ -504,7 +504,7 @@ async def read_campaign_campaign_dsts(
 
 
 @router.delete('/{id}/campaign_dst', response_model=schemas.Campaign)
-async def read_campaign_campaign_dsts(
+async def delete_campaign_campaign_dsts(
         *,
         db: AsyncSession = Depends(deps.get_db),
         current_user: models.User = Depends(deps.get_current_active_user),

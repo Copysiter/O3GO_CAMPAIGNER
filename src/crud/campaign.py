@@ -12,6 +12,7 @@ from models.campaign import (
 from models.campaign_dst import CampaignDst
 from schemas.campaign import CampaignCreate, CampaignUpdate
 from schemas.status import CampaignDstStatus
+from services.android import AndroidService
 
 
 class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
@@ -118,26 +119,37 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         if isinstance(obj_in, dict):
             update_data = obj_in
         else:
-            update_data = obj_in.model_dump(exclude_unset=False)
+            update_data = obj_in.model_dump(exclude_unset=True)
 
-        # Загружаем полные объекты Tag из БД
-        tag_ids = update_data.pop('tags', []) or []
         loaded_tags = []
-        if tag_ids:
-            statement = select(Tag).where(Tag.id.in_(tag_ids))
-            result = await db.execute(statement)
-            loaded_tags = result.unique().scalars().all()
 
-        # Подготавливаем campaign_tags
-        update_data['campaign_tags'] = [
-            CampaignTags(tag_id=tag.id)
-            for tag in loaded_tags
-        ]
+        # Обработка tags
+        if 'tags' in update_data:
+            tag_ids = update_data.pop('tags') or []
+            if tag_ids:
+                statement = select(Tag).where(Tag.id.in_(tag_ids))
+                result = await db.execute(statement)
+                loaded_tags = result.unique().scalars().all()
 
-        update_data['keys'] = self.prepare_api_keys(
-            api_keys=update_data.pop('api_keys', []) or [],
-            tags=loaded_tags
-        )
+            update_data['campaign_tags'] = [
+                CampaignTags(tag_id=tag.id)
+                for tag in loaded_tags
+            ]
+
+        # Обработка api_keys
+        if 'tags' in update_data or 'api_keys' in update_data:
+            # Определяем, какие api_keys использовать
+            if 'api_keys' in update_data:
+                # Если api_keys переданы явно
+                api_keys = update_data.pop('api_keys') or []
+            else:
+                # Если api_keys не переданы, берём из БД
+                api_keys = [key.api_key for key in db_obj.keys]
+
+            # Если tags тоже обновляются, используем их, иначе None
+            update_data['keys'] = self.prepare_api_keys(
+                api_keys=api_keys, tags=loaded_tags
+            )
 
         if 'msg_attempts' in update_data and \
                 db_obj.msg_attempts != update_data['msg_attempts']:
@@ -165,23 +177,65 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
 
         campaign = await super().update(db, db_obj=db_obj, obj_in=update_data)
 
+        # Загружаем имена Android устройств из внешнего сервиса
+        if campaign.androids and campaign.user and campaign.user.ext_api_key:
+            android = AndroidService()
+
+            data = await android.get_device_options(
+                x_api_key=campaign.user.ext_api_key)
+
+            # Создаём словарь для быстрого маппинга value -> text
+            android_map = {
+                item['value']: item['text'] for item in data
+                if 'value' in item and 'text' in item
+            }
+
+            # Обогащаем кампанию полем android_names
+            campaign.android_names = [
+                android_map.get(android_id, android_id)
+                for android_id in campaign.androids
+            ]
+        else:
+            campaign.android_names = []
+
         return campaign
 
     async def update_rows(
         self, db: AsyncSession, *, ids: List[int],
         obj_in: Dict[str, Any], user_id: int = None
-    ) -> Campaign:
+    ) -> List[Campaign]:
         statement = update(self.model).where(self.model.id.in_(ids))
         if user_id is not None:
             statement = statement.where(Campaign.user_id == user_id)
-        statement = statement.values(**obj_in)
-        await db.execute(statement)
-        statement = select(self.model).where(self.model.id.in_(ids))
-        if user_id is not None:
-            statement = statement.where(Campaign.user_id == user_id)
+        statement = statement.values(**obj_in).returning(self.model)
         results = await db.execute(statement=statement)
         await db.commit()
-        return results.unique().scalars().all()
+
+        campaigns = results.unique().scalars().all()
+
+        # Обогащаем каждую кампанию полем android_names
+        for campaign in campaigns:
+            if campaign.androids and campaign.user and campaign.user.ext_api_key:
+                android = AndroidService()
+                data = await android.get_device_options(
+                    x_api_key=campaign.user.ext_api_key
+                )
+
+                # Создаём словарь для быстрого маппинга value -> text
+                android_map = {
+                    item['value']: item['text'] for item in data
+                    if 'value' in item and 'text' in item
+                }
+
+                # Обогащаем кампанию полем android_names
+                campaign.android_names = [
+                    android_map.get(android_id, android_id)
+                    for android_id in campaign.androids
+                ]
+            else:
+                campaign.android_names = []
+
+        return campaigns
 
     async def delete_rows(
         self, db: AsyncSession, *, ids: List[int], user_id: int = None
