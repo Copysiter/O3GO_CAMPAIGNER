@@ -4,6 +4,7 @@ import pandas as pd
 import openpyxl
 
 from openpyxl.worksheet.table import Table, TableStyleInfo
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from typing import Any, List, Dict, Union
 from datetime import datetime, timedelta
 from io import BytesIO
@@ -577,7 +578,7 @@ async def download_campaign_report(
             dst.dst_addr,
             dst.sent_ts.strftime('%Y-%m-%d %H:%M:%S') if dst.sent_ts else '',
             schemas.CampaignDstStatus.name(dst.status),
-            dst.text or text
+            ILLEGAL_CHARACTERS_RE.sub('', (dst.text or text))
         ])
 
     table_ref = 'A1:{}'.format(
