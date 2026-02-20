@@ -259,6 +259,12 @@ window.initMessageGrid = function(id) {
                 filterable: false,
                 sortable: false
             },
+            {
+                field: 'error',
+                title: 'Error',
+                filterable: false,
+                sortable: false
+            },
             {}
         ]
     });

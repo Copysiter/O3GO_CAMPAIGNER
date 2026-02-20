@@ -209,9 +209,31 @@ async def rewrite(id: int, original_text: str, ai_provider, prompt: str):
             if not row:
                 logging.error(f"CampaignDst с ID {id} не найден")
                 return {"success": False, "id": id, "error": "Record not found"}
-            
+
             # Выполняем рерайт
-            rewritten_text = await ai_provider.rewrite(prompt=prompt, text=original_text)
+            rewritten_text = await ai_provider.rewrite(prompt=prompt,
+                                                       text=original_text)
+            try:
+                rewritten_text = await ai_provider.rewrite(
+                    prompt=prompt, text=original_text
+                )
+            except Exception as e:
+                error = f"{type(e).__name__}: {str(e)}"
+                await session.execute(
+                    text("""
+                        UPDATE campaign_dst
+                        SET status = 0,
+                            error = :error,
+                            update_ts = NOW()
+                        WHERE id = :id
+                    """),
+                    {"error": error, "id": id},
+                )
+                # Коммитим изменения для текущей сессии
+                await session.commit()
+
+                logging.error(f"Ошибка AI рерайта для campaign_dst {id}: {error}")
+                return {"success": False, "id": id, "error": error}
             
             # Сохраняем результат
             await session.execute(
@@ -222,7 +244,6 @@ async def rewrite(id: int, original_text: str, ai_provider, prompt: str):
                 """),
                 {"text": rewritten_text, "id": id}
             )
-            
             # Коммитим изменения для текущей сессии
             await session.commit()
             
