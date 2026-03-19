@@ -94,6 +94,7 @@ class Campaign(CampaignInDBBase):
     msg_undelivered: Optional[int] = 0
     msg_failed: Optional[int] = 0
     follow_count: Optional[int] = 0
+    link_clicks: Optional[int] = 0
 
     user: User
     api_keys: list = []

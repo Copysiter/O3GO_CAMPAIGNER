@@ -249,5 +249,25 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         r = result.scalars().all()
         return r
 
+    async def link_click(
+        self, db: AsyncSession, *, counts: Dict[int, int]
+    ) -> None:
+        """
+        Атомарно инкрементировать счетчик link_clicks для кампаний.
+
+        Args:
+            db: Сессия БД
+            counts: Словарь {campaign_id: increment_count}
+        """
+        for campaign_id, count in counts.items():
+            stmt = (
+                update(Campaign)
+                .where(Campaign.id == campaign_id)
+                .values(link_clicks=Campaign.link_clicks + count)
+            )
+            await db.execute(stmt)
+
+        await db.commit()
+
 
 campaign = CRUDCampaign(Campaign)

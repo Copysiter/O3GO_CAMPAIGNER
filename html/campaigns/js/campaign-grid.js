@@ -307,6 +307,11 @@ window.initCampaignGrid = function() {
                 }
             },
             {
+                field: 'link_clicks',
+                title: 'Link Clicks',
+                filterable: false
+            },
+            {
                 field: 'create_ts',
                 title: 'Created',
                 width: '150px',
