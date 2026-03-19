@@ -31,7 +31,7 @@ celery.conf.task_routes = {
     "tasks.webhook": {"queue": "critical"},
     "tasks.update_messages": {"queue": "normal"},
     "tasks.update_campaigns": {"queue": "normal"},
-    "tasks.rewrite": {"queue": "background"},
+    "tasks.rewrite_message": {"queue": "background"},
     "tasks.prepare_messages": {"queue": "background"},
 }
 
@@ -248,7 +248,7 @@ async def rewrite(id: int, original_text: str, ai_provider, prompt: str):
             return {"success": False, "id": id, "error": str(e)}
 
 
-@celery.task(name="tasks.rewrite")
+@celery.task(name="tasks.rewrite_message")
 async def rewrite_message(
     data: list, config: dict, prompt: str = settings.AI_REWRITE_SYSTEM_PROMPT
 ):
