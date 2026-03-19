@@ -32,7 +32,7 @@ async def shorten(
         return {"results": []}
 
     url = settings.LINK_SHORTENER_URL
-    params = {"x_api_key": x_api_key}
+    params = {"x_api_key": x_api_key} if x_api_key else {}
     payload = {"urls": urls}
 
     try:
