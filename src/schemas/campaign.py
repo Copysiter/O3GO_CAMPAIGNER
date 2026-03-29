@@ -59,6 +59,7 @@ class CampaignRequest(CampaignBase):
     provider: Optional[str] = None
     model: Optional[str] = None
     prompt: Optional[str] = None
+    check_dst: Optional[bool] = False
 
 
 # Properties to receive on item update

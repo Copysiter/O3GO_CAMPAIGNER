@@ -329,3 +329,120 @@ window.exportCampaignReport = function(id) {
 
     });
 }
+
+campaignDelete = function() {
+    if (window.selectedCampaignItems.length > 1) {
+        kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to delete Campaigns ?</div>`).done(function() {
+            $.ajax({
+                url: `${api_base_url}/api/v1/campaigns/`,
+                type: "DELETE",
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({ids: window.selectedCampaignItems.map(obj => parseInt(obj.id))}),
+                dataType: 'json',
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader ("Authorization", `${token_type} ${access_token}`);
+                },
+                success: function(data) {
+
+                },
+                error: function(jqXHR, textStatus, ex) {
+
+                }
+            }).then(function(data) {
+                if (data) {
+                    $("#campaign-notification").kendoNotification({
+                        type: "warning",
+                        position: {
+                            top: 54,
+                            right: 8
+                        },
+                        width: "auto",
+                        allowHideAfter: 1000,
+                        autoHideAfter: 5000
+                    });
+                    let rows = $("#campaign-grid").data("kendoGrid").select();
+                    for (let i = 0; i < rows.length; i++) {
+                        $("#campaign-grid").data("kendoGrid").removeRow($(rows[i]));
+                    }
+                    $("#campaign-grid").data("kendoGrid").refresh();
+                    $("#campaign-window").data("kendoWindow").close();
+                    $("#campaign-notification").getKendoNotification().show("Campaigns haму been deleted.");
+                }
+            });
+        }).fail(function() {
+
+        });
+    } else if (window.selectedCampaignItem) {
+        kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to delete Campaign ?</div>`).done(function() {
+            $.ajax({
+                url: `${api_base_url}/api/v1/campaigns/${selectedCampaignItem.id}`,
+                type: "DELETE",
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader ("Authorization", `${token_type} ${access_token}`);
+                },
+                success: function(data) {
+
+                },
+                error: function(jqXHR, textStatus, ex) {
+
+                }
+            }).then(function(data) {
+                if (data.id) {
+                    $("#campaign-notification").kendoNotification({
+                        type: "warning",
+                        position: {
+                            top: 54,
+                            right: 8
+                        },
+                        width: "auto",
+                        allowHideAfter: 1000,
+                        autoHideAfter: 5000
+                    });
+                    $("#campaign-grid").data("kendoGrid").removeRow($("#campaign-grid").data("kendoGrid").select());
+                    $("#campaign-grid").data("kendoGrid").refresh();
+                    $("#campaign-window").data("kendoWindow").close();
+                    $("#campaign-notification").getKendoNotification().show("Campaign has been deleted.");
+                }
+            });
+        }).fail(function() {
+
+        });
+    }
+}
+
+window.checkCampaignDst = function() {
+    kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to check DST Numbers?</div>`).done(function() {
+        $.ajax({
+            url: `${api_base_url}/api/v1/campaigns/${selectedCampaignItem.id}/check_dst`,
+            type: "POST",
+            beforeSend: function (xhr) {
+                xhr.setRequestHeader ("Authorization", `${token_type} ${access_token}`);
+            },
+            success: function(data) {
+
+            },
+            error: function(jqXHR, textStatus, ex) {
+
+            }
+        }).then(function(data) {
+            if (data.id) {
+                $("#campaign-notification").kendoNotification({
+                    type: "warning",
+                    position: {
+                        top: 54,
+                        right: 8
+                    },
+                    width: "auto",
+                    allowHideAfter: 1000,
+                    autoHideAfter: 5000
+                });
+                $("#message-grid").data("kendoGrid").dataSource.read();
+                $("#campaign-notification").getKendoNotification().show(
+                    "Phone numbers checking in progress. Please wait..."
+                );
+            }
+        });
+    }).fail(function() {
+
+    });
+}

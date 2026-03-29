@@ -320,6 +320,24 @@ window.initWizard = function() {
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
+                }, {
+                    field: 'text',
+                    colSpan: 6,
+                    label: false,
+                    editor: "<div class='mt-3'>Check DST Numbers:</div>",
+                }, {
+                    field: 'check_dst',
+                    label: '',
+                    editor: 'Switch',
+                    editorOptions: {
+                        width: 70,
+                    },
+                    colSpan: 6,
+                }, {
+                    field: "sep5",
+                    colSpan: 12,
+                    label: false,
+                    editor: "<div class='separator mx-n15'></div>"
                 }]),
             }
         }, {

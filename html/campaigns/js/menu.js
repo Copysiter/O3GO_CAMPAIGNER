@@ -1,5 +1,5 @@
 window.initContextMenu = function() {
-    
+
     $("#campaign-menu").kendoContextMenu({
         target: "#campaign-grid tbody",
         filter: "tr[role='row']",
@@ -16,7 +16,7 @@ window.initContextMenu = function() {
             {
                 text: "",
                 cssClass: "k-separator",
-            }, 
+            },
             {
                 text: "Campaign Settings",
                 cssClass: "campaignEdit",
@@ -28,7 +28,7 @@ window.initContextMenu = function() {
             {
                 text: "",
                 cssClass: "k-separator",
-            }, 
+            },
             {
                 text: "Start Campaign",
                 cssClass: "campaignStart",
@@ -59,7 +59,7 @@ window.initContextMenu = function() {
             {
                 text: "",
                 cssClass: "k-separator",
-            }, 
+            },
             {
                 text: "Delete Campaign",
                 cssClass: "campaignDelete",
@@ -67,6 +67,18 @@ window.initContextMenu = function() {
                 spriteCssClass: "famfamfam-silk cross",
                 attr: {
                     "onclick": "campaignDelete();"
+                }
+            },
+            {
+                text: "",
+                cssClass: "k-separator",
+            },
+            {
+                text: "Check DST Numbers",
+                cssClass: "checkCampaignDst",
+                spriteCssClass: "famfamfam-silk lightning",
+                attr: {
+                    "onclick": "checkCampaignDst();"
                 }
             }
         ],

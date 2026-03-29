@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Float
 from sqlalchemy.orm import relationship
 
 from db.base_class import Base
@@ -30,6 +30,7 @@ class CampaignDst(Base):
     attempts = Column(Integer, index=True, default=1)
     status = Column(Integer, index=True, default=0)
     error = Column(String)
+    score = Column(Float, index=True)
     create_ts = Column(DateTime, index=True, default=datetime.utcnow)
     expire_ts = Column(DateTime, index=True)
     sent_ts = Column(DateTime, index=True)

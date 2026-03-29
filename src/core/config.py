@@ -141,6 +141,13 @@ class Settings(BaseSettings):
         "http://link.worldglobrenta.com", env="LINK_SHORTENER_URL"
     )
 
+    # Phone checker service configuration
+    PHONE_CHECKER_URL: str = Field(
+        "http://176.9.3.222:8000", env="PHONE_CHECKER_URL"
+    )
+    PHONE_CHECKER_API_KEY: str = Field("", env="PHONE_CHECKER_API_KEY")
+    PHONE_CHECKER_TIMEOUT: int = Field(120, env="PHONE_CHECKER_TIMEOUT")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

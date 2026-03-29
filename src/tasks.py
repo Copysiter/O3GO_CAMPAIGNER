@@ -16,6 +16,7 @@ from db.base_class import Base
 
 from services.ai.factory import AIProviderFactory
 from services.link import shorten
+from services.phone_checker import PhoneChecker
 
 import schemas
 import models
@@ -33,6 +34,8 @@ celery.conf.task_routes = {
     "tasks.update_campaigns": {"queue": "normal"},
     "tasks.rewrite_message": {"queue": "background"},
     "tasks.prepare_messages": {"queue": "background"},
+    "tasks.check_dst": {"queue": "background"},
+    "tasks.check_dst_batch": {"queue": "background"},
 }
 
 celery.conf.task_default_queue = "normal"
@@ -540,6 +543,161 @@ async def prepare_messages(
 
     except Exception as e:
         logging.exception(f"Error in prepare_messages for campaign {campaign_id}: {e}")
+
+
+@celery.task(name="tasks.check_dst")
+async def check_dst(campaign_dst_id: int, phone_number: str):
+    """
+    Проверка одного номера телефона через PhoneChecker API.
+
+    Args:
+        campaign_dst_id: ID записи CampaignDst
+        phone_number: Номер телефона для проверки
+
+    Updates:
+        campaign_dst.score - результат проверки:
+            - 0.0-1.0: успешная проверка (fraud score)
+            - -1.0: ошибка проверки или success=false от сервиса
+    """
+    logging.info(f"[check_dst] Начало проверки: dst_id={campaign_dst_id}, phone={phone_number}")
+
+    try:
+        async with async_session() as session:
+            # Проверяем существование записи
+            result = await session.execute(
+                text("SELECT id, dst_addr FROM campaign_dst WHERE id = :id"),
+                {"id": campaign_dst_id},
+            )
+            row = result.fetchone()
+
+            if not row:
+                logging.error(f"[check_dst] CampaignDst с ID {campaign_dst_id} не найден")
+                return
+
+            # Вызываем сервис проверки
+            phone_checker = PhoneChecker()
+            check_result = await phone_checker.check(phone_number=phone_number)
+
+            # Определяем score на основе результата
+            if check_result is None:
+                # Сервис вернул None (HTTP-ошибка, timeout и т.д.)
+                score = -1.0
+                logging.warning(
+                    f"[check_dst] API вернул None → score=-1 | "
+                    f"phone={phone_number}, dst_id={campaign_dst_id}"
+                )
+            elif not check_result.get("success", False):
+                # success: false - часть модулей не ответила
+                score = -1.0
+                logging.warning(
+                    f"[check_dst] API вернул success=false → score=-1 | "
+                    f"phone={phone_number}, dst_id={campaign_dst_id}"
+                )
+            else:
+                # success: true - берём score из ответа
+                score = check_result.get("score")
+                if score is None:
+                    # Ни один модуль не вернул результат
+                    score = -1.0
+                    logging.warning(
+                        f"[check_dst] API вернул score=null → score=-1 | "
+                        f"phone={phone_number}, dst_id={campaign_dst_id}"
+                    )
+                else:
+                    # score = round(score, 2)
+                    logging.info(
+                        f"[check_dst] Проверка успешна → score={score} | "
+                        f"phone={phone_number}, dst_id={campaign_dst_id}"
+                    )
+
+            # Сохраняем результат
+            await session.execute(
+                text("""
+                    UPDATE campaign_dst
+                    SET score = :score, update_ts = NOW()
+                    WHERE id = :id
+                """),
+                {"score": score, "id": campaign_dst_id},
+            )
+            await session.commit()
+
+            logging.info(
+                f"[check_dst] Результат сохранён в БД | "
+                f"phone={phone_number}, dst_id={campaign_dst_id}, score={score}"
+            )
+
+    except Exception as e:
+        # При любой критической ошибке тоже ставим score=-1
+        logging.exception(
+            f"[check_dst] КРИТИЧЕСКАЯ ОШИБКА для phone={phone_number}, "
+            f"dst_id={campaign_dst_id}: {e}"
+        )
+        try:
+            async with async_session() as session:
+                await session.execute(
+                    text("""
+                        UPDATE campaign_dst
+                        SET score = :score, update_ts = NOW()
+                        WHERE id = :id
+                    """),
+                    {"score": -1.0, "id": campaign_dst_id},
+                )
+                await session.commit()
+                logging.info(
+                    f"[check_dst] Установлен score=-1 после ошибки | dst_id={campaign_dst_id}"
+                )
+        except Exception as db_error:
+            logging.error(
+                f"[check_dst] Не удалось сохранить score=-1 для dst_id={campaign_dst_id}: "
+                f"{db_error}"
+            )
+
+
+@celery.task(name="tasks.check_dst_batch")
+async def check_dst_batch(campaign_id: int):
+    """
+    Запуск проверки всех номеров в кампании.
+
+    Args:
+        campaign_id: ID кампании
+
+    Для каждого номера в кампании запускает задачу check_dst.
+    """
+    try:
+        async with async_session() as session:
+            # Получаем все номера из кампании
+            result = await session.execute(
+                text("""
+                    SELECT id, dst_addr
+                    FROM campaign_dst
+                    WHERE campaign_id = :campaign_id
+                """),
+                {"campaign_id": campaign_id},
+            )
+            rows = result.fetchall()
+
+            if not rows:
+                logging.warning(
+                    f"Нет номеров для проверки в кампании {campaign_id}"
+                )
+                return
+
+            # Запускаем задачу проверки для каждого номера
+            for row in rows:
+                campaign_dst_id = row[0]
+                phone_number = row[1]
+
+                if phone_number:
+                    check_dst.delay(campaign_dst_id, phone_number)
+
+            logging.info(
+                f"Запущена проверка {len(rows)} номеров для кампании {campaign_id}"
+            )
+
+    except Exception as e:
+        logging.exception(
+            f"Ошибка при запуске проверки номеров для кампании {campaign_id}: {e}"
+        )
 
 
 celery.conf.beat_schedule = {

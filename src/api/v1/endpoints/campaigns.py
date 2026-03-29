@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from api import deps
-from tasks import rewrite_message, prepare_messages
+from tasks import rewrite_message, prepare_messages, check_dst_batch
 
 import crud, models, schemas
 from services.android import AndroidService
@@ -367,6 +367,10 @@ async def create_campaign(
                 db=db, obj_in=campaign_dst_in
             )
 
+    # Запуск проверки номеров если требуется
+    if campaign_in.check_dst and campaign.id:
+        check_dst_batch.delay(campaign_id=campaign.id)
+
     return campaign
 
 
@@ -504,6 +508,25 @@ async def update_campaign(
         db_obj=campaign,
         obj_in={"status": schemas.CampaignStatus.STOPPED, "stop_ts": stop_ts},
     )
+    return campaign
+
+
+@router.post("/{id}/check_dst", response_model=schemas.Campaign)
+async def check_campaign_dst(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_user),
+    id: int,
+) -> Any:
+    """
+    Start phone checking for all numbers in campaign.
+    """
+    campaign = await crud.campaign.get(db=db, id=id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    check_dst_batch.delay(campaign_id=id)
+
     return campaign
 
 

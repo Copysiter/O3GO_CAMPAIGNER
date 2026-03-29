@@ -111,6 +111,29 @@ window.initMessageGrid = function(id) {
                 },
             },
             {
+                field: 'score',
+                width: '100px',
+                title: 'DST Number Score',
+                template: function(item) {
+                    if (item.score === null || item.score === undefined) {
+                        return "<span class='info info-sm info-light'>unknown</span>";
+                    } else if (item.score === -1) {
+                        return "<span class='info info-sm info-red'>error</span>";
+                    } else if (item.score < 0.4) {
+                        return "<span class='info info-sm info-green'>" + item.score + "</span>";
+                    } else if (item.score < 0.7) {
+                        return "<span class='info info-sm info-orange'>" + item.score + "</span>";
+                    } else {
+                        return "<span class='info info-sm info-red'>" + item.score + "</span>";
+                    }
+                },
+                filterable: {
+                    cell: {
+                        showOperators: false,
+                    },
+                },
+            },
+            {
                 field: 'src_addr',
                 width: '100px',
                 title: 'SRC Number',
