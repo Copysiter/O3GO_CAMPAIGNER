@@ -33,10 +33,14 @@ class OllamaProvider(AIProvider):
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""
         if self._client is None or self._client.is_closed:
+            # Устанавливаем max_connections равным размеру батча из настроек
+            # чтобы избежать "All connection attempts failed"
+            batch_size = settings.REWRITE_BATCH_SIZE
             self._client = httpx.AsyncClient(
                 timeout=settings.AI_OLLAMA_TIMEOUT,
                 limits=httpx.Limits(
-                    max_keepalive_connections=5, max_connections=10
+                    max_keepalive_connections=batch_size,
+                    max_connections=batch_size * 2  # x2 для запаса
                 )
             )
         return self._client

@@ -38,9 +38,13 @@ class OpenRouterProvider(AIProvider):
                 "Content-Type": "application/json",
                 "X-Title": settings.AI_OPENROUTER_TITLE
             }
+            # Устанавливаем max_connections равным размеру батча из настроек
+            # чтобы избежать "All connection attempts failed"
+            batch_size = settings.AI_OPENROUTER_BATCH_SIZE
             self._client = httpx.AsyncClient(
                 headers=headers, timeout=self.timeout, limits=httpx.Limits(
-                    max_keepalive_connections=5, max_connections=10
+                    max_keepalive_connections=batch_size,
+                    max_connections=batch_size * 2  # x2 для запаса
                 )
             )
         return self._client
