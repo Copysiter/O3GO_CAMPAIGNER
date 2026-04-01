@@ -632,11 +632,31 @@ async def rewrite_batch(batch_data: List[Dict], config: Dict):
             original_text = item.get("text", "")
 
             if not original_text or not original_text.strip():
+                logging.warning(f"[rewrite_batch] dst_id={dst_id}: Пустой текст для рерайта")
                 return {"success": False, "id": dst_id, "error": "Empty text"}
 
             try:
-                # AI-рерайт (без обращений к БД)
-                rewritten_text = await ai_provider.rewrite(prompt=prompt, text=original_text)
+                logging.info(
+                    f"[rewrite_batch] dst_id={dst_id}: Отправка на рерайт. "
+                    f"Оригинальный текст: {original_text}..."
+                )
+
+                rewritten_text = await ai_provider.rewrite(
+                    prompt=prompt, text=original_text
+                )
+
+                logging.info(
+                    f"[rewrite_batch] dst_id={dst_id}: Получен результат рерайта. "
+                    f"Результат: {rewritten_text if rewritten_text else 'None'}..."
+                )
+
+                # Проверка на пустой результат
+                if not rewritten_text or not rewritten_text.strip():
+                    logging.error(
+                        f"[rewrite_batch] dst_id={dst_id}: AI вернул пустой результат. "
+                        f"Оригинальный текст сохранён."
+                    )
+                    return {"success": False, "id": dst_id, "error": "Empty rewrite result"}
 
                 # Быстрое обновление БД в новой сессии
                 async with async_session() as session:
@@ -656,31 +676,19 @@ async def rewrite_batch(batch_data: List[Dict], config: Dict):
                     )
                     await session.commit()
 
+                logging.info(
+                    f"[rewrite_batch] dst_id={dst_id}: Текст успешно обновлён в БД"
+                )
                 return {"success": True, "id": dst_id}
 
             except Exception as e:
                 error_msg = f"{type(e).__name__}: {str(e)}"
 
-                # Сохранение ошибки в новой сессии
-                try:
-                    async with async_session() as session:
-                        await session.execute(
-                            text("""
-                                UPDATE campaign_dst
-                                SET status = :status,
-                                    error = :error,
-                                    update_ts = NOW()
-                                WHERE id = :id
-                            """),
-                            {
-                                "status": int(schemas.CampaignDstStatus.CREATED),
-                                "error": error_msg,
-                                "id": dst_id
-                            }
-                        )
-                        await session.commit()
-                except Exception as db_err:
-                    logging.error(f"Не удалось сохранить ошибку для dst_id={dst_id}: {db_err}")
+                # Только логирование ошибки, НЕ пишем в БД
+                logging.exception(
+                    f"[rewrite_batch] dst_id={dst_id}: Ошибка при рерайте. "
+                    f"Текст НЕ изменён. Ошибка: {error_msg}"
+                )
 
                 return {"success": False, "id": dst_id, "error": error_msg}
 
