@@ -301,15 +301,15 @@ async def prepare_campaign(
             )
 
             workflow = chain(
-                shorten_links.si(campaign_id, campaign_dsts, msg_template, x_api_key),
+                shorten_links.si(campaign_id, campaign_dsts, msg_template, x_api_key, True),  # waiting=True
                 rewrite_messages.si(campaign_id, rewrite_batch_size, rewrite_config)
             )
             workflow.apply_async()
 
         elif has_shorten:
-            # Только сокращение ссылок
+            # Только сокращение ссылок (финальный шаг)
             logging.info(f"Запуск сокращения ссылок для кампании {campaign_id}")
-            shorten_links.si(campaign_id, campaign_dsts, msg_template, x_api_key).apply_async()
+            shorten_links.si(campaign_id, campaign_dsts, msg_template, x_api_key, False).apply_async()  # waiting=False
 
         elif has_rewrite:
             # Только AI-рерайт (без сокращения ссылок)
@@ -419,7 +419,8 @@ async def shorten_links(
     campaign_id: int,
     campaign_dsts: List[Dict],
     msg_template: str,
-    x_api_key: str
+    x_api_key: str,
+    waiting: bool = False
 ):
     """
     Обработка и сокращение всех уникальных ссылок для кампании.
@@ -429,6 +430,7 @@ async def shorten_links(
         campaign_dsts: Список записей campaign_dst (передается из prepare_campaign)
         msg_template: Шаблон сообщения
         x_api_key: API-ключ для сервиса сокращения ссылок
+        waiting: Если True, оставить статус WAITING (есть следующий шаг обработки)
 
     Returns:
         Словарь с campaign_id для следующей задачи в цепочке
@@ -452,21 +454,22 @@ async def shorten_links(
         if not unique_urls:
             logging.info(f"Нет ссылок для сокращения в кампании {campaign_id}")
 
-            # Быстрое обновление статуса в новой сессии
-            async with async_session() as session:
-                await session.execute(
-                    text("""
-                        UPDATE campaign_dst
-                        SET status = :status, update_ts = NOW()
-                        WHERE campaign_id = :campaign_id AND status = :waiting_status
-                    """),
-                    {
-                        "status": int(schemas.CampaignDstStatus.CREATED),
-                        "campaign_id": campaign_id,
-                        "waiting_status": int(schemas.CampaignDstStatus.WAITING)
-                    }
-                )
-                await session.commit()
+            # Обновление статуса только если это финальный шаг
+            if not waiting:
+                async with async_session() as session:
+                    await session.execute(
+                        text("""
+                            UPDATE campaign_dst
+                            SET status = :status, update_ts = NOW()
+                            WHERE campaign_id = :campaign_id AND status = :waiting_status
+                        """),
+                        {
+                            "status": int(schemas.CampaignDstStatus.CREATED),
+                            "campaign_id": campaign_id,
+                            "waiting_status": int(schemas.CampaignDstStatus.WAITING)
+                        }
+                    )
+                    await session.commit()
             return {"campaign_id": campaign_id, "shortened": 0}
 
         logging.info(f"Сокращение {len(unique_urls)} уникальных URL для кампании {campaign_id}")
@@ -512,24 +515,39 @@ async def shorten_links(
                         msg_text = msg_text.replace(link_placeholder, short_url)
 
                 # Обновляем запись
-                await session.execute(
-                    text("""
-                        UPDATE campaign_dst
-                        SET text = :msg_text,
-                            status = CASE
-                                WHEN status = :waiting_status THEN :created_status
-                                ELSE status
-                            END,
-                            update_ts = NOW()
-                        WHERE id = :id
-                    """),
-                    {
-                        "msg_text": msg_text,
-                        "id": dst_id,
-                        "waiting_status": int(schemas.CampaignDstStatus.WAITING),
-                        "created_status": int(schemas.CampaignDstStatus.CREATED)
-                    }
-                )
+                # Если waiting=True, оставляем статус WAITING для следующего шага
+                if waiting:
+                    await session.execute(
+                        text("""
+                            UPDATE campaign_dst
+                            SET text = :msg_text,
+                                update_ts = NOW()
+                            WHERE id = :id
+                        """),
+                        {
+                            "msg_text": msg_text,
+                            "id": dst_id
+                        }
+                    )
+                else:
+                    await session.execute(
+                        text("""
+                            UPDATE campaign_dst
+                            SET text = :msg_text,
+                                status = CASE
+                                    WHEN status = :waiting_status THEN :created_status
+                                    ELSE status
+                                END,
+                                update_ts = NOW()
+                            WHERE id = :id
+                        """),
+                        {
+                            "msg_text": msg_text,
+                            "id": dst_id,
+                            "waiting_status": int(schemas.CampaignDstStatus.WAITING),
+                            "created_status": int(schemas.CampaignDstStatus.CREATED)
+                        }
+                    )
 
             await session.commit()
 

@@ -86,6 +86,9 @@ async def receive_check_results(
         ]
     }
     """
+    # Логирование входящих данных
+    logging.info(f"[HS Webhook] Получен payload: {data}")
+
     # Проверка токена
     if not settings.PHONE_CHECKER_WEBHOOK_TOKEN or token != settings.PHONE_CHECKER_WEBHOOK_TOKEN:
         logging.warning(f"[HS Webhook] Получен невалидный токен: {token}")
