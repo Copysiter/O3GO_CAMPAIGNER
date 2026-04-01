@@ -4,9 +4,9 @@ import logging
 import re
 
 from datetime import timedelta
-from typing import List, Dict, Any
+from typing import List, Dict
 
-from celery import Celery
+from celery import Celery, group, chain
 from sqlalchemy import text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,13 +29,24 @@ celery.conf.timezone = "UTC"
 celery.conf.enable_utc = True
 
 celery.conf.task_routes = {
+    # Critical queue (100 workers) - webhooks
     "tasks.webhook": {"queue": "critical"},
+
+    # Normal queue (30 workers) - periodic maintenance
     "tasks.update_messages": {"queue": "normal"},
     "tasks.update_campaigns": {"queue": "normal"},
-    "tasks.rewrite_message": {"queue": "background"},
-    "tasks.prepare_messages": {"queue": "background"},
-    "tasks.check_dst": {"queue": "background"},
-    "tasks.check_dst_batch": {"queue": "background"},
+
+    # Background queue (20 workers) - coordination
+    "tasks.prepare_campaign": {"queue": "background"},
+
+    # Phone check queue (15 workers) - batch phone validation via webhook
+    "tasks.check_dst_batch": {"queue": "phone_check"},
+
+    # Link processing queue (20 workers) - link shortening
+    "tasks.shorten_links": {"queue": "link_processing"},
+
+    # AI rewrite queue (10 workers) - AI text rewriting
+    "tasks.rewrite_batch": {"queue": "ai_rewrite"},
 }
 
 celery.conf.task_default_queue = "normal"
@@ -91,11 +102,10 @@ RETURNING id;
 @celery.task(name="tasks.update_messages")
 async def update_messages():
     """
-    Каждые 15 сек:
-      - переводим все протухшие сообщения в FAILED/UNDELIVERED
-        (по attempts и прежнему статусу);
-      - одним запросом считаем инкременты по кампаниям и обновляем campaign;
-      - шлём вебхуки со статусом EXPIRED.
+    Периодическая задача (каждые 15 секунд):
+      - Переводит протухшие сообщения в FAILED/UNDELIVERED (по attempts и статусу)
+      - Одним запросом считает инкременты по кампаниям и обновляет campaign
+      - Отправляет вебхуки со статусом EXPIRED
     """
     async with async_session() as session:
         async with session.begin():
@@ -124,8 +134,8 @@ async def update_messages():
 @celery.task(name="tasks.update_campaigns")
 async def update_campaigns():
     """
-    Каждую минуту: подстраховочно закрываем кампании, в которых
-    суммарно доставленных + недоставленных >= всего.
+    Периодическая задача (каждую минуту):
+      - Подстраховочно закрывает кампании, где msg_delivered + msg_undelivered >= msg_total
     """
     async with async_session() as session:
         async with session.begin():
@@ -141,7 +151,11 @@ async def update_campaigns():
 
 async def send_webhook(webhook_url: str = None, *, data: dict):
     """
-    Отправка вебхука. Если URL не передан — находим по ext_id.
+    Отправка вебхука.
+
+    Args:
+        webhook_url: URL для отправки вебхука (если None, ищется по ext_id из data)
+        data: Данные для отправки
     """
     if not webhook_url:
         async with async_session() as session:
@@ -181,170 +195,16 @@ async def webhook(webhook_url: str = None, *, data: dict):
     await send_webhook(webhook_url, data=data)
 
 
-async def rewrite(id: int, original_text: str, ai_provider, prompt: str):
+def extract_links(msg_template: str, dst_data: Dict) -> List[str]:
     """
-    Обработка одного рерайта в рамках батча.
+    Извлекает ссылки из шаблона сообщения для сокращения.
 
     Args:
-        id: ID записи campaign_dst
-        original_text: Исходный текст для рерайта
-        ai_provider: Экземпляр AI провайдера
-        prompt: Системный промпт
+        msg_template: Шаблон с плейсхолдерами [short]...[/short]
+        dst_data: Словарь со значениями полей (field_1, field_2, и т.д.)
 
     Returns:
-        dict: Результат обработки одной записи
-    """
-    # Создаем отдельную сессию для каждой async задачи
-    async with async_session() as session:
-        try:
-            # Проверяем существование записи
-            result = await session.execute(
-                text("SELECT id FROM campaign_dst WHERE id = :id"), {"id": id}
-            )
-            row = result.fetchone()
-
-            if not row:
-                logging.error(f"CampaignDst с ID {id} не найден")
-                return {"success": False, "id": id, "error": "Record not found"}
-
-            # Выполняем рерайт
-            try:
-                rewritten_text = await ai_provider.rewrite(
-                    prompt=prompt, text=original_text
-                )
-            except Exception as e:
-                error = f"{type(e).__name__}: {str(e)}"
-                await session.execute(
-                    text("""
-                        UPDATE campaign_dst
-                        SET status = 0,
-                            error = :error,
-                            update_ts = NOW()
-                        WHERE id = :id
-                    """),
-                    {"error": error, "id": id},
-                )
-                # Коммитим изменения для текущей сессии
-                await session.commit()
-
-                logging.error(f"Ошибка AI рерайта для campaign_dst {id}: {error}")
-                return {"success": False, "id": id, "error": error}
-
-            # Сохраняем результат
-            await session.execute(
-                text("""
-                    UPDATE campaign_dst
-                    SET text = :text, status = 0, update_ts = NOW()
-                    WHERE id = :id
-                """),
-                {"text": rewritten_text, "id": id},
-            )
-            # Коммитим изменения для текущей сессии
-            await session.commit()
-
-            logging.info(f"Успешно переписан текст для campaign_dst {id}")
-            return {"success": True, "id": id}
-
-        except Exception as e:
-            logging.error(f"Ошибка AI рерайта для campaign_dst {id}: {e}")
-            await session.rollback()
-            return {"success": False, "id": id, "error": str(e)}
-
-
-@celery.task(name="tasks.rewrite_message")
-async def rewrite_message(
-    data: list, config: dict, prompt: str = settings.AI_REWRITE_SYSTEM_PROMPT
-):
-    """
-    Задача для AI-рерайта текста сообщений (поддерживает батчевую обработку).
-
-    Args:
-        data: Список словарей [{"id": int, "original_text": str}, ...]
-        config: Конфигурация AI провайдера
-        prompt: Системный промпт с инструкциями для AI
-    """
-    ai_provider = None
-    try:
-        # Создаем AI провайдер один раз для всего батча
-        try:
-            ai_provider = AIProviderFactory.create(
-                provider=config.get("provider"), config=config
-            )
-        except Exception as e:
-            logging.error(f"Ошибка создания AI провайдера: {e}")
-            return
-
-        # Создаем задачи для каждого элемента (asyncio.create_task)
-        tasks = []
-        for item in data:
-            id = item.get("id")
-            original_text = item.get("original_text", "")
-
-            if not id:
-                logging.warning(f"Отсутствует ID в элементе: {item}")
-                continue
-
-            if not original_text.strip():
-                logging.warning(f"Пустой текст для campaign_dst {id}")
-                continue
-
-            task = rewrite(id, original_text, ai_provider, prompt)
-            tasks.append(asyncio.create_task(task))
-
-        if not tasks:
-            logging.error("Нет валидных данных для обработки")
-            return
-
-        # Выполняем все задачи параллельно через asyncio.gather
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        # Подсчитываем статистику
-        successful = sum(1 for r in results if isinstance(r, dict) and r.get("success"))
-        failed = len(results) - successful
-
-        logging.info(
-            f"Батч обработан: {successful} успешно, {failed} с ошибками, "
-            f"провайдер: {config.get('provider')}"
-        )
-
-    except Exception as e:
-        logging.exception(f"Ошибка при батчевом рерайте: {e}")
-    finally:
-        # Закрываем ресурсы AI провайдера
-        if ai_provider:
-            try:
-                await ai_provider.close()
-            except Exception as e:
-                logging.warning(f"Ошибка при закрытии AI провайдера: {e}")
-
-
-def create_batches(items: list, batch_size: int) -> list:
-    """
-    Разделяет список на батчи заданного размера.
-
-    Args:
-        items: Список элементов для разделения
-        batch_size: Размер одного батча
-
-    Returns:
-        Список батчей (каждый батч - список элементов)
-    """
-    if batch_size <= 0:
-        raise ValueError("Размер батча должен быть больше 0")
-
-    return [items[i : i + batch_size] for i in range(0, len(items), batch_size)]
-
-
-def extract_links_from_template(msg_template: str, dst_data: Dict) -> List[str]:
-    """
-    Extract links from msg_template that need to be shortened.
-
-    Args:
-        msg_template: Template with [short]...[/short] placeholders
-        dst_data: Dictionary with field values (field_1, field_2, etc.)
-
-    Returns:
-        List of unique URLs to shorten
+        Список уникальных URL для сокращения
     """
     if not msg_template:
         return []
@@ -354,17 +214,17 @@ def extract_links_from_template(msg_template: str, dst_data: Dict) -> List[str]:
 
     urls = []
     for match in matches:
-        # Check if it's a field reference like {field_1}
+        # Проверяем, является ли это ссылкой на поле типа {field_1}
         if match.startswith("{field_") and match.endswith("}"):
-            field_name = match[1:-1]  # Remove { }
+            field_name = match[1:-1]  # Убираем { }
             field_value = dst_data.get(field_name, "")
             if field_value:
                 urls.append(field_value)
         else:
-            # Direct URL in template
+            # Прямой URL в шаблоне
             urls.append(match)
 
-    # Return unique URLs preserving order
+    # Возвращаем уникальные URL с сохранением порядка
     seen = set()
     unique_urls = []
     for url in urls:
@@ -374,330 +234,480 @@ def extract_links_from_template(msg_template: str, dst_data: Dict) -> List[str]:
 
     return unique_urls
 
+# ============================================================================
+# ЗАДАЧИ ПРЕДОБРАБОТКИ КАМПАНИЙ
+# ============================================================================
 
-@celery.task(name="tasks.prepare_messages")
-async def prepare_messages(
-    campaign_id: int, steps: List[str], x_api_key: str, rewrite_config: Dict = None
+@celery.task(name="tasks.prepare_campaign")
+async def prepare_campaign(
+    campaign_id: int,
+    steps: List[str],
+    x_api_key: str,
+    rewrite_config: Dict = None
 ):
     """
-    Prepare campaign messages by executing preprocessing steps:
-    1. shorten_links - Extract and shorten URLs in msg_template
-    2. rewrite - AI rewrite messages
+    Главная задача предобработки кампании.
+    Выстраивает цепочку задач: сокращение ссылок → AI-рерайт.
 
     Args:
-        campaign_id: Campaign ID
-        steps: List of steps to execute (e.g., ["shorten_links", "rewrite"])
-        x_api_key: User's API key for link shortening service
-        rewrite_config: Configuration for AI rewrite (provider, model, api_key, prompt)
+        campaign_id: ID кампании
+        steps: Список шагов для выполнения ("shorten_links" и/или "rewrite")
+        x_api_key: API-ключ пользователя для внешних сервисов
+        rewrite_config: Конфигурация AI-рерайта
     """
     try:
+        # ШАГ 1: Быстрая загрузка данных и закрытие сессии
+        campaign_dsts = []
+        msg_template = ""
+
         async with async_session() as session:
-            # Get campaign and all campaign_dst records
             campaign = await session.get(models.Campaign, campaign_id)
             if not campaign:
                 logging.error(f"Campaign {campaign_id} not found")
                 return
 
-            result = await session.execute(
-                text("SELECT id, dst_addr, field_1, field_2, field_3, field_4, field_5, text FROM campaign_dst WHERE campaign_id = :campaign_id"),
-                {"campaign_id": campaign_id},
-            )
-            # Convert RowMapping to dict for mutability
-            campaign_dsts = [dict(row) for row in result.mappings().all()]
-
-            if not campaign_dsts:
-                logging.warning(
-                    f"No campaign_dst records found for campaign {campaign_id}"
-                )
-                return
-
             msg_template = campaign.msg_template or ""
 
-            # Step 1: Shorten links
-            if "shorten_links" in steps:
-                logging.info(f"Starting link shortening for campaign {campaign_id}")
-
-                # Collect all unique URLs from all campaign_dst records
-                all_urls = []
-                for dst in campaign_dsts:
-                    dst_data = {
-                        "field_1": dst["field_1"],
-                        "field_2": dst["field_2"],
-                        "field_3": dst["field_3"],
-                        "field_4": dst["field_4"],
-                        "field_5": dst["field_5"],
-                    }
-                    urls = extract_links_from_template(msg_template, dst_data)
-                    all_urls.extend(urls)
-
-                # Remove duplicates
-                unique_urls = list(dict.fromkeys(all_urls))
-
-                if unique_urls:
-                    # Call link shortening service and save to database
-                    shorten_result = await shorten(
-                        unique_urls, x_api_key, db=session, campaign_id=campaign_id
-                    )
-
-                    if shorten_result.get("results"):
-                        # Create mapping original -> short
-                        url_map = {}
-                        for item in shorten_result["results"]:
-                            url_map[item["original"]] = item["short"]
-
-                        # Update text for each campaign_dst
-                        for dst in campaign_dsts:
-                            # Берём уже заполненный text с подставленными полями из campaigns.py
-                            msg_text = dst["text"] or msg_template
-
-                            # Replace [short]{field_n}[/short] with shortened URLs
-                            for field_name in [
-                                "field_1",
-                                "field_2",
-                                "field_3",
-                                "field_4",
-                                "field_5",
-                            ]:
-                                field_key = f"[short]{{{field_name}}}[/short]"
-                                if field_key in msg_text and dst.get(field_name):
-                                    original_url = dst.get(field_name)
-                                    if original_url in url_map:
-                                        msg_text = msg_text.replace(
-                                            field_key, url_map[original_url]
-                                        )
-
-                            # Replace [short]https://...[/short] with shortened URLs
-                            for original_url, short_url in url_map.items():
-                                link_placeholder = f"[short]{original_url}[/short]"
-                                if link_placeholder in msg_text:
-                                    msg_text = msg_text.replace(link_placeholder, short_url)
-
-                            # Update the record in DB
-                            await session.execute(
-                                text(
-                                    "UPDATE campaign_dst SET text = :msg_text WHERE id = :id"
-                                ),
-                                {"msg_text": msg_text, "id": dst["id"]},
-                            )
-
-                            # Update in-memory data for next steps (e.g., rewrite)
-                            dst["text"] = msg_text
-
-                        await session.commit()
-                        logging.info(
-                            f"Link shortening completed for campaign {campaign_id}"
-                        )
-                    else:
-                        logging.warning(
-                            f"Link shortening returned no results for campaign {campaign_id}"
-                        )
-                else:
-                    logging.info(f"No links found to shorten in campaign {campaign_id}")
-
-            # Step 2: Rewrite messages
-            if "rewrite" in steps and rewrite_config:
-                logging.info(f"Starting message rewrite for campaign {campaign_id}")
-
-                # Prepare batch data
-                batch_data = []
-                for dst in campaign_dsts:
-                    batch_data.append(
-                        {"id": dst["id"], "original_text": dst["text"] or msg_template}
-                    )
-
-                # Determine batch size
-                provider = rewrite_config.get("provider", "").lower()
-                if provider == "openrouter":
-                    batch_size = settings.AI_OPENROUTER_BATCH_SIZE
-                else:
-                    batch_size = 1
-
-                # Create batches
-                batches = create_batches(batch_data, batch_size)
-
-                # Process batches
-                for batch in batches:
-                    rewrite_message.delay(
-                        data=batch,
-                        config=rewrite_config,
-                        prompt=rewrite_config.get(
-                            "prompt", settings.AI_REWRITE_SYSTEM_PROMPT
-                        ),
-                    )
-
-                logging.info(f"Rewrite tasks queued for campaign {campaign_id}")
-
-            # If no rewrite step, update status to CREATED
-            if "rewrite" not in steps:
-                await session.execute(
-                    text(
-                        "UPDATE campaign_dst SET status = :status WHERE campaign_id = :campaign_id"
-                    ),
-                    {
-                        "status": int(schemas.CampaignDstStatus.CREATED),
-                        "campaign_id": campaign_id,
-                    },
-                )
-                await session.commit()
-                logging.info(f"Campaign {campaign_id} preparation completed")
-
-    except Exception as e:
-        logging.exception(f"Error in prepare_messages for campaign {campaign_id}: {e}")
-
-
-@celery.task(name="tasks.check_dst")
-async def check_dst(campaign_dst_id: int, phone_number: str):
-    """
-    Проверка одного номера телефона через PhoneChecker API.
-
-    Args:
-        campaign_dst_id: ID записи CampaignDst
-        phone_number: Номер телефона для проверки
-
-    Updates:
-        campaign_dst.score - результат проверки:
-            - 0.0-1.0: успешная проверка (fraud score)
-            - -1.0: ошибка проверки или success=false от сервиса
-    """
-    logging.info(f"[check_dst] Начало проверки: dst_id={campaign_dst_id}, phone={phone_number}")
-
-    try:
-        async with async_session() as session:
-            # Проверяем существование записи
             result = await session.execute(
-                text("SELECT id, dst_addr FROM campaign_dst WHERE id = :id"),
-                {"id": campaign_dst_id},
-            )
-            row = result.fetchone()
-
-            if not row:
-                logging.error(f"[check_dst] CampaignDst с ID {campaign_dst_id} не найден")
-                return
-
-            # Вызываем сервис проверки
-            phone_checker = PhoneChecker()
-            check_result = await phone_checker.check(phone_number=phone_number)
-
-            # Определяем score на основе результата
-            if check_result is None:
-                # Сервис вернул None (HTTP-ошибка, timeout и т.д.)
-                score = -1.0
-                logging.warning(
-                    f"[check_dst] API вернул None → score=-1 | "
-                    f"phone={phone_number}, dst_id={campaign_dst_id}"
-                )
-            elif not check_result.get("success", False):
-                # success: false - часть модулей не ответила
-                score = -1.0
-                logging.warning(
-                    f"[check_dst] API вернул success=false → score=-1 | "
-                    f"phone={phone_number}, dst_id={campaign_dst_id}"
-                )
-            else:
-                # success: true - берём score из ответа
-                score = check_result.get("score")
-                if score is None:
-                    # Ни один модуль не вернул результат
-                    score = -1.0
-                    logging.warning(
-                        f"[check_dst] API вернул score=null → score=-1 | "
-                        f"phone={phone_number}, dst_id={campaign_dst_id}"
-                    )
-                else:
-                    # score = round(score, 2)
-                    logging.info(
-                        f"[check_dst] Проверка успешна → score={score} | "
-                        f"phone={phone_number}, dst_id={campaign_dst_id}"
-                    )
-
-            # Сохраняем результат
-            await session.execute(
                 text("""
-                    UPDATE campaign_dst
-                    SET score = :score, update_ts = NOW()
-                    WHERE id = :id
+                    SELECT id, dst_addr, field_1, field_2, field_3, field_4, field_5, text
+                    FROM campaign_dst
+                    WHERE campaign_id = :campaign_id
+                    ORDER BY id
                 """),
-                {"score": score, "id": campaign_dst_id},
+                {"campaign_id": campaign_id}
             )
-            await session.commit()
+            campaign_dsts = [dict(row) for row in result.mappings().all()]
+
+        if not campaign_dsts:
+            logging.warning(
+                f"Нет записей campaign_dst для кампании {campaign_id}"
+            )
+            return
+
+        # ШАГ 2: Построение конвейера задач (без обращений к БД)
+        # Сокращение ссылок и AI-рерайт
+        has_shorten = "shorten_links" in steps
+        has_rewrite = "rewrite" in steps and rewrite_config
+
+        if has_shorten and has_rewrite:
+            # Цепочка: сокращение ссылок → рерайт
+            rewrite_batch_size = settings.REWRITE_BATCH_SIZE
+            if rewrite_config.get("provider", "").lower() == "openrouter":
+                rewrite_batch_size = settings.AI_OPENROUTER_BATCH_SIZE
 
             logging.info(
-                f"[check_dst] Результат сохранён в БД | "
-                f"phone={phone_number}, dst_id={campaign_dst_id}, score={score}"
+                f"Запуск цепочки: сокращение ссылок → AI-рерайт для кампании {campaign_id}"
             )
 
-    except Exception as e:
-        # При любой критической ошибке тоже ставим score=-1
-        logging.exception(
-            f"[check_dst] КРИТИЧЕСКАЯ ОШИБКА для phone={phone_number}, "
-            f"dst_id={campaign_dst_id}: {e}"
-        )
-        try:
+            workflow = chain(
+                shorten_links.si(campaign_id, campaign_dsts, msg_template, x_api_key),
+                rewrite_messages.si(campaign_id, rewrite_batch_size, rewrite_config)
+            )
+            workflow.apply_async()
+
+        elif has_shorten:
+            # Только сокращение ссылок
+            logging.info(f"Запуск сокращения ссылок для кампании {campaign_id}")
+            shorten_links.si(campaign_id, campaign_dsts, msg_template, x_api_key).apply_async()
+
+        elif has_rewrite:
+            # Только AI-рерайт (без сокращения ссылок)
+            rewrite_batch_size = settings.REWRITE_BATCH_SIZE
+            if rewrite_config.get("provider", "").lower() == "openrouter":
+                rewrite_batch_size = settings.AI_OPENROUTER_BATCH_SIZE
+
+            rewrite_batches = [
+                campaign_dsts[i: i + rewrite_batch_size]
+                for i in range(0, len(campaign_dsts), rewrite_batch_size)
+            ]
+            rewrite_tasks = []
+
+            for batch in rewrite_batches:
+                batch_data = [
+                    {"id": dst["id"], "text": dst.get("text") or msg_template}
+                    for dst in batch
+                ]
+                rewrite_tasks.append(rewrite_batch.si(batch_data, rewrite_config))
+
+            if rewrite_tasks:
+                logging.info(f"Запуск AI-рерайта: {len(rewrite_tasks)} батчей")
+                job = group(*rewrite_tasks)
+                job.apply_async()
+
+        # ШАГ 3: Обновление статуса если нет обработки
+        if not has_shorten and not has_rewrite:
+            # Обработка не требуется - обновляем статус в новой сессии
             async with async_session() as session:
                 await session.execute(
                     text("""
                         UPDATE campaign_dst
-                        SET score = :score, update_ts = NOW()
-                        WHERE id = :id
+                        SET status = :status, update_ts = NOW()
+                        WHERE campaign_id = :campaign_id AND status = :waiting_status
                     """),
-                    {"score": -1.0, "id": campaign_dst_id},
+                    {
+                        "status": int(schemas.CampaignDstStatus.CREATED),
+                        "campaign_id": campaign_id,
+                        "waiting_status": int(schemas.CampaignDstStatus.WAITING)
+                    }
                 )
                 await session.commit()
-                logging.info(
-                    f"[check_dst] Установлен score=-1 после ошибки | dst_id={campaign_dst_id}"
-                )
-        except Exception as db_error:
-            logging.error(
-                f"[check_dst] Не удалось сохранить score=-1 для dst_id={campaign_dst_id}: "
-                f"{db_error}"
-            )
+            logging.info(f"Предобработка кампании {campaign_id} завершена (обработка не требовалась)")
+
+    except Exception as e:
+        logging.exception(f"Ошибка в prepare_campaign для кампании {campaign_id}: {e}")
 
 
 @celery.task(name="tasks.check_dst_batch")
-async def check_dst_batch(campaign_id: int):
+async def check_dst_batch(batch_data: List[Dict]):
     """
-    Запуск проверки всех номеров в кампании.
+    Отправка батча номеров телефонов на проверку через webhook API.
+    Независимая задача, не влияет на статус campaign_dst.
+
+    Args:
+        batch_data: Список словарей [{"id": campaign_dst_id, "phone": phone_number}, ...]
+
+    Returns:
+        Словарь с информацией о созданной задаче проверки
+    """
+    logging.info(f"[check_dst_batch] Отправка {len(batch_data)} номеров на батч-проверку")
+
+    try:
+        # Извлекаем номера телефонов
+        phone_numbers = [item["phone"] for item in batch_data if item.get("phone")]
+
+        if not phone_numbers:
+            logging.warning("[check_dst_batch] Нет валидных номеров для проверки")
+            return {"submitted": 0, "job_id": None}
+
+        # Формируем webhook URL для получения результатов
+        callback_url = f"{settings.PHONE_CHECKER_WEBHOOK_BASE_URL}/ext/api/v1/hs/result"
+        if settings.PHONE_CHECKER_WEBHOOK_TOKEN:
+            callback_url += f"?token={settings.PHONE_CHECKER_WEBHOOK_TOKEN}"
+
+        # Отправляем батч на проверку
+        phone_checker = PhoneChecker()
+        result = await phone_checker.check_batch_webhook(
+            phone_numbers=phone_numbers,
+            callback_url=callback_url,
+            timeout=settings.PHONE_CHECKER_WEBHOOK_TIMEOUT,
+            window_size=settings.PHONE_CHECKER_WEBHOOK_WINDOW_SIZE,
+            chunk_size=settings.PHONE_CHECKER_WEBHOOK_CHUNK_SIZE
+        )
+
+        if result:
+            logging.info(
+                f"[check_dst_batch] Батч успешно отправлен на проверку: "
+                f"job_id={result.get('job_id')}, total={result.get('total')}"
+            )
+            return {
+                "submitted": result.get("total", 0),
+                "job_id": result.get("job_id"),
+                "checkers": result.get("checkers", [])
+            }
+        else:
+            logging.error("[check_dst_batch] Не удалось отправить батч на проверку")
+            return {"submitted": 0, "job_id": None}
+
+    except Exception as e:
+        logging.exception(f"[check_dst_batch] Ошибка при отправке батча: {e}")
+        return {"submitted": 0, "job_id": None, "error": str(e)}
+
+
+@celery.task(name="tasks.shorten_links")
+async def shorten_links(
+    campaign_id: int,
+    campaign_dsts: List[Dict],
+    msg_template: str,
+    x_api_key: str
+):
+    """
+    Обработка и сокращение всех уникальных ссылок для кампании.
 
     Args:
         campaign_id: ID кампании
+        campaign_dsts: Список записей campaign_dst (передается из prepare_campaign)
+        msg_template: Шаблон сообщения
+        x_api_key: API-ключ для сервиса сокращения ссылок
 
-    Для каждого номера в кампании запускает задачу check_dst.
+    Returns:
+        Словарь с campaign_id для следующей задачи в цепочке
     """
     try:
-        async with async_session() as session:
-            # Получаем все номера из кампании
-            result = await session.execute(
-                text("""
-                    SELECT id, dst_addr
-                    FROM campaign_dst
-                    WHERE campaign_id = :campaign_id
-                """),
-                {"campaign_id": campaign_id},
-            )
-            rows = result.fetchall()
+        # ШАГ 1: Собираем URL (без обращений к БД)
+        all_urls = []
+        for dst in campaign_dsts:
+            dst_data = {
+                "field_1": dst.get("field_1"),
+                "field_2": dst.get("field_2"),
+                "field_3": dst.get("field_3"),
+                "field_4": dst.get("field_4"),
+                "field_5": dst.get("field_5"),
+            }
+            urls = extract_links(msg_template, dst_data)
+            all_urls.extend(urls)
 
-            if not rows:
-                logging.warning(
-                    f"Нет номеров для проверки в кампании {campaign_id}"
+        unique_urls = list(dict.fromkeys(all_urls))
+
+        if not unique_urls:
+            logging.info(f"Нет ссылок для сокращения в кампании {campaign_id}")
+
+            # Быстрое обновление статуса в новой сессии
+            async with async_session() as session:
+                await session.execute(
+                    text("""
+                        UPDATE campaign_dst
+                        SET status = :status, update_ts = NOW()
+                        WHERE campaign_id = :campaign_id AND status = :waiting_status
+                    """),
+                    {
+                        "status": int(schemas.CampaignDstStatus.CREATED),
+                        "campaign_id": campaign_id,
+                        "waiting_status": int(schemas.CampaignDstStatus.WAITING)
+                    }
                 )
-                return
+                await session.commit()
+            return {"campaign_id": campaign_id, "shortened": 0}
 
-            # Запускаем задачу проверки для каждого номера
-            for row in rows:
-                campaign_dst_id = row[0]
-                phone_number = row[1]
+        logging.info(f"Сокращение {len(unique_urls)} уникальных URL для кампании {campaign_id}")
 
-                if phone_number:
-                    check_dst.delay(campaign_dst_id, phone_number)
-
-            logging.info(
-                f"Запущена проверка {len(rows)} номеров для кампании {campaign_id}"
+        # ШАГ 2: Вызов сервиса сокращения и обновление БД
+        async with async_session() as session:
+            # Вызов API сокращения ссылок
+            shorten_result = await shorten(
+                unique_urls, x_api_key, db=session, campaign_id=campaign_id
             )
+
+            if not shorten_result.get("results"):
+                logging.warning(f"Сервис сокращения не вернул результатов для кампании {campaign_id}")
+                return {"campaign_id": campaign_id, "shortened": 0}
+
+            # Создаем маппинг оригинал → короткая ссылка
+            url_map = {}
+            for item in shorten_result["results"]:
+                url_map[item["original"]] = item["short"]
+
+            # Обновляем все записи с сокращенными ссылками
+            for dst in campaign_dsts:
+                dst_id = dst["id"]
+                msg_text = dst.get("text") or msg_template
+
+                # Подставляем значения полей
+                for field_name in ["field_1", "field_2", "field_3", "field_4", "field_5"]:
+                    if dst.get(field_name):
+                        msg_text = msg_text.replace(f"{{{field_name}}}", dst[field_name])
+
+                # Заменяем [short]{field_n}[/short]
+                for field_name in ["field_1", "field_2", "field_3", "field_4", "field_5"]:
+                    field_key = f"[short]{{{field_name}}}[/short]"
+                    if field_key in msg_text and dst.get(field_name):
+                        original_url = dst.get(field_name)
+                        if original_url in url_map:
+                            msg_text = msg_text.replace(field_key, url_map[original_url])
+
+                # Заменяем [short]URL[/short]
+                for original_url, short_url in url_map.items():
+                    link_placeholder = f"[short]{original_url}[/short]"
+                    if link_placeholder in msg_text:
+                        msg_text = msg_text.replace(link_placeholder, short_url)
+
+                # Обновляем запись
+                await session.execute(
+                    text("""
+                        UPDATE campaign_dst
+                        SET text = :msg_text,
+                            status = CASE
+                                WHEN status = :waiting_status THEN :created_status
+                                ELSE status
+                            END,
+                            update_ts = NOW()
+                        WHERE id = :id
+                    """),
+                    {
+                        "msg_text": msg_text,
+                        "id": dst_id,
+                        "waiting_status": int(schemas.CampaignDstStatus.WAITING),
+                        "created_status": int(schemas.CampaignDstStatus.CREATED)
+                    }
+                )
+
+            await session.commit()
+
+        logging.info(f"Сокращение ссылок завершено для кампании {campaign_id}: {len(url_map)} ссылок")
+        return {"campaign_id": campaign_id, "shortened": len(url_map)}
 
     except Exception as e:
-        logging.exception(
-            f"Ошибка при запуске проверки номеров для кампании {campaign_id}: {e}"
+        logging.exception(f"Ошибка в shorten_links для кампании {campaign_id}: {e}")
+        return {"campaign_id": campaign_id, "shortened": 0, "error": str(e)}
+
+
+@celery.task(name="tasks.rewrite_messages")
+async def rewrite_messages(
+    campaign_id: int,
+    batch_size: int,
+    rewrite_config: Dict
+):
+    """
+    Подготовка и запуск задач рерайта после сокращения ссылок.
+    Загружает обновленные тексты и создает батчи для рерайта.
+
+    Args:
+        campaign_id: ID кампании
+        batch_size: Размер батча для рерайта
+        rewrite_config: Конфигурация AI-провайдера
+    """
+    try:
+        # Быстрая загрузка обновленных текстов
+        campaign_dsts = []
+        async with async_session() as session:
+            result = await session.execute(
+                text("""
+                    SELECT id, text
+                    FROM campaign_dst
+                    WHERE campaign_id = :campaign_id
+                    ORDER BY id
+                """),
+                {"campaign_id": campaign_id}
+            )
+            campaign_dsts = [dict(row) for row in result.mappings().all()]
+        # СЕССИЯ ЗАКРЫТА
+
+        if not campaign_dsts:
+            logging.warning(f"Нет записей campaign_dst для рерайта в кампании {campaign_id}")
+            return {"batches_launched": 0}
+
+        # Создаем и запускаем батчи рерайта (без обращений к БД)
+        batches = [
+            campaign_dsts[i: i + batch_size]
+            for i in range(0, len(campaign_dsts), batch_size)
+        ]
+        rewrite_tasks = []
+
+        for batch in batches:
+            batch_data = [
+                {"id": dst["id"], "text": dst["text"]}
+                for dst in batch if dst.get("text")
+            ]
+            if batch_data:
+                rewrite_tasks.append(rewrite_batch.si(batch_data, rewrite_config))
+
+        if rewrite_tasks:
+            logging.info(f"Запуск AI-рерайта после сокращения: {len(rewrite_tasks)} батчей")
+            job = group(*rewrite_tasks)
+            job.apply_async()
+            return {"batches_launched": len(rewrite_tasks)}
+
+        return {"batches_launched": 0}
+
+    except Exception as e:
+        logging.exception(f"Ошибка в rewrite_messages: {e}")
+        return {"batches_launched": 0, "error": str(e)}
+
+
+@celery.task(name="tasks.rewrite_batch")
+async def rewrite_batch(batch_data: List[Dict], config: Dict):
+    """
+    Обработка AI-рерайта для батча сообщений параллельно.
+    Каждый рерайт получает свою сессию БД для обновления.
+
+    Args:
+        batch_data: Список словарей [{"id": int, "text": str}, ...]
+        config: Конфигурация AI-провайдера
+
+    Returns:
+        Словарь со статистикой выполнения
+    """
+    ai_provider = None
+    try:
+        # Создаем AI-провайдера (без обращений к БД)
+        ai_provider = AIProviderFactory.create(
+            provider=config.get("provider"), config=config
         )
+
+        prompt = config.get("prompt", settings.AI_REWRITE_SYSTEM_PROMPT)
+
+        async def rewrite_single(item: Dict):
+            """Рерайт одного сообщения"""
+            dst_id = item["id"]
+            original_text = item.get("text", "")
+
+            if not original_text or not original_text.strip():
+                return {"success": False, "id": dst_id, "error": "Empty text"}
+
+            try:
+                # AI-рерайт (без обращений к БД)
+                rewritten_text = await ai_provider.rewrite(prompt=prompt, text=original_text)
+
+                # Быстрое обновление БД в новой сессии
+                async with async_session() as session:
+                    await session.execute(
+                        text("""
+                            UPDATE campaign_dst
+                            SET text = :text,
+                                status = :status,
+                                update_ts = NOW()
+                            WHERE id = :id
+                        """),
+                        {
+                            "text": rewritten_text,
+                            "status": int(schemas.CampaignDstStatus.CREATED),
+                            "id": dst_id
+                        }
+                    )
+                    await session.commit()
+
+                return {"success": True, "id": dst_id}
+
+            except Exception as e:
+                error_msg = f"{type(e).__name__}: {str(e)}"
+
+                # Сохранение ошибки в новой сессии
+                try:
+                    async with async_session() as session:
+                        await session.execute(
+                            text("""
+                                UPDATE campaign_dst
+                                SET status = :status,
+                                    error = :error,
+                                    update_ts = NOW()
+                                WHERE id = :id
+                            """),
+                            {
+                                "status": int(schemas.CampaignDstStatus.CREATED),
+                                "error": error_msg,
+                                "id": dst_id
+                            }
+                        )
+                        await session.commit()
+                except Exception as db_err:
+                    logging.error(f"Не удалось сохранить ошибку для dst_id={dst_id}: {db_err}")
+
+                return {"success": False, "id": dst_id, "error": error_msg}
+
+        # Выполняем все рерайты параллельно
+        tasks = [rewrite_single(item) for item in batch_data]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        successful = sum(1 for r in results if isinstance(r, dict) and r.get("success"))
+        failed = len(results) - successful
+
+        logging.info(
+            f"Батч рерайта завершен: {successful} успешно, {failed} с ошибками, "
+            f"провайдер: {config.get('provider')}"
+        )
+
+        return {"successful": successful, "failed": failed, "total": len(batch_data)}
+
+    except Exception as e:
+        logging.exception(f"Ошибка в rewrite_batch: {e}")
+        return {"successful": 0, "failed": len(batch_data), "total": len(batch_data)}
+
+    finally:
+        if ai_provider:
+            try:
+                await ai_provider.close()
+            except Exception as e:
+                logging.warning(f"Ошибка при закрытии AI-провайдера: {e}")
 
 
 celery.conf.beat_schedule = {

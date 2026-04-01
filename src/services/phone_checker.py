@@ -75,23 +75,79 @@ class PhoneChecker:
                 )
                 return None
 
-    async def check_batch(
-        self, phone_numbers: List[str], timeout: Optional[int] = None
-    ) -> Optional[str]:
+    async def check_batch_webhook(
+        self,
+        phone_numbers: List[str],
+        callback_url: str,
+        timeout: Optional[int] = None,
+        window_size: Optional[int] = None,
+        chunk_size: Optional[int] = None
+    ) -> Optional[Dict]:
         """
-        Массовая проверка номеров через Batch API.
-
-        TODO: Реализовать после согласования с поставщиком сервиса:
-        - Webhook для получения результатов
-        - Или опрос статуса задания
+        Массовая проверка номеров через Batch API с webhook callback.
 
         Args:
-            phone_numbers: Список номеров телефонов
-            timeout: Тайм-аут на один номер (по умолчанию из настроек)
+            phone_numbers: Список номеров телефонов (max 600,000)
+            callback_url: URL для отправки результатов
+            timeout: Тайм-аут на один номер (default from settings)
+            window_size: Размер окна обработки (default from settings)
+            chunk_size: Размер батча для отправки результатов (default from settings)
 
         Returns:
-            job_id строка для отслеживания статуса задания
+            Dict с информацией о задании:
+            {
+                "job_id": str,
+                "total": int,
+                "checkers": List[str]
+            }
             Или None в случае ошибки
         """
-        # TODO: Implement batch checking
-        pass
+        if not phone_numbers:
+            logging.warning("[PhoneChecker] Empty phone list provided")
+            return None
+
+        if len(phone_numbers) > 600000:
+            logging.error(f"[PhoneChecker] Too many phones: {len(phone_numbers)} (max 600,000)")
+            return None
+
+        # Use defaults from settings
+        timeout = timeout or settings.PHONE_CHECK_WEBHOOK_TIMEOUT
+        window_size = window_size or settings.PHONE_CHECK_WEBHOOK_WINDOW_SIZE
+        chunk_size = chunk_size or settings.PHONE_CHECK_WEBHOOK_CHUNK_SIZE
+
+        logging.info(
+            f"[PhoneChecker] Starting batch check for {len(phone_numbers)} numbers, "
+            f"callback: {callback_url}, window_size: {window_size}"
+        )
+
+        async with httpx.AsyncClient(timeout=30) as client:  # Short timeout for submission
+            try:
+                response = await client.post(
+                    f"{self.base_url}/api/v1/check/webhook",
+                    json={
+                        "phones": phone_numbers,
+                        "callback_url": callback_url,
+                        "timeout": timeout,
+                        "window_size": window_size,
+                        "chunk_size": chunk_size
+                    },
+                    headers={"X-API-Key": self.api_key} if self.api_key else {},
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                logging.info(
+                    f"[PhoneChecker] Batch job created: job_id={data.get('job_id')}, "
+                    f"total={data.get('total')}, checkers={data.get('checkers')}"
+                )
+
+                return data
+
+            except httpx.HTTPStatusError as e:
+                logging.error(
+                    f"[PhoneChecker] HTTP {e.response.status_code}: {e.response.text}"
+                )
+                return None
+            except Exception as e:
+                logging.exception(f"[PhoneChecker] Error creating batch job: {e}")
+                return None

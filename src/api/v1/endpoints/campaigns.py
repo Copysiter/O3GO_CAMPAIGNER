@@ -6,9 +6,10 @@ import openpyxl
 
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
-from typing import Any, List, Dict, Union
+from typing import Any, List, Dict
 from datetime import datetime, timedelta
 from io import BytesIO
+from celery import group
 
 from fastapi import APIRouter, Body, Depends, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -18,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from api import deps
-from tasks import rewrite_message, prepare_messages, check_dst_batch
+from tasks import prepare_campaign, check_dst_batch
 
 import crud, models, schemas
 from services.android import AndroidService
@@ -61,23 +62,6 @@ def extract_links(msg_template: str, dst_data: Dict) -> List[str]:
             unique_urls.append(url)
 
     return unique_urls
-
-
-def create_batches(items: list, batch_size: int) -> list:
-    """
-    Разделяет список на батчи заданного размера.
-
-    Args:
-        items: Список элементов для разделения
-        batch_size: Размер одного батча
-
-    Returns:
-        Список батчей (каждый батч - список элементов)
-    """
-    if batch_size <= 0:
-        raise ValueError("Размер батча должен быть больше 0")
-
-    return [items[i : i + batch_size] for i in range(0, len(items), batch_size)]
 
 
 @router.get("/", response_model=schemas.CampaignRows)
@@ -207,12 +191,6 @@ async def create_campaign(
         status=campaign_in.status,
     )
 
-    # campaign_db_in = schemas.CampaignUpdate(
-    #     **campaign_in.model_dump()
-    # )
-    # if not campaign_db_in.user_id:
-    #     campaign_db_in.user_id = current_user.id
-
     campaign_dst_in = []
     fields = campaign_in.data_fields
 
@@ -309,9 +287,6 @@ async def create_campaign(
                     )
             dst_data["text"] = text_with_fields
 
-        # Проверяем нужны ли предобработки (сокращение ссылок и/или рерайт)
-        steps = []
-
         # Проверяем наличие ссылок для сокращения
         has_links_to_shorten = False
         if campaign.msg_template:
@@ -321,15 +296,16 @@ async def create_campaign(
                     has_links_to_shorten = True
                     break
 
+        # Определяем шаги для prepare_campaign (сокращение ссылок и/или рерайт)
+        steps = []
         if has_links_to_shorten:
             steps.append("shorten_links")
-
-        # Проверяем нужен ли рерайт
         if campaign_in.rewrite and campaign_in.provider:
             steps.append("rewrite")
 
         # Создаем записи campaign_dst
-        if steps:  # Если нужны предобработки
+        # Статус WAITING только если есть сокращение ссылок или рерайт
+        if steps:
             for dst_data in campaign_dst_in:
                 dst_data["status"] = schemas.CampaignDstStatus.WAITING
 
@@ -337,7 +313,7 @@ async def create_campaign(
                 db=db, obj_in=campaign_dst_in
             )
 
-            # Запускаем Celery задачу предобработки
+            # Запускаем Celery задачу предобработки (ссылки + рерайт)
             rewrite_config = None
             if campaign_in.rewrite and campaign_in.provider:
                 api_key = ""
@@ -353,13 +329,14 @@ async def create_campaign(
                     "prompt": campaign_in.prompt or settings.AI_REWRITE_SYSTEM_PROMPT,
                 }
 
-            prepare_messages.delay(
+            prepare_campaign.delay(
                 campaign_id=campaign.id,
                 steps=steps,
                 x_api_key=current_user.ext_api_key,
                 rewrite_config=rewrite_config,
             )
-        else:  # Предобработки не нужны, сразу статус CREATED
+        else:
+            # Нет сокращения ссылок или рерайта - сразу статус CREATED
             for dst_data in campaign_dst_in:
                 dst_data["status"] = schemas.CampaignDstStatus.CREATED
 
@@ -367,9 +344,27 @@ async def create_campaign(
                 db=db, obj_in=campaign_dst_in
             )
 
-    # Запуск проверки номеров если требуется
-    if campaign_in.check_dst and campaign.id:
-        check_dst_batch.delay(campaign_id=campaign.id)
+        # НЕЗАВИСИМАЯ проверка номеров (если требуется)
+        # Не влияет на статус campaign_dst, запускается параллельно
+        if campaign_in.check_dst:
+            # Создаем батчи для проверки
+            check_batches = [
+                created_objects[i: i + settings.PHONE_CHECKER_BATCH_SIZE]
+                for i in range(0, len(created_objects), settings.PHONE_CHECKER_BATCH_SIZE)
+            ]
+
+            check_tasks = []
+            for batch in check_batches:
+                batch_data = [
+                    {"id": dst["id"], "phone": dst["dst_addr"]}
+                    for dst in batch if dst.get("dst_addr")
+                ]
+                if batch_data:
+                    check_tasks.append(check_dst_batch.si(batch_data))
+
+            if check_tasks:
+                job = group(*check_tasks)
+                job.apply_async()
 
     return campaign
 
@@ -519,13 +514,39 @@ async def check_campaign_dst(
     id: int,
 ) -> Any:
     """
-    Start phone checking for all numbers in campaign.
+    Checking for all numbers in campaign.
     """
     campaign = await crud.campaign.get(db=db, id=id)
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    check_dst_batch.delay(campaign_id=id)
+    # Fetch all campaign_dst records for this campaign
+    filters = [{"field": "campaign_id", "operator": "eq", "value": id}]
+    campaign_dsts = await crud.campaign_dst.get_all(db=db, filters=filters)
+
+    if not campaign_dsts:
+        raise HTTPException(
+            status_code=404, detail="No phone numbers found in campaign"
+        )
+
+    # Создаем батчи для проверки
+    check_batches = [
+        campaign_dsts[i : i + settings.PHONE_CHECKER_BATCH_SIZE]
+        for i in range(0, len(campaign_dsts), settings.PHONE_CHECKER_BATCH_SIZE)
+    ]
+
+    check_tasks = []
+    for batch in check_batches:
+        batch_data = [
+            {"id": dst.id, "phone": dst.dst_addr}
+            for dst in batch if dst.dst_addr
+        ]
+        if batch_data:
+            check_tasks.append(check_dst_batch.si(batch_data))
+
+    if check_tasks:
+        job = group(*check_tasks)
+        job.apply_async()
 
     return campaign
 

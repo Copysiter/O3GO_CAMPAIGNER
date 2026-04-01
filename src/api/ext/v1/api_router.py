@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from .endpoints import messeges, messages, webhook, teleraptor, android, account, links  # noqa
+from .endpoints import messeges, messages, webhook, teleraptor, android, account, links, hs  # noqa
 
 api_router = APIRouter()
 
@@ -15,3 +15,4 @@ api_router.include_router(
 api_router.include_router(android.router, prefix="/android", tags=["Android"])
 api_router.include_router(account.router, prefix="/account", tags=["Account"])
 api_router.include_router(links.router, prefix="/links", tags=["Links"])
+api_router.include_router(hs.router, prefix="/hs", tags=["HS Phone Checker"])

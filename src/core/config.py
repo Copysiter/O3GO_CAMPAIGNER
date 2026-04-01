@@ -146,7 +146,18 @@ class Settings(BaseSettings):
         "http://176.9.3.222:8000", env="PHONE_CHECKER_URL"
     )
     PHONE_CHECKER_API_KEY: str = Field("", env="PHONE_CHECKER_API_KEY")
-    PHONE_CHECKER_TIMEOUT: int = Field(120, env="PHONE_CHECKER_TIMEOUT")
+    PHONE_CHECKER_TIMEOUT: int = Field(60, env="PHONE_CHECKER_TIMEOUT")
+
+    # Phone checker batch sizes
+    PHONE_CHECKER_BATCH_SIZE: int = Field(1000, env="PHONE_CHECKER_BATCH_SIZE")  # For old single checks
+    PHONE_CHECKER_WEBHOOK_WINDOW_SIZE: int = Field(50, env="PHONE_CHECKER_WEBHOOK_WINDOW_SIZE")  # Window size for webhook API
+    PHONE_CHECKER_WEBHOOK_CHUNK_SIZE: int = Field(50, env="PHONE_CHECKER_WEBHOOK_CHUNK_SIZE")  # Results per callback
+    PHONE_CHECKER_WEBHOOK_TIMEOUT: int = Field(120, env="PHONE_CHECKER_WEBHOOK_TIMEOUT")  # Timeout per phone for webhook
+    PHONE_CHECKER_WEBHOOK_TOKEN: str = Field("", env="PHONE_CHECKER_WEBHOOK_TOKEN")  # Security token for webhook
+    PHONE_CHECKER_WEBHOOK_BASE_URL: str = Field("http://localhost:5001", env="PHONE_CHECKER_WEBHOOK_BASE_URL")  # Base URL for webhook
+
+    # Task batch configuration
+    REWRITE_BATCH_SIZE: int = Field(10, env="REWRITE_BATCH_SIZE")  # AI rewrite batch
 
     class Config:
         env_file = ".env"
