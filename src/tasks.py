@@ -654,19 +654,19 @@ async def rewrite_batch(batch_data: List[Dict], config: Dict):
                 return {"success": False, "id": dst_id, "error": "Empty text"}
 
             try:
-                logging.info(
-                    f"[rewrite_batch] dst_id={dst_id}: Отправка на рерайт. "
-                    f"Оригинальный текст: {original_text}..."
-                )
+                # logging.info(
+                #     f"[rewrite_batch] dst_id={dst_id}: Отправка на рерайт. "
+                #     f"Оригинальный текст: {original_text}..."
+                # )
 
                 rewritten_text = await ai_provider.rewrite(
                     prompt=prompt, text=original_text
                 )
 
-                logging.info(
-                    f"[rewrite_batch] dst_id={dst_id}: Получен результат рерайта. "
-                    f"Результат: {rewritten_text if rewritten_text else 'None'}..."
-                )
+                # logging.info(
+                #     f"[rewrite_batch] dst_id={dst_id}: Получен результат рерайта. "
+                #     f"Результат: {rewritten_text if rewritten_text else 'None'}..."
+                # )
 
                 # Проверка на пустой результат
                 if not rewritten_text or not rewritten_text.strip():

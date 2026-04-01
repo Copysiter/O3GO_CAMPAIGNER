@@ -31,7 +31,8 @@ async def process_check_results(results: List[Dict]):
                     phone = phone[1:]
 
                 # Определение итогового score
-                if not success or score is None:
+                # if not success or score is None:
+                if score is None:
                     final_score = -1.0
                 else:
                     final_score = float(score)
@@ -87,7 +88,7 @@ async def receive_check_results(
     }
     """
     # Логирование входящих данных
-    logging.info(f"[HS Webhook] Получен payload: {data}")
+    # logging.info(f"[HS Webhook] Получен payload: {data}")
 
     # Проверка токена
     if not settings.PHONE_CHECKER_WEBHOOK_TOKEN or token != settings.PHONE_CHECKER_WEBHOOK_TOKEN:
