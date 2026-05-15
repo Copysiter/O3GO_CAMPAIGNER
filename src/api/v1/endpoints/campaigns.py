@@ -291,7 +291,7 @@ async def create_campaign(
         has_links_to_shorten = False
         if campaign.msg_template:
             for dst_data in campaign_dst_in:
-                links = extract_links(campaign.msg_template, dst_data)
+                links = extract_links(dst_data.get("text", campaign.msg_template), dst_data)
                 if links:
                     has_links_to_shorten = True
                     break

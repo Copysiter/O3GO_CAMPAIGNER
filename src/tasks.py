@@ -446,7 +446,7 @@ async def shorten_links(
                 "field_4": dst.get("field_4"),
                 "field_5": dst.get("field_5"),
             }
-            urls = extract_links(msg_template, dst_data)
+            urls = extract_links(dst.get("text", msg_template), dst_data)
             all_urls.extend(urls)
 
         unique_urls = list(dict.fromkeys(all_urls))
