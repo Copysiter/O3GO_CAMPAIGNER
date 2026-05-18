@@ -137,6 +137,35 @@ async def get(
         )
 
 
+@router.get('/check') #, response_model=schemas.CampaignDst)
+async def check(
+    *, session: AsyncSession = Depends(deps.get_db),
+    campaign_id: int = None, device: str = None, api_key: str = None,
+    user = Depends(deps.get_user_by_api_key)
+) -> Any:
+    '''
+    Check availability of messages for processing.
+    Returns True if there are messages in CREATED or FAILED status with attempts > 0.
+    '''
+    now = datetime.utcnow()
+    weekday = now.isoweekday()
+    hour = now.hour
+    try:
+        return {
+            "available": await services.message.check_processing(
+                session=session, user=user,
+                campaign_id=campaign_id, device=device, api_key=api_key,
+                now=now, weekday=weekday, hour=hour
+            )
+        }
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=getattr(e, 'status_code', 500),
+            detail=f'{type(e).__name__}: {e}'
+        )
+
+
 @router.get('/next') #, response_model=schemas.CampaignDst)
 async def get_next(
     *, session: AsyncSession = Depends(deps.get_db),

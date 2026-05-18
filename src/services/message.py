@@ -318,6 +318,72 @@ SET
 WHERE id = :id
 """)
 
+SQL_CHECK_BY_CAMPAIGN_ID = text("""
+SELECT 1
+FROM campaign c
+JOIN campaign_dst d ON d.campaign_id = c.id
+WHERE c.id = :campaign_id
+  {user_clause}
+  AND d.status IN (:created_status, :failed_status)
+  AND d.attempts > 0
+  AND (c.follow_limit > c.follow_count)
+LIMIT 1;
+""")
+
+SQL_CHECK_BY_DEVICE = text("""
+SELECT 1
+FROM campaign c
+JOIN campaign_androids ca
+  ON ca.campaign_id = c.id
+ AND ca.device      = :device
+WHERE c.status = :status_running
+  AND (
+       (c.start_ts IS NOT NULL AND c.stop_ts IS NOT NULL
+        AND :now BETWEEN c.start_ts AND c.stop_ts)
+       OR
+       (c.schedule::jsonb ->> :weekday_str IS NOT NULL
+        AND (c.schedule::jsonb -> :weekday_str)::jsonb
+            @> TO_JSONB(CAST(:hour AS INTEGER)))
+  )
+  {user_clause}
+  AND EXISTS (
+      SELECT 1
+      FROM campaign_dst d
+      WHERE d.campaign_id = c.id
+        AND d.status IN (:created_status, :failed_status)
+        AND d.attempts > 0
+      LIMIT 1
+  )
+LIMIT 1;
+""")
+
+SQL_CHECK_BY_API_KEY = text("""
+SELECT 1
+FROM campaign c
+JOIN campaign_api_keys cak
+  ON cak.campaign_id = c.id
+ AND cak.api_key      = :api_key
+WHERE c.status = :status_running
+  AND (
+       (c.start_ts IS NOT NULL AND c.stop_ts IS NOT NULL
+        AND :now BETWEEN c.start_ts AND c.stop_ts)
+       OR
+       (c.schedule::jsonb ->> :weekday_str IS NOT NULL
+        AND (c.schedule::jsonb -> :weekday_str)::jsonb
+            @> TO_JSONB(CAST(:hour AS INTEGER)))
+  )
+  {user_clause}
+  AND EXISTS (
+      SELECT 1
+      FROM campaign_dst d
+      WHERE d.campaign_id = c.id
+        AND d.status IN (:created_status, :failed_status)
+        AND d.attempts > 0
+      LIMIT 1
+  )
+LIMIT 1;
+""")
+
 SQL_GET_BY_DST = text("""
 WITH upd AS (
     UPDATE campaign_dst d
@@ -560,6 +626,80 @@ async def get_next_processing(
         "text":  safe_replace(text_out or upd.get("text")),
         "follow": upd["follow"],
     }
+
+
+async def check_processing(
+    session: AsyncSession,
+    user: models.User,
+    *,
+    campaign_id: Optional[int] = None,
+    api_key: Optional[str] = None,
+    device: Optional[str] = None,
+    now: datetime,
+    weekday: int,
+    hour: int,
+) -> bool:
+    """
+    Проверяет наличие доступных сообщений для обработки без их изменения.
+    Возвращает True если найдены подходящие сообщения, False иначе.
+
+    Поддерживает три режима проверки:
+    - По campaign_id: проверяет конкретную кампанию
+    - По device: проверяет кампании, назначенные на устройство
+    - По api_key: проверяет кампании, доступные для API-ключа
+    """
+    params_common = {
+        "user_id": user.id,
+        "created_status": int(schemas.CampaignDstStatus.CREATED),
+        "failed_status": int(schemas.CampaignDstStatus.FAILED),
+    }
+
+    if campaign_id is not None:
+        sql = text(
+            SQL_CHECK_BY_CAMPAIGN_ID.text.replace(
+                "{user_clause}", "AND c.user_id = :user_id"
+                if not user.is_superuser else ""
+            )
+        )
+        params = {
+            **params_common,
+            "campaign_id": campaign_id,
+        }
+    elif device is not None:
+        sql = text(
+            SQL_CHECK_BY_DEVICE.text.replace(
+                "{user_clause}", "AND c.user_id = :user_id"
+                if not user.is_superuser else ""
+            )
+        )
+        params = {
+            **params_common,
+            "device": device,
+            "status_running": int(schemas.CampaignStatus.RUNNING),
+            "now": now,
+            "weekday_str": str(weekday),
+            "hour": int(hour),
+        }
+    else:
+        sql = text(
+            SQL_CHECK_BY_API_KEY.text.replace(
+                "{user_clause}", "AND c.user_id = :user_id"
+                if not user.is_superuser else ""
+            )
+        )
+        params = {
+            **params_common,
+            "api_key": api_key,
+            "status_running": int(schemas.CampaignStatus.RUNNING),
+            "now": now,
+            "weekday_str": str(weekday),
+            "hour": int(hour),
+        }
+
+    res = await session.execute(sql, params)
+    row = res.first()
+
+    return row is not None
 
 
 async def get_processing(
