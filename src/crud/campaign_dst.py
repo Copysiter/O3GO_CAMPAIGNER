@@ -28,13 +28,21 @@ class CRUDCampaignDst(CRUDBase[CampaignDst, CampaignDstCreate, CampaignDstUpdate
         return created_objects
 
     async def delete_rows(
-            self, db: AsyncSession, *, campaign_id: int, user_id: int = None
-    ) -> None:
-        statement = delete(CampaignDst).where(CampaignDst.campaign_id == campaign_id)
-        if user_id is not None:
-            statement = statement.where(CampaignDst.user_id == user_id)
-        await db.execute(statement=statement)
+            self, db: AsyncSession, *, campaign_id: int,
+            ids: List[int] = None, user_id: int = None
+    ) -> int:
+        if ids is not None:
+            statement = delete(CampaignDst).where(
+                CampaignDst.campaign_id == campaign_id,
+                CampaignDst.id.in_(ids),
+            )
+        else:
+            statement = delete(CampaignDst).where(CampaignDst.campaign_id == campaign_id)
+            if user_id is not None:
+                statement = statement.where(CampaignDst.user_id == user_id)
+        result = await db.execute(statement=statement)
         await db.commit()
+        return result.rowcount
     
     #def get_one(
     #    self, db: Session, *, campaign_id: int

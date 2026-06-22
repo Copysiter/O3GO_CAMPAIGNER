@@ -629,9 +629,11 @@ async def delete_campaign_campaign_dsts(
     db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_active_user),
     id: int,
+    ids: List[int] = Body(None, embed=True),
 ) -> Any:
     """
-    Get campaign campaign_dsts.
+    Delete campaign DSTs. If ids is provided, delete only those rows.
+    Otherwise delete all DSTs for the campaign.
     """
     campaign = await crud.campaign.get(db=db, id=id)
     if not campaign:
@@ -641,16 +643,20 @@ async def delete_campaign_campaign_dsts(
             status_code=400, detail="The user doesn't have enough privileges"
         )
     user_id = None if current_user.is_superuser else current_user.id
-    await crud.campaign_dst.delete_rows(db, campaign_id=id, user_id=user_id)
+    rowcount = await crud.campaign_dst.delete_rows(
+        db, campaign_id=id, ids=ids, user_id=user_id
+    )
+    is_partial_delete = ids is not None
+    new_msg_total = max(0, campaign.msg_total - rowcount) if is_partial_delete else 0
     campaign = await crud.campaign.update(
         db=db,
         db_obj=campaign,
         obj_in={
-            "msg_total": 0,
-            "msg_sent": 0,
-            "msg_delivered": 0,
-            "msg_undelivered": 0,
-            "msg_failed": 0,
+            "msg_total": new_msg_total,
+            "msg_sent": campaign.msg_sent if is_partial_delete else 0,
+            "msg_delivered": campaign.msg_delivered if is_partial_delete else 0,
+            "msg_undelivered": campaign.msg_undelivered if is_partial_delete else 0,
+            "msg_failed": campaign.msg_failed if is_partial_delete else 0,
         },
     )
     return campaign

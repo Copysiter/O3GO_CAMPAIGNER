@@ -108,3 +108,40 @@ window.initContextMenu = function() {
     });
 
 }
+
+window.initMessageContextMenu = function() {
+    var existingMenu = $("#message-menu").data("kendoContextMenu");
+    if (existingMenu) {
+        existingMenu.destroy();
+        $("#message-menu").empty();
+    }
+
+    $("#message-menu").kendoContextMenu({
+        target: "#message-grid tbody",
+        filter: "tr[role='row']",
+        animation: false,
+        dataSource: [
+            {
+                text: "Delete Message",
+                cssClass: "messageDelete",
+                spriteCssClass: "famfamfam-silk cross",
+                attr: {
+                    "onclick": "deleteSelectedMessages();"
+                }
+            }
+        ],
+        activate: function(e) {
+            let menu = this;
+            let grid = $("#message-grid").data("kendoGrid");
+            menu.enable("li", true);
+            if (!$(e.target).is('.k-state-selected')) grid.clearSelection();
+            grid.select(e.target);
+            grid.trigger("change");
+        },
+        deactivate: function(e) {
+        },
+        select: function(e) {
+        }
+    });
+
+}

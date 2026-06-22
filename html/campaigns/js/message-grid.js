@@ -3,6 +3,15 @@ window.initMessageGrid = function(id) {
     let messageShowLoader = true;
     let messageResizeColumn = false;
 
+    window.selectedMessageItem = null;
+    window.selectedMessageItems = [];
+
+    var existingGrid = $('#message-grid').data("kendoGrid");
+    if (existingGrid) {
+        existingGrid.destroy();
+        $('#message-grid').empty();
+    }
+
     $('#message-grid').kendoGrid({
         dataSource: {
             transport: {
@@ -37,6 +46,7 @@ window.initMessageGrid = function(id) {
                 model: {
                     id: "id",
                     fields: {
+                        id: { type: 'number' },
                         dst_addr: { type: 'string' },
                         text: { type: 'string' },
                         field_1: { type: 'string' },
@@ -77,7 +87,7 @@ window.initMessageGrid = function(id) {
         height: '100%',
         reorderable: true,
         resizable: true,
-        selectable: "row",
+        selectable: "multiple, row",
         persistSelection: true,
         sortable: true,
         filterable: {
@@ -97,6 +107,17 @@ window.initMessageGrid = function(id) {
                 messageShowLoader = false;
                 e.sender.dataSource.read();
             }, 60000);
+        },
+        change: function (e) {
+            window.selectedMessageItems = [];
+            let rows = e.sender.select();
+            window.selectedMessageItem = e.sender.dataItem(rows[0]);
+            for (let i = 0; i < rows.length; i++) {
+                let dataItem = e.sender.dataItem($(rows[i]));
+                if (window.selectedMessageItems.indexOf(dataItem) == -1) {
+                    window.selectedMessageItems.push(dataItem);
+                }
+            }
         },
         columns: [
             {
@@ -326,4 +347,45 @@ window.initMessageGrid = function(id) {
 
     window.optimize_grid(['#message-grid']);
 
+    if (window.initMessageContextMenu) {
+        window.initMessageContextMenu();
+    }
+
 }
+
+window.deleteSelectedMessages = function() {
+    if (!window.selectedCampaignItem || window.selectedMessageItems.length === 0) return;
+    var title = window.selectedMessageItems.length > 1
+        ? "Delete Messages"
+        : "Delete Message";
+    var body = window.selectedMessageItems.length > 1
+        ? "Are you sure you want to delete selected Messages?"
+        : "Are you sure you want to delete selected Message?";
+    kendo.confirm(`<div style='padding:5px 10px 0 10px;'><strong>${title}</strong><br>${body}</div>`)
+        .done(function() {
+            $.ajax({
+                url: `${api_base_url}/api/v1/campaigns/${window.selectedCampaignItem.id}/campaign_dst`,
+                type: "DELETE",
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({ ids: window.selectedMessageItems.map(obj => parseInt(obj.id)) }),
+                dataType: 'json',
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader("Authorization", `${token_type} ${access_token}`);
+                },
+                success: function(data) {
+                },
+                error: function(jqXHR, textStatus, ex) {
+                }
+            }).then(function(data) {
+                if (data) {
+                    var grid = $("#message-grid").data("kendoGrid");
+                    window.selectedMessageItem = null;
+                    window.selectedMessageItems = [];
+                    grid.clearSelection();
+                    grid.dataSource.read();
+                }
+            });
+        })
+        .fail(function() {
+        });
+};

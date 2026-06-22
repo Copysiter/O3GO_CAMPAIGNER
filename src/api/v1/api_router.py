@@ -1,7 +1,7 @@
 ﻿from fastapi import APIRouter
 
 from .endpoints import (
-    base, auth, users, tags, api_keys, campaigns,
+    base, auth, users, tags, api_keys, campaigns, campaign_dst,
     androids, versions, accounts, upload, options, utils
 )
 
@@ -15,6 +15,7 @@ api_router.include_router(users.router, prefix='/users', tags=['Users'])
 api_router.include_router(tags.router, prefix='/tags', tags=['Tags'])  # noqa
 api_router.include_router(api_keys.router, prefix='/api_keys', tags=['ApiKeys'])
 api_router.include_router(campaigns.router, prefix='/campaigns', tags=['Campaigns'])  # noqa
+api_router.include_router(campaign_dst.router, prefix='/campaign_dst', tags=['Campaign DSTs'])
 api_router.include_router(androids.router, prefix='/androids', tags=['Android Devices'])
 api_router.include_router(versions.router, prefix='/android/versions', tags=['Android App Versions'])
 api_router.include_router(accounts.router, prefix='/android/accounts', tags=['WA Accounts'])
