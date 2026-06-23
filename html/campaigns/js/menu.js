@@ -110,14 +110,18 @@ window.initContextMenu = function() {
 }
 
 window.initMessageContextMenu = function() {
+    if (!$("#message-menu").length) {
+        $("#message-grid").after('<div id="message-menu"></div>');
+    }
     var existingMenu = $("#message-menu").data("kendoContextMenu");
     if (existingMenu) {
         existingMenu.destroy();
         $("#message-menu").empty();
+        $("#message-menu").removeData("kendoContextMenu");
     }
 
     $("#message-menu").kendoContextMenu({
-        target: "#message-grid tbody",
+        target: "#message-grid .k-grid-content",
         filter: "tr[role='row']",
         animation: false,
         dataSource: [
@@ -134,7 +138,7 @@ window.initMessageContextMenu = function() {
             let menu = this;
             let grid = $("#message-grid").data("kendoGrid");
             menu.enable("li", true);
-            if (!$(e.target).is('.k-state-selected')) grid.clearSelection();
+            if (!$(e.target).is('.k-state-selected, .k-selected')) grid.clearSelection();
             grid.select(e.target);
             grid.trigger("change");
         },

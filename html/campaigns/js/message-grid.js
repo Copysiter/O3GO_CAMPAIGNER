@@ -355,13 +355,10 @@ window.initMessageGrid = function(id) {
 
 window.deleteSelectedMessages = function() {
     if (!window.selectedCampaignItem || window.selectedMessageItems.length === 0) return;
-    var title = window.selectedMessageItems.length > 1
-        ? "Delete Messages"
-        : "Delete Message";
     var body = window.selectedMessageItems.length > 1
         ? "Are you sure you want to delete selected Messages?"
         : "Are you sure you want to delete selected Message?";
-    kendo.confirm(`<div style='padding:5px 10px 0 10px;'><strong>${title}</strong><br>${body}</div>`)
+    kendo.confirm(`<div style='padding:5px 10px 0 10px;'>${body}</div>`)
         .done(function() {
             $.ajax({
                 url: `${api_base_url}/api/v1/campaigns/${window.selectedCampaignItem.id}/campaign_dst`,
