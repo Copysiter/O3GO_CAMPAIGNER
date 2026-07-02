@@ -46,6 +46,62 @@ function showEditForm(model) {
                 },
             },
             {
+                field: 'permissions',
+                label: 'Permissions',
+                colSpan: 12,
+                editor: 'MultiSelect',
+                editorOptions: {
+                    dataSource: new kendo.data.DataSource({
+                        transport: {
+                            read: {
+                                url: `${api_base_url}/api/v1/options/permission`,
+                                type: 'GET',
+                                beforeSend: function (request) {
+                                    request.setRequestHeader(
+                                        'Authorization',
+                                        `${token_type} ${access_token}`
+                                    );
+                                },
+                            },
+                        },
+                    }),
+                    dataTextField: 'text',
+                    dataValueField: 'value',
+                    valuePrimitive: true,
+                    downArrow: true,
+                    animation: false,
+                    autoClose: false,
+                },
+            },
+            {
+                field: 'api_keys',
+                label: 'Default API Keys',
+                colSpan: 12,
+                editor: 'MultiSelect',
+                editorOptions: {
+                    dataSource: new kendo.data.DataSource({
+                        transport: {
+                            read: {
+                                url: `${api_base_url}/api/v1/options/api_key`,
+                                type: 'GET',
+                                beforeSend: function (request) {
+                                    request.setRequestHeader(
+                                        'Authorization',
+                                        `${token_type} ${access_token}`
+                                    );
+                                },
+                            },
+                        },
+                    }),
+                    dataTextField: 'text',
+                    dataValueField: 'value',
+                    valuePrimitive: true,
+                    downArrow: true,
+                    animation: false,
+                    autoClose: false,
+                },
+            },
+            {
                 field: 'sep1',
                 colSpan: 12,
                 label: false,

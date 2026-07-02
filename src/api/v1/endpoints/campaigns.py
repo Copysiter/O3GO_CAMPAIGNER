@@ -170,12 +170,24 @@ async def create_campaign(
     """
 
     ts = datetime.utcnow()
+    campaign_user_id = campaign_in.user_id if campaign_in.user_id else current_user.id
+    can_assign_api_keys = (
+        current_user.is_superuser
+        or "campaign.assign_api_keys" in current_user.permissions
+    )
+    campaign_api_keys = campaign_in.api_keys
+
+    if not can_assign_api_keys:
+        campaign_user = current_user
+        if campaign_user.id != campaign_user_id:
+            campaign_user = await crud.user.get(db=db, id=campaign_user_id)
+        campaign_api_keys = list(campaign_user.api_keys or []) if campaign_user else []
 
     campaign_db_in = schemas.CampaignCreate(
         name=campaign_in.name,
-        user_id=campaign_in.user_id if campaign_in.user_id else current_user.id,
+        user_id=campaign_user_id,
         webhook_url=campaign_in.webhook_url,
-        api_keys=campaign_in.api_keys,
+        api_keys=campaign_api_keys,
         androids=campaign_in.androids,
         tags=campaign_in.tags,
         schedule=campaign_in.schedule,

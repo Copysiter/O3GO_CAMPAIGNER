@@ -1,6 +1,12 @@
 window.initWizard = function() {
+    const currentUser = window.isAuth.user;
+    const permissions = currentUser.permissions || [];
+    const canAssign = function (permissionSuffix) {
+        return currentUser.is_superuser || permissions.includes(`campaign.assign_${permissionSuffix}`);
+    };
+
     const user_field = window.isAuth.user.is_superuser ? [{
-        field: "sep2",
+        field: "sep0",
         colSpan: 12,
         label: false,
         editor: "<div class='separator mx-n15'></div>"
@@ -35,6 +41,119 @@ window.initWizard = function() {
             valuePrimitive: true
         },
     }] : [];
+
+    const assign_fields = [];
+
+    if (canAssign('api_keys')) {
+        assign_fields.push({
+            field: 'api_keys',
+            label: 'Api Keys',
+            editor: 'MultiSelect',
+            editorOptions: {
+                dataSource: new kendo.data.DataSource({
+                    transport: {
+                        read: {
+                            url: `${api_base_url}/api/v1/options/api_key`,
+                            type: 'GET',
+                            beforeSend: function (request) {
+                                request.setRequestHeader(
+                                    'Authorization',
+                                    `${token_type} ${access_token}`
+                                );
+                            },
+                        },
+                    },
+                }),
+                dataTextField: 'text',
+                dataValueField: 'value',
+                valuePrimitive: true,
+                downArrow: true,
+                animation: false,
+                autoClose: false,
+                noDataTemplate: function (e) {
+                    let value = e.instance.input.val();
+                    return `
+                    <div class='no-data'>
+                    <p>Api Key not found.<br>Do you want to add new Api Key ${value} ?</p> 
+                    <button class="k-button k-button-solid-base k-button-solid k-button-md k-rounded-md" onclick="addNew('${value}', 'campaign-create-window')">Append</button>
+                    </p>
+                    `;
+                },
+            },
+            colSpan: 12,
+        });
+    }
+
+    if (canAssign('androids')) {
+        assign_fields.push({
+            field: 'androids',
+            label: 'Android Devices',
+            editor: 'MultiSelect',
+            editorOptions: {
+                dataSource: new kendo.data.DataSource({
+                    transport: {
+                        read: {
+                            url: `${api_base_url}/api/v1/options/android`,
+                            type: 'GET',
+                            beforeSend: function (request) {
+                                request.setRequestHeader(
+                                    'Authorization',
+                                    `${token_type} ${access_token}`
+                                );
+                            },
+                        },
+                    },
+                }),
+                dataTextField: 'text',
+                dataValueField: 'value',
+                valuePrimitive: true,
+                downArrow: true,
+                animation: false,
+                autoClose: false
+            },
+            colSpan: 12,
+        });
+    }
+
+    if (canAssign('tags')) {
+        assign_fields.push({
+            field: 'tags',
+            label: 'Tags',
+            editor: 'MultiSelect',
+            editorOptions: {
+                dataSource: new kendo.data.DataSource({
+                    transport: {
+                        read: {
+                            url: `${api_base_url}/api/v1/options/tag`,
+                            type: 'GET',
+                            beforeSend: function (request) {
+                                request.setRequestHeader(
+                                    'Authorization',
+                                    `${token_type} ${access_token}`
+                                );
+                            },
+                        },
+                    },
+                }),
+                dataTextField: 'text',
+                dataValueField: 'value',
+                valuePrimitive: true,
+                downArrow: true,
+                animation: false,
+                autoClose: false,
+            },
+            colSpan: 12,
+        });
+    }
+
+    if (assign_fields.length) {
+        assign_fields.unshift({
+            field: "sep1",
+            colSpan: 12,
+            label: false,
+            editor: "<div class='separator mx-n15'></div>"
+        });
+    }
 
     let empty_data = kendo.observable({
         user_id: null,
@@ -99,7 +218,7 @@ window.initWizard = function() {
                 grid: { cols: 12, gutter: "15px 10px" },
                 formData: campaignCreateModel.data,
                 items: [{
-                    field: "sep1",
+                    field: "sep2",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -111,103 +230,8 @@ window.initWizard = function() {
                     field: "webhook_url",
                     label: "Webhook URL:",
                     colSpan: 6
-                }, {
+                }]).concat(assign_fields).concat([{
                     field: "sep3",
-                    colSpan: 12,
-                    label: false,
-                    editor: "<div class='separator mx-n15'></div>"
-                }, {
-                    field: 'api_keys',
-                    label: 'Api Keys',
-                    editor: 'MultiSelect',
-                    editorOptions: {
-                        dataSource: new kendo.data.DataSource({
-                            transport: {
-                                read: {
-                                    url: `${api_base_url}/api/v1/options/api_key`,
-                                    type: 'GET',
-                                    beforeSend: function (request) {
-                                        request.setRequestHeader(
-                                            'Authorization',
-                                            `${token_type} ${access_token}`
-                                        );
-                                    },
-                                },
-                            },
-                        }),
-                        dataTextField: 'text',
-                        dataValueField: 'value',
-                        valuePrimitive: true,
-                        downArrow: true,
-                        animation: false,
-                        autoClose: false,
-                        noDataTemplate: function (e) {
-                            let value = e.instance.input.val();
-                            return `
-                            <div class='no-data'>
-                            <p>Api Key not found.<br>Do you want to add new Api Key ${value} ?</p> 
-                            <button class="k-button k-button-solid-base k-button-solid k-button-md k-rounded-md" onclick="addNew('${value}', 'campaign-create-window')">Append</button>
-                            </p>
-                            `;
-                        },
-                    },
-                    colSpan: 12,
-                }, {
-                    field: 'androids',
-                    label: 'Android Devices',
-                    editor: 'MultiSelect',
-                    editorOptions: {
-                        dataSource: new kendo.data.DataSource({
-                            transport: {
-                                read: {
-                                    url: `${api_base_url}/api/v1/options/android`,
-                                    type: 'GET',
-                                    beforeSend: function (request) {
-                                        request.setRequestHeader(
-                                            'Authorization',
-                                            `${token_type} ${access_token}`
-                                        );
-                                    },
-                                },
-                            },
-                        }),
-                        dataTextField: 'text',
-                        dataValueField: 'value',
-                        valuePrimitive: true,
-                        downArrow: true,
-                        animation: false,
-                        autoClose: false
-                    },
-                    colSpan: 12,
-                }, {
-                    field: 'tags',
-                    label: 'Tags',
-                    editor: 'MultiSelect',
-                    editorOptions: {
-                        dataSource: new kendo.data.DataSource({
-                            transport: {
-                                read: {
-                                    url: `${api_base_url}/api/v1/options/tag`,
-                                    type: 'GET',
-                                    beforeSend: function (request) {
-                                        request.setRequestHeader(
-                                            'Authorization',
-                                            `${token_type} ${access_token}`
-                                        );
-                                    },
-                                },
-                            },
-                        }),
-                        dataTextField: 'text',
-                        dataValueField: 'value',
-                        valuePrimitive: true,
-                        downArrow: true,
-                        animation: false,
-                        autoClose: false,
-                    },
-                    colSpan: 12,
-                }, {
-                    field: "sep4",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -252,7 +276,7 @@ window.initWizard = function() {
                         min: 0
                     }
                 }, {
-                    field: "sep5",
+                    field: "sep4",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -316,7 +340,7 @@ window.initWizard = function() {
                         hidden: true
                     }, hidden: true
                 }, {
-                    field: "sep6",
+                    field: "sep5",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -334,7 +358,7 @@ window.initWizard = function() {
                     },
                     colSpan: 6,
                 }, {
-                    field: "sep5",
+                    field: "sep6",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -533,7 +557,7 @@ window.initWizard = function() {
                 grid: { cols: 12, gutter: "15px 10px" },
                 formData: campaignCreateModel.data,
                 items: [{
-                    field: "sep10",
+                    field: "sep11",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -571,7 +595,7 @@ window.initWizard = function() {
                     },
                     colSpan: 4
                 }, {
-                    field: "sep11",
+                    field: "sep12",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -594,7 +618,7 @@ window.initWizard = function() {
                     },
                     colSpan: 6
                 }, {
-                    field: "sep12",
+                    field: "sep13",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -624,7 +648,7 @@ window.initWizard = function() {
                     colSpan: 12,
                     editor: "<div id='campaign-create-schedule' class='schedule'></div>",
                 }, {
-                    field: "sep13",
+                    field: "sep14",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -676,12 +700,16 @@ window.initWizard = function() {
                 )
                 delete campaignCreateModel.data[field]
             });
+            const payload = campaignCreateModel.data.toJSON();
+            if (!canAssign('api_keys')) delete payload.api_keys;
+            if (!canAssign('androids')) delete payload.androids;
+            if (!canAssign('tags')) delete payload.tags;
 
             $.ajax({
                 url: `${api_base_url}/api/v1/campaigns/`,
                 type: 'POST',
                 dataType: 'json',
-                data: JSON.stringify(campaignCreateModel.data.toJSON()),
+                data: JSON.stringify(payload),
                 contentType: 'application/json;charset=UTF-8',
                 beforeSend: function (xhr) {
                     xhr.setRequestHeader ("Authorization", `${token_type} ${access_token}`);

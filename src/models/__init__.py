@@ -1,3 +1,4 @@
+from .permission import Permission, UserPermission  # noqa
 from .user import User  # noqa
 from .api_key import ApiKey  # noqa
 from .campaign import (

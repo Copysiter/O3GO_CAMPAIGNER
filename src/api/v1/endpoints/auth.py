@@ -16,24 +16,42 @@ from core.utils import verify_password_reset_token  # noqa
 router = APIRouter()
 
 
-def get_tokens(user):
+async def get_user_data(db: AsyncSession, user: models.User) -> dict:
+    if user.is_superuser:
+        permissions = await crud.permission.get_rows(
+            db,
+            filters=[{'field': 'is_active', 'operator': 'eq', 'value': True}],
+            limit=None,
+        )
+        permission_keys = [permission.key for permission in permissions]
+    else:
+        permission_keys = user.permissions
+
+    return {
+        'id': user.id,
+        'login': user.login,
+        'name': user.name,
+        'ext_api_key': user.ext_api_key,
+        'is_active': user.is_active,
+        'is_superuser': user.is_superuser,
+        'api_keys': list(user.api_keys or []),
+        'permissions': permission_keys,
+    }
+
+
+async def get_tokens(db: AsyncSession, user: models.User):
     access_token_expires = timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     refresh_token_expires = timedelta(
         minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
 
+    user_data = await get_user_data(db, user)
     response = ORJSONResponse(content={
         'access_token': security.create_access_token(
             user.id, expires_delta=access_token_expires
         ),
         'token_type': 'bearer',
-        'user': {
-            'id': user.id,
-            'login': user.login,
-            'name': user.name,
-            'is_active': user.is_active,
-            'is_superuser': user.is_superuser
-        },
+        'user': user_data,
         'ts': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     })
     response.set_cookie(
@@ -62,7 +80,7 @@ async def login_access_token(
     elif not crud.user.is_active(user):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Inactive user')
-    return get_tokens(user)
+    return await get_tokens(db, user)
 
 
 @router.post('/refresh-token', response_model=schemas.Token)
@@ -89,17 +107,18 @@ async def refresh_token(
     elif not crud.user.is_active(user):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Inactive user')
-    return get_tokens(user.id)
+    return await get_tokens(db, user)
 
 
 @router.post('/test-token', response_model=schemas.TokenTest)
 async def test_token(
+    db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_user)
 ) -> Any:
     '''
     Test access token
     '''
     return {
-        'user': current_user,
+        'user': await get_user_data(db, current_user),
         'ts': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     }

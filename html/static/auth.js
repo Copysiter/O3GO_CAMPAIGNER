@@ -8,6 +8,11 @@ window.getToken = function () {
     return JSON.parse(localStorage.getItem('token'));
 };
 window.setToken = function (item) {
+    if (!item) {
+        localStorage.removeItem('token');
+        window.isAuth = null;
+        return;
+    }
     let { access_token, token_type, ts, user } = item;
     localStorage.setItem(
         'token',
@@ -18,6 +23,7 @@ window.setToken = function (item) {
             user,
         })
     );
+    window.isAuth = window.getToken();
 };
 
 window.isAuth = window.getToken('token');
@@ -41,52 +47,59 @@ if (isAuth) {
     }
 }
 
-// Test token
-checkAuth = function () {
-    if (window.isAuth) {
-        let { access_token, token_type, ts, user } = isAuth;
-        $.ajax({
-            type: 'POST',
-            url: `${api_base_url}/api/v1/auth/test-token`,
-            headers: {
-                Authorization: `${token_type} ${access_token}`,
-                accept: 'application/json',
-            },
-        })
-            .done(function (data) {
-                let { access_token, token_type } = isAuth;
-                let { user, ts } = data;
-                if (data.user.is_active !== user.is_active) {
-                    window.setToken(null);
-                }
-                window.setToken({
-                    access_token,
-                    token_type,
-                    ts,
-                    user,
-                });
-                window.newDate = new Date(ts);
-            })
-            .fail(function (data) {
-                if (localStorage.getItem('token')) localStorage.removeItem('token');
-                if (!isAuth && document.location.pathname !== '/auth' && document.location.pathname !== '/auth/') {
-                    document.location.href = document.location.origin + '/auth/';
-                }
-            });
-    } else {
-        if (localStorage.getItem('token')) localStorage.removeItem('token');
-        if (!isAuth && document.location.pathname !== '/auth' && document.location.pathname !== '/auth/') {
-            document.location.href = document.location.origin + '/auth/';
-        }
+window.redirectToAuth = function () {
+    if (document.location.pathname !== '/auth' && document.location.pathname !== '/auth/') {
+        document.location.href = document.location.origin + '/auth/';
     }
-    // $('#notification')
-    //    .getKendoNotification()
-    //    .show(`Session expired.`);
-    setTimeout(() => checkAuth(), 60000)
+};
 
+// Test token
+window.refreshAuth = function () {
+    if (!window.isAuth) {
+        window.setToken(null);
+        window.redirectToAuth();
+        return $.Deferred().resolve(null).promise();
+    }
+
+    let { access_token, token_type, user } = window.isAuth;
+    return $.ajax({
+        type: 'POST',
+        url: `${api_base_url}/api/v1/auth/test-token`,
+        headers: {
+            Authorization: `${token_type} ${access_token}`,
+            accept: 'application/json',
+        },
+    }).then(function (data) {
+        if (!data.user || data.user.is_active !== user.is_active) {
+            window.setToken(null);
+            window.redirectToAuth();
+            return null;
+        }
+        window.setToken({
+            access_token,
+            token_type,
+            ts: data.ts,
+            user: data.user,
+        });
+        window.newDate = new Date(data.ts);
+        return window.isAuth;
+    }, function () {
+        window.setToken(null);
+        window.redirectToAuth();
+        return null;
+    });
+};
+
+checkAuth = function () {
+    window.refreshAuth().always(function () {
+        setTimeout(() => checkAuth(), 60000);
+    });
 }
 
-checkAuth(isAuth)
+window.authReady = window.refreshAuth();
+window.authReady.always(function () {
+    setTimeout(() => checkAuth(), 60000);
+});
 /*
 setInterval(() => {
     if (isAuth) {

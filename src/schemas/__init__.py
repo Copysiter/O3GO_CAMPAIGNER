@@ -1,5 +1,12 @@
 from .base import Filter, Order  # noqa
 from .token import Token, TokenTest, TokenPayload  # noqa
+from .permission import (
+    Permission,
+    PermissionCreate,
+    PermissionInDB,
+    PermissionUpdate,
+    PermissionRows,
+)  # noqa
 from .user import User, UserCreate, UserInDB, UserUpdate, UserRows  # noqa
 from .tag import Tag, TagCreate, TagInDB, TagUpdate, TagRows  # noqa
 from .message import MessageCreate, Message  # noqa

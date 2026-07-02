@@ -51,7 +51,7 @@ async def get_api_keys_options(
     return JSONResponse([{
         'text': rows[i].value,
         'value': rows[i].value
-    } for i in range(len(rows))])
+    } for i in range(len(rows)) if rows[i].value])
 
 
 @router.get('/android', response_model=List[schemas.OptionInt])
@@ -86,3 +86,24 @@ async def get_tag_options(
         'color_txt': rows[i].color_txt,
         'color_bg': rows[i].color_bg
     } for i in range(len(rows))])
+
+
+@router.get('/permission', response_model=List[schemas.OptionStr])
+async def get_permission_options(
+    *,
+    db: Session = Depends(deps.get_db),
+    _: models.User = Depends(deps.get_current_active_superuser)
+) -> Any:
+    """
+    Retrieve permission options.
+    """
+    rows = await crud.permission.get_rows(
+        db,
+        filters=[{'field': 'is_active', 'operator': 'eq', 'value': True}],
+        orders=[{'field': 'name', 'dir': 'asc'}],
+        limit=None,
+    )
+    return JSONResponse([{
+        'text': row.name,
+        'value': row.key,
+    } for row in rows])
