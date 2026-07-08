@@ -82,26 +82,31 @@ async def link_click_webhook(
 
     Example response:
     {
+        "counts": {"1": 8},
         "success": 2,
         "errors": 0
     }
     """
     if not request.links:
-        return {"success": 0, "errors": 0}
+        return {"counts": {}, "success": 0, "errors": 0}
 
     # Инкрементируем счетчики кликов в таблице Link
     result = await crud.link.click(db=db, items=request.links)
 
     # Инкрементируем счетчики link_clicks в таблице Campaign
-    if result["counts"]:
-        await crud.campaign.link_click(db=db, counts=result["counts"])
+    if result["link_counts"]:
+        await crud.campaign.link_click(db=db, counts=result["link_counts"])
+    if result["fakes"]:
+        await crud.campaign.fake_click(db=db, counts=result["fakes"])
 
     logger.info(
         f"Link clicks registered: success={result['success']}, "
-        f"errors={result['errors']}, campaigns={list(result['counts'].keys())}"
+        f"errors={result['errors']}, campaigns={list(result['link_counts'].keys())}, "
+        f"fake_campaigns={list(result['fakes'].keys())}"
     )
 
     return {
+        "counts": result["counts"],
         "success": result["success"],
         "errors": result["errors"],
     }

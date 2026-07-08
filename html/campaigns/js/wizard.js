@@ -12,7 +12,7 @@ window.initWizard = function() {
         editor: "<div class='separator mx-n15'></div>"
     }, {
         field: "user_id",
-        label: "User:",
+        label: "User",
         colSpan: 6,
         editor: "DropDownList",
         editorOptions: {
@@ -224,11 +224,11 @@ window.initWizard = function() {
                     editor: "<div class='separator mx-n15'></div>"
                 }, {
                     field: "name",
-                    label: "Campaign Name:",
+                    label: "Campaign Name",
                     colSpan: window.isAuth.user.is_superuser ? 12 : 6
                 }].concat(user_field).concat([{
                     field: "webhook_url",
-                    label: "Webhook URL:",
+                    label: "Webhook URL",
                     colSpan: 6
                 }]).concat(assign_fields).concat([{
                     field: "sep3",
@@ -238,7 +238,7 @@ window.initWizard = function() {
                 }, {
                     id: "data-source",
                     field: "data_source",
-                    label: "Data  source:",
+                    label: "Data  source",
                     colSpan: 6,
                     editor: "DropDownList",
                     editorOptions: {
@@ -268,7 +268,7 @@ window.initWizard = function() {
                     validation: { required: true }
                 }, {
                     field: "data_text_row_skip",
-                    label: "Skip rows:",
+                    label: "Skip rows",
                     colSpan: 6,
                     editor: "NumericTextBox",
                     editorOptions: {
@@ -289,7 +289,7 @@ window.initWizard = function() {
                 }, {
                     id: "text-row-sep",
                     field: "data_text_row_sep",
-                    label: "Row separator:",
+                    label: "Row separator",
                     colSpan: 6,
                     editor: "DropDownList",
                     editorOptions: {
@@ -297,7 +297,7 @@ window.initWizard = function() {
                             { text: "new_line ( \\n )", value: "\n" },
                             { text: "space ( )", value: " " },
                             { text: "dot ( . )", value: "." },
-                            { text: "colon ( : )", value: ":" },
+                            { text: "colon ( : )", value: "" },
                             { text: "semicolon ( ; )", value: ";" },
                             { text: "comma ( , )", value: "," },
                             { text: "pipe ( | )", value: "|" }
@@ -310,14 +310,14 @@ window.initWizard = function() {
                 }, {   
                     id: "text-col-sep",
                     field: "data_text_col_sep",
-                    label: "Column separator:",
+                    label: "Column separator",
                     colSpan: 6,
                     editor: "DropDownList",
                     editorOptions: {
                         dataSource: [
                             { text: "space ( )", value: " " },
                             { text: "dot ( . )", value: "." },
-                            { text: "colon ( : )", value: ":" },
+                            { text: "colon ( : )", value: "" },
                             { text: "semicolon ( ; )", value: ";" },
                             { text: "comma ( , )", value: "," },
                             { text: "pipe ( | )", value: "|" }
@@ -380,7 +380,7 @@ window.initWizard = function() {
                 }, {    
                     id: "dst_addr",
                     field: "dst_addr",
-                    label: "Phone Number:",
+                    label: "Phone Number",
                     colSpan: 4,
                     editor: "DropDownList",
                     editorOptions: {
@@ -393,7 +393,7 @@ window.initWizard = function() {
                 }, {
                     id: "field_1",
                     field: "field_1",
-                    label: "Custom Field 1:",
+                    label: "Custom Field 1",
                     colSpan: 4,
                     editor: "DropDownList",
                     editorOptions: {
@@ -405,7 +405,7 @@ window.initWizard = function() {
                 }, {
                     id: "field_2",
                     field: "field_2",
-                    label: "Custom Field 2:",
+                    label: "Custom Field 2",
                     colSpan: 4,
                     editor: "DropDownList",
                     editorOptions: {
@@ -417,7 +417,7 @@ window.initWizard = function() {
                 }, {
                     id: "field_3",
                     field: "field_3",
-                    label: "Custom Field 3:",
+                    label: "Custom Field 3",
                     colSpan: 4,
                     editor: "DropDownList",
                     editorOptions: {
@@ -429,7 +429,7 @@ window.initWizard = function() {
                 }, {
                     id: "field_4",
                     field: "field_4",
-                    label: "Custom Field 4:",
+                    label: "Custom Field 4",
                     colSpan: 4,
                     editor: "DropDownList",
                     editorOptions: {
@@ -441,7 +441,7 @@ window.initWizard = function() {
                 }, {
                     id: "field_5",
                     field: "field_5",
-                    label: "Custom Field 5:",
+                    label: "Custom Field 5",
                     colSpan: 4,
                     editor: "DropDownList",
                     editorOptions: {
@@ -563,7 +563,7 @@ window.initWizard = function() {
                     editor: "<div class='separator mx-n15'></div>"
                 }, {
                     field: "order",
-                    label: "Order:",
+                    label: "Order",
                     editor: 'NumericTextBox',
                     editorOptions: {
                         format: "n0",
@@ -574,7 +574,7 @@ window.initWizard = function() {
                     colSpan: 4
                 }, {
                     field: "msg_attempts",
-                    label: "Message Attempts:",
+                    label: "Message Attempts",
                     editor: 'NumericTextBox',
                     editorOptions: {
                         format: "n0",
@@ -585,7 +585,7 @@ window.initWizard = function() {
                     colSpan: 4
                 }, {
                     field: "follow_limit",
-                    label: "Follow Limit:",
+                    label: "Follow Limit",
                     editor: 'NumericTextBox',
                     editorOptions: {
                         format: "n0",
@@ -601,7 +601,7 @@ window.initWizard = function() {
                     editor: "<div class='separator mx-n15'></div>"
                 }, {
                     field: "msg_sending_timeout",
-                    label: "Sending Timeout:",
+                    label: "Sending Timeout",
                     editor: 'NumericTextBox',
                     editorOptions: {
                         format: "n0",
@@ -610,7 +610,7 @@ window.initWizard = function() {
                     colSpan: 6
                 }, {
                     field: "msg_status_timeout",
-                    label: "Status Timeout:",
+                    label: "Status Timeout",
                     editor: 'NumericTextBox',
                     editorOptions: {
                         format: "n0",
@@ -625,7 +625,7 @@ window.initWizard = function() {
                 }, {
                     id: "start_ts",
                     field: "start_ts",
-                    label: "Start at:",
+                    label: "Start at",
                     colSpan: 6,
                     editor: "DateTimePicker",
                     editorOptions: {
@@ -635,7 +635,7 @@ window.initWizard = function() {
                 }, {
                     id: "stop_ts",
                     field: "stop_ts",
-                    label: "Finish at:",
+                    label: "Finish at",
                     colSpan: 6,
                     editor: "DateTimePicker",
                     editorOptions: {
@@ -653,6 +653,126 @@ window.initWizard = function() {
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
                 }],
+            }
+        }, {
+            title: "Clicker",
+            form: {
+                orientation: "vertical",
+                layout: "grid",
+                grid: {cols: 12, gutter: "15px 10px"},
+                formData: campaignCreateModel.data,
+                items: [{
+                    field: "sep1111",
+                    colSpan: 12,
+                    label: false,
+                    editor: "<div class='separator mx-n15'></div>"
+                }, {
+                    field: "clicker_url",
+                    label: "Target URL",
+                    colSpan: 12
+                }, {
+                    field: 'clicker_type',
+                    label: 'Clicks Type',
+                    colSpan: 6,
+                    editor: 'DropDownList',
+                    editorOptions: {
+                        dataSource: new kendo.data.DataSource({
+                            data: [
+                                { text: 'Web', value: 'web' },
+                                { text: 'Mobile', value: 'mobile' }
+                            ],
+                        }),
+                        select: function (e) {},
+                        dataTextField: 'text',
+                        dataValueField: 'value',
+                        valuePrimitive: true,
+                        downArrow: true,
+                        animation: false,
+                        autoClose: true
+                    }
+                }, {
+                    field: "clicker_goal",
+                    label: "Clicks Goal",
+                    colSpan: 6,
+                    editor: "NumericTextBox",
+                    editorOptions: {
+                        format: "0",
+                        min: 0
+                    }
+                }, {
+                    field: 'clicker_utm_source',
+                    label: 'UTM Source',
+                    colSpan: 6,
+                    editor: 'DropDownList',
+                    editorOptions: {
+                        dataSource: new kendo.data.DataSource({
+                            data: [
+                                { text: 'Telegram', value: 'telegram' },
+                                { text: 'WhatsApp', value: 'whatsapp' },
+                                { text: 'Instagram', value: 'instagram' },
+                                { text: 'Facebook', value: 'facebook' },
+                                { text: 'Messenger', value: 'messenger' },
+                                { text: 'Viber', value: 'viber' },
+                                { text: 'Kakao', value: 'kakao' },
+                                { text: 'Botim', value: 'botim' }
+                            ],
+                        }),
+                        select: function (e) {},
+                        dataTextField: 'text',
+                        dataValueField: 'value',
+                        valuePrimitive: true,
+                        downArrow: true,
+                        animation: false,
+                        autoClose: true
+                    }
+                }, {
+                    field: "clicker_geo",
+                    label: "Geo (ISO2 код)",
+                    colSpan: 6
+                }, {
+                    id: "clicker_start_ts",
+                    field: "clicker_start_ts",
+                    label: "Start at",
+                    colSpan: 6,
+                    editor: "DateTimePicker",
+                    editorOptions: {
+                        format: "dd.MM.yyyy HH:mm",
+                        timeFormat: "HH:mm"
+                    }
+                }, {
+                    id: "clicker_stop_ts",
+                    field: "clicker_stop_ts",
+                    label: "Finish at",
+                    colSpan: 6,
+                    editor: "DateTimePicker",
+                    editorOptions: {
+                        format: "dd.MM.yyyy HH:mm",
+                        timeFormat: "HH:mm"
+                    }
+                }, {
+                    field: "sep52",
+                    colSpan: 12,
+                    label: false,
+                    editor: "<div class='separator mx-n15'></div>"
+                }, {
+                    field: 'text',
+                    colSpan: 6,
+                    label: false,
+                    editor: "<div class='mt-3'>Batch Split:</div>",
+                }, {
+                    field: 'clicker_split',
+                    label: '',
+                    editor: 'Switch',
+                    editorOptions: {
+                        width: 70,
+                    },
+                    colSpan: 6,
+                }, {
+                    field: "sep521",
+                    colSpan: 12,
+                    label: false,
+                    editor: "<div class='separator mx-n15'></div>"
+                }]
             }
         }],
 

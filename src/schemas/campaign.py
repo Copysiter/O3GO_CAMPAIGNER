@@ -60,6 +60,14 @@ class CampaignRequest(CampaignBase):
     model: Optional[str] = None
     prompt: Optional[str] = None
     check_dst: Optional[bool] = False
+    clicker_url: Optional[str] = None
+    clicker_goal: Optional[int] = None
+    clicker_start_ts: Optional[str] = None
+    clicker_stop_ts: Optional[str] = None
+    clicker_geo: Optional[str] = None
+    clicker_type: Optional[str] = None
+    clicker_split: Optional[bool] = None
+    clicker_utm_source: Optional[str] = None
 
 
 # Properties to receive on item update
@@ -96,6 +104,7 @@ class Campaign(CampaignInDBBase):
     msg_failed: Optional[int] = 0
     follow_count: Optional[int] = 0
     link_clicks: Optional[int] = 0
+    fake_clicks: Optional[int] = 0
 
     user: User
     api_keys: list = []

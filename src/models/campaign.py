@@ -91,6 +91,7 @@ class Campaign(Base):
     follow_limit = Column(Integer, default=0, server_default=text("0"))
     follow_count = Column(Integer, default=0, server_default=text("0"))
     link_clicks = Column(Integer, index=True, default=0, server_default=text("0"))
+    fake_clicks = Column(Integer, index=True, default=0, server_default=text("0"))
     webhook_url = Column(String)
     create_ts = Column(DateTime, index=True, default=datetime.utcnow)
     start_ts = Column(DateTime, index=True)

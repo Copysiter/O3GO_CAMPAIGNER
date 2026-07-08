@@ -1,5 +1,5 @@
-from typing import List, Optional
-from pydantic import BaseModel
+from typing import Dict, List, Optional
+from pydantic import BaseModel, Field
 
 
 class LinkShortenRequest(BaseModel):
@@ -13,7 +13,8 @@ class LinkShortenRequestWithCampaign(BaseModel):
 
 class LinkShortenResult(BaseModel):
     original: str
-    short: str
+    short: Optional[str] = None
+    fake: bool = False
 
 
 class LinkShortenResponse(BaseModel):
@@ -30,5 +31,6 @@ class LinkClickWebhook(BaseModel):
 
 
 class LinkClickResponse(BaseModel):
+    counts: Dict[int, int] = Field(default_factory=dict)
     success: int
     errors: int

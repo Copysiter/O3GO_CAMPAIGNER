@@ -15,6 +15,7 @@ class CRUDLink(CRUDBase[Link, LinkShortenResult, LinkShortenResult]):
         *,
         campaign_id: int,
         results: List[dict],
+        fake: bool = False,
     ) -> List[Link]:
         """
         Массово создать записи о сокращённых ссылках.
@@ -31,7 +32,7 @@ class CRUDLink(CRUDBase[Link, LinkShortenResult, LinkShortenResult]):
         for item in results:
             # Проверяем, не существует ли уже такая ссылка
             existing = await self.get_by(
-                db, campaign_id=campaign_id, original=item["original"]
+                db, campaign_id=campaign_id, original=item["original"], fake=fake
             )
 
             if existing:
@@ -42,7 +43,8 @@ class CRUDLink(CRUDBase[Link, LinkShortenResult, LinkShortenResult]):
                 link = Link(
                     campaign_id=campaign_id,
                     original=item["original"],
-                    short=item["short"],
+                    short=item.get("short"),
+                    fake=fake,
                 )
                 db.add(link)
                 links.append(link)
@@ -71,12 +73,16 @@ class CRUDLink(CRUDBase[Link, LinkShortenResult, LinkShortenResult]):
         Returns:
             Словарь с агрегированными данными по campaign_id:
             {
-                "counts": {campaign_id: total_count, ...},
+                "counts": {campaign_id: total_count, ...},       # все ссылки
+                "link_counts": {campaign_id: total_count, ...},  # fake=False
+                "fakes": {campaign_id: total_count, ...},        # fake=True
                 "success": количество успешно обработанных ссылок,
                 "errors": количество не найденных ссылок
             }
         """
         counts = {}
+        link_counts = {}
+        fakes = {}
         success = 0
         errors = 0
         batch_size = settings.DATABASE_UPDATE_BATCH_SIZE
@@ -91,7 +97,7 @@ class CRUDLink(CRUDBase[Link, LinkShortenResult, LinkShortenResult]):
                     update(Link)
                     .where(Link.short == item.short)
                     .values(clicks=Link.clicks + item.count)
-                    .returning(Link.id, Link.campaign_id, Link.clicks)
+                    .returning(Link.id, Link.campaign_id, Link.fake, Link.clicks)
                 )
 
                 result = await db.execute(stmt)
@@ -104,6 +110,15 @@ class CRUDLink(CRUDBase[Link, LinkShortenResult, LinkShortenResult]):
                         counts[campaign_id] = 0
                     counts[campaign_id] += item.count
                     success += 1
+
+                    if row.fake:
+                        if campaign_id not in fakes:
+                            fakes[campaign_id] = 0
+                        fakes[campaign_id] += item.count
+                    else:
+                        if campaign_id not in link_counts:
+                            link_counts[campaign_id] = 0
+                        link_counts[campaign_id] += item.count
                 else:
                     errors += 1
 
@@ -111,6 +126,8 @@ class CRUDLink(CRUDBase[Link, LinkShortenResult, LinkShortenResult]):
 
         return {
             "counts": counts,
+            "link_counts": link_counts,
+            "fakes": fakes,
             "success": success,
             "errors": errors,
         }

@@ -312,6 +312,11 @@ window.initCampaignGrid = function() {
                 filterable: false
             },
             {
+                field: 'fake_clicks',
+                title: 'Fake Clicks',
+                filterable: false
+            },
+            {
                 field: 'create_ts',
                 title: 'Created',
                 width: '150px',

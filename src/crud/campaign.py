@@ -269,5 +269,25 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
 
         await db.commit()
 
+    async def fake_click(
+        self, db: AsyncSession, *, counts: Dict[int, int]
+    ) -> None:
+        """
+        Атомарно инкрементировать счетчик fake_clicks для кампаний.
+
+        Args:
+            db: Сессия БД
+            counts: Словарь {campaign_id: increment_count}
+        """
+        for campaign_id, count in counts.items():
+            stmt = (
+                update(Campaign)
+                .where(Campaign.id == campaign_id)
+                .values(fake_clicks=Campaign.fake_clicks + count)
+            )
+            await db.execute(stmt)
+
+        await db.commit()
+
 
 campaign = CRUDCampaign(Campaign)

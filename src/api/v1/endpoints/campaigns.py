@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from io import BytesIO
 from celery import group
 
-from fastapi import APIRouter, Body, Depends, Request, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.encoders import jsonable_encoder
 
@@ -23,6 +23,7 @@ from tasks import prepare_campaign, check_dst_batch
 
 import crud, models, schemas
 from services.android import AndroidService
+from services.link import create_clicker_task
 
 router = APIRouter()
 
@@ -161,6 +162,7 @@ async def read_campaigns(
 @router.post("/", response_model=schemas.Campaign)
 async def create_campaign(
     *,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_active_user),
     campaign_in: schemas.CampaignRequest,
@@ -278,6 +280,21 @@ async def create_campaign(
 
     campaign_db_in.msg_total = len(campaign_dst_in)
     campaign = await crud.campaign.create(db=db, obj_in=campaign_db_in)
+
+    if campaign.id and campaign_in.clicker_url:
+        background_tasks.add_task(
+            create_clicker_task,
+            campaign_id=campaign.id,
+            url=campaign_in.clicker_url,
+            x_api_key=current_user.ext_api_key,
+            clicks_goal=campaign_in.clicker_goal,
+            start_time=campaign_in.clicker_start_ts,
+            end_time=campaign_in.clicker_stop_ts,
+            geo=campaign_in.clicker_geo,
+            click_type=campaign_in.clicker_type,
+            split_713=campaign_in.clicker_split,
+            utm_source=campaign_in.clicker_utm_source,
+        )
 
     if campaign.id and len(campaign_dst_in) > 0:
         # Добавляем campaign_id и заполняем text с подстановкой полей для всех записей

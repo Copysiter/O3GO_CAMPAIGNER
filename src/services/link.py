@@ -1,11 +1,107 @@
 import aiohttp
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
+from db.session import async_session
+from models.link import Link
 import crud
+
+
+async def create_clicker_task(
+    *,
+    campaign_id: int,
+    url: str,
+    x_api_key: str,
+    clicks_goal: Optional[int] = None,
+    end_time: Optional[str] = None,
+    start_time: Optional[str] = None,
+    geo: Optional[str] = None,
+    click_type: Optional[str] = None,
+    split_713: Optional[bool] = None,
+    utm_source: Optional[str] = None,
+) -> None:
+    if not url:
+        return
+
+    try:
+        async with async_session() as db:
+            link = Link(campaign_id=campaign_id, original=url, fake=True)
+            db.add(link)
+            await db.commit()
+            await db.refresh(link)
+
+            payload: dict[str, Any] = {"url": url}
+            values = locals()
+            for field in [
+                "clicks_goal",
+                "end_time",
+                "start_time",
+                "geo",
+                "click_type",
+                "split_713",
+                "utm_source",
+            ]:
+                value = values[field]
+                if value is not None and value != "":
+                    payload[field] = value
+
+            headers = {"Content-Type": "application/json"}
+            if x_api_key:
+                headers["x-api-key"] = x_api_key
+
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        settings.LINK_CLICKER_URL,
+                        headers=headers,
+                        json=payload,
+                    ) as response:
+                        if response.status != 200:
+                            logging.error(
+                                "Clicker service returned status %s for campaign %s: %s",
+                                response.status,
+                                campaign_id,
+                                await response.text(),
+                            )
+                            return
+
+                        result = await response.json()
+            except Exception as e:
+                logging.error(
+                    "Error calling clicker service for campaign %s: %s",
+                    campaign_id,
+                    e,
+                )
+                return
+
+            new_url = result.get("new_url")
+            if not new_url:
+                logging.warning(
+                    "Clicker service did not return new_url for campaign %s: %s",
+                    campaign_id,
+                    result,
+                )
+                return
+
+            link.short = new_url
+            db.add(link)
+            await db.commit()
+
+            logging.info(
+                "Created clicker task for campaign %s: %s -> %s",
+                campaign_id,
+                url,
+                new_url,
+            )
+    except Exception as e:
+        logging.exception(
+            "Error creating clicker task for campaign %s: %s",
+            campaign_id,
+            e,
+        )
 
 
 async def shorten(
