@@ -138,7 +138,7 @@ class Settings(BaseSettings):
     AI_OPENROUTER_BATCH_SIZE: int = Field(10, env="AI_OPENROUTER_BATCH_SIZE")
 
     LINK_SHORTENER_URL: str = Field(
-        "http://link.clicker.ru/api/v1/shorten", env="LINK_SHORTENER_URL"
+        "http://link.o3go.ru/api/v1/shorten", env="LINK_SHORTENER_URL"
     )
     LINK_CLICKER_URL: str = Field(
         "https://link.o3go.ru/api/requests/create", env="LINK_CLICKER_URL"
