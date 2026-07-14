@@ -22,7 +22,20 @@ window.initWindow = function() {
             
         },
         close: function() {
+            let messageMenu = $('#message-menu').data('kendoContextMenu');
+            if (messageMenu) {
+                messageMenu.destroy();
+                $('#message-menu').empty();
+                $('#message-menu').removeData('kendoContextMenu');
+            }
+            let messageGrid = $('#message-grid').data('kendoGrid');
+            if (messageGrid) {
+                messageGrid.destroy();
+                $('#message-grid').removeData('kendoGrid');
+            }
             $('#message-grid').empty();
+            window.selectedMessageItem = null;
+            window.selectedMessageItems = [];
             if (window.messageTimer) clearTimeout(messageTimer);
             if (window.campaign_stat_timer) clearTimeout(campaign_stat_timer);
         }

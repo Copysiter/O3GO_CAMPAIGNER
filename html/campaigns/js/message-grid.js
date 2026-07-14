@@ -3,12 +3,21 @@ window.initMessageGrid = function(id) {
     let messageShowLoader = true;
     let messageResizeColumn = false;
 
+    window.selectedMessageItem = null;
+    window.selectedMessageItems = [];
+
+    var existingGrid = $('#message-grid').data("kendoGrid");
+    if (existingGrid) {
+        existingGrid.destroy();
+        $('#message-grid').empty();
+    }
+
     $('#message-grid').kendoGrid({
         dataSource: {
             transport: {
                 read: {
                     //url: `${campaigner_api_addr}/api/v1/campaigns/${id}`,
-                    url: `http://${api_base_url}/api/v1/campaigns/${id}/campaign_dst`,
+                    url: `${api_base_url}/api/v1/campaigns/${id}/campaign_dst`,
                     beforeSend: function (request) {
                         request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
                     },
@@ -37,21 +46,20 @@ window.initMessageGrid = function(id) {
                 model: {
                     id: "id",
                     fields: {
+                        id: { type: 'number' },
                         dst_addr: { type: 'string' },
                         text: { type: 'string' },
                         field_1: { type: 'string' },
                         field_2: { type: 'string' },
                         field_3: { type: 'string' },
                         status: { type: 'number' },
+                        create_ts: { type: 'date' },
+                        sent_ts: { type: 'date' },
+                        expire_ts: { type: 'date' },
                         // empty: {}
                     },
                 },
             },
-            // data: [
-            //     {number: '1', phone: '89083645021', message: 'abcdef', status: 'New', sms_count: '10'},
-            //     {number: '2', phone: '89108301114', message: 'yythtg', status: 'New', sms_count: '10'},
-            //     {number: '3', phone: '89650987652', message: 'ffffff', status: 'New', sms_count: '10'},
-            // ],
             pageSize: 100,
             serverPaging: true, // true
             serverFiltering: true, // true
@@ -79,7 +87,7 @@ window.initMessageGrid = function(id) {
         height: '100%',
         reorderable: true,
         resizable: true,
-        selectable: "row",
+        selectable: "multiple, row",
         persistSelection: true,
         sortable: true,
         filterable: {
@@ -100,12 +108,46 @@ window.initMessageGrid = function(id) {
                 e.sender.dataSource.read();
             }, 60000);
         },
+        change: function (e) {
+            window.selectedMessageItems = [];
+            let rows = e.sender.select();
+            window.selectedMessageItem = e.sender.dataItem(rows[0]);
+            for (let i = 0; i < rows.length; i++) {
+                let dataItem = e.sender.dataItem($(rows[i]));
+                if (window.selectedMessageItems.indexOf(dataItem) == -1) {
+                    window.selectedMessageItems.push(dataItem);
+                }
+            }
+        },
         columns: [
             {
                 field: 'dst_addr',
                 width: '100px',
                 title: 'DST Number',
                 template: '<b>#: dst_addr #</b>',
+                filterable: {
+                    cell: {
+                        showOperators: false,
+                    },
+                },
+            },
+            {
+                field: 'score',
+                width: '100px',
+                title: 'DST Number Score',
+                template: function(item) {
+                    if (item.score === null || item.score === undefined) {
+                        return "<span class='info info-sm info-light'>unknown</span>";
+                    } else if (item.score === -1) {
+                        return "<span class='info info-sm info-red'>error</span>";
+                    } else if (item.score < 0.4) {
+                        return "<span class='info info-sm info-green'>" + item.score + "</span>";
+                    } else if (item.score < 0.7) {
+                        return "<span class='info info-sm info-orange'>" + item.score + "</span>";
+                    } else {
+                        return "<span class='info info-sm info-red'>" + item.score + "</span>";
+                    }
+                },
                 filterable: {
                     cell: {
                         showOperators: false,
@@ -240,6 +282,33 @@ window.initMessageGrid = function(id) {
                             </div>`
                 },
             },
+            {
+                field: 'create_ts',
+                title: 'Created',
+                format: '{0: yyyy-MM-dd HH:mm:ss}',
+                filterable: false,
+                sortable: false
+            },
+            {
+                field: 'sent_ts',
+                title: 'Sent',
+                format: '{0: yyyy-MM-dd HH:mm:ss}',
+                filterable: false,
+                sortable: false
+            },
+            {
+                field: 'expire_ts',
+                title: 'Expire',
+                format: '{0: yyyy-MM-dd HH:mm:ss}',
+                filterable: false,
+                sortable: false
+            },
+            {
+                field: 'error',
+                title: 'Error',
+                filterable: false,
+                sortable: false
+            },
             {}
         ]
     });
@@ -278,4 +347,42 @@ window.initMessageGrid = function(id) {
 
     window.optimize_grid(['#message-grid']);
 
+    if (window.initMessageContextMenu) {
+        window.initMessageContextMenu();
+    }
+
 }
+
+window.deleteSelectedMessages = function() {
+    if (!window.selectedCampaignItem || window.selectedMessageItems.length === 0) return;
+    var body = window.selectedMessageItems.length > 1
+        ? "Are you sure you want to delete selected Messages?"
+        : "Are you sure you want to delete selected Message?";
+    kendo.confirm(`<div style='padding:5px 10px 0 10px;'>${body}</div>`)
+        .done(function() {
+            $.ajax({
+                url: `${api_base_url}/api/v1/campaigns/${window.selectedCampaignItem.id}/campaign_dst`,
+                type: "DELETE",
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({ ids: window.selectedMessageItems.map(obj => parseInt(obj.id)) }),
+                dataType: 'json',
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader("Authorization", `${token_type} ${access_token}`);
+                },
+                success: function(data) {
+                },
+                error: function(jqXHR, textStatus, ex) {
+                }
+            }).then(function(data) {
+                if (data) {
+                    var grid = $("#message-grid").data("kendoGrid");
+                    window.selectedMessageItem = null;
+                    window.selectedMessageItems = [];
+                    grid.clearSelection();
+                    grid.dataSource.read();
+                }
+            });
+        })
+        .fail(function() {
+        });
+};

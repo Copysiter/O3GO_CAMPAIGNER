@@ -7,11 +7,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.security import get_password_hash, verify_password  # noqa
 from crud.base import CRUDBase  # noqa
+from models.permission import Permission, UserPermission  # noqa
 from models.user import User, UserApiKeys  # noqa
 from schemas.user import UserCreate, UserUpdate  # noqa
 
 
 class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
+    def normalize_keys(self, keys: list = None) -> List[str]:
+        return [key for key in (keys or []) if key]
+
+    async def prepare_permission_links(
+        self, db: AsyncSession, *, permission_keys: list = None
+    ) -> List[UserPermission]:
+        permission_keys = self.normalize_keys(permission_keys)
+        if not permission_keys:
+            return []
+        statement = select(Permission).where(
+            Permission.key.in_(permission_keys),
+            Permission.is_active == True,
+        )
+        results = await db.execute(statement=statement)
+        permissions = results.unique().scalars().all()
+        return [
+            UserPermission(permission_id=permission.id)
+            for permission in permissions
+        ]
+
     async def get_by(
         self, db: AsyncSession, **kwargs: Dict[str, Any]
     ) -> Optional[User]:
@@ -33,10 +54,17 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             login=obj_in.login,
             hashed_password=get_password_hash(obj_in.password),
             name=obj_in.name,
+            ext_api_key=obj_in.ext_api_key,
             is_active=obj_in.is_active,
             is_superuser=obj_in.is_superuser,
         )
-        db_obj.keys = [UserApiKeys(api_key=key) for key in obj_in.api_keys]
+        db_obj.keys = [
+            UserApiKeys(api_key=key)
+            for key in self.normalize_keys(obj_in.api_keys)
+        ]
+        db_obj.permission_links = await self.prepare_permission_links(
+            db, permission_keys=obj_in.permissions
+        )
         db.add(db_obj)
         await db.commit()
         await db.refresh(db_obj)
@@ -51,6 +79,8 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             update_data = obj_in
         else:
             update_data = obj_in.model_dump(exclude_unset=True)
+        api_keys = update_data.pop('api_keys', None)
+        permissions = update_data.pop('permissions', None)
         if update_data.get('password'):
             hashed_password = get_password_hash(update_data['password'])
             del update_data['password']
@@ -58,7 +88,15 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         for field in obj_data:
             if field in update_data:
                 setattr(db_obj, field, update_data[field])
-        db_obj.keys = [UserApiKeys(api_key=key) for key in update_data['api_keys']]
+        if api_keys is not None:
+            db_obj.keys = [
+                UserApiKeys(api_key=key)
+                for key in self.normalize_keys(api_keys)
+            ]
+        if permissions is not None:
+            db_obj.permission_links = await self.prepare_permission_links(
+                db, permission_keys=permissions
+            )
         db.add(db_obj)
         await db.commit()
         await db.refresh(db_obj)

@@ -36,4 +36,10 @@ async def init_models() -> None:
 
 async def init_db() -> None:
     await init_models()
+    await create_permissions()
     await create_superuser()
+
+
+async def create_permissions() -> None:
+    async with async_session() as session:
+        await crud.permission.ensure_defaults(session)

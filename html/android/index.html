@@ -29,9 +29,10 @@
                         <ul>
                             <li>Android Devices</li>
                             <li>Android App Versions</li>
+                            <li>WA Accounts</li>
                         </ul>
                         <div class="position-relative flex-grow-1 p-0">
-                            <div class="position-relative d-flex flex-column h-100  p-8">
+                            <div class="position-relative d-flex flex-column h-100 p-8">
                                 <div id="android-toolbar"></div>
                                 <div class="position-relative flex-grow-1">
                                     <div id="android-grid" class="position-absolute h-100 w-100 d-flex flex-column"></div>
@@ -46,6 +47,17 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="position-relative flex-grow-1 p-0">
+                            <div class="position-relative d-flex flex-column h-100 p-8">
+                                <div id="accounts-toolbar"></div>
+                                <div class="position-relative flex-grow-1">
+                                    <div id="accounts-grid" class="position-absolute h-100 w-100 d-flex flex-column"></div>
+                                </div>
+                            </div>
+                            <div id="account-window">
+                                <form id="account-form" class="p-0"></form>
+                            </div>
+                        </div>
                     </div>
                </div>
             </div>
@@ -56,8 +68,11 @@
         <script src="js/toolbar.js"></script>
         <script src="js/grid.js"></script>
         <script src="js/version-grid.js"></script>
+        <script src="js/account-grid.js"></script>
         <script src="js/form.js"></script>
         <script src="js/version-form.js"></script>
+        <script src="js/account-form.js"></script>
+        <script src="js/account-window.js"></script>
         <script
             id="android-popup-editor"
             type="text/x-kendo-template"
@@ -74,6 +89,14 @@
             <form id="form-edit-version">
             </form>
         </script>
+        <script
+            id="accounts-popup-editor"
+            type="text/x-kendo-template"
+            data-role="window"
+        >
+            <form id="form-edit-account">
+            </form>
+        </script>
         <script type="text/javascript">
             $(function() {
                 try {
@@ -84,6 +107,10 @@
                     initGrid();
                     initVersionToolbar();
                     initVersionGrid();
+                    initAccountToolbar();
+                    initAccountGrid();
+                    initAccountWindow();
+                    initAccountForm();
                 } catch (error) {
                     console.warn(error);
                 }

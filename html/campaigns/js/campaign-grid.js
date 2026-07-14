@@ -2,7 +2,6 @@ window.initCampaignGrid = function() {
 
     var campaignTimer;
     let campaignShowLoader = true;
-    let campaignResizeColumn = false;
 
     window.selectedCampaignId = null;
     window.selectedCampaignItem = null;
@@ -26,7 +25,7 @@ window.initCampaignGrid = function() {
                     dataSource: new kendo.data.DataSource({
                         transport: {
                             read: {
-                                url: `http://${api_base_url}/api/v1/options/user`,
+                                url: `${api_base_url}/api/v1/options/user`,
                                 type: 'GET',
                                 beforeSend: function (request) {
                                     request.setRequestHeader(
@@ -50,9 +49,7 @@ window.initCampaignGrid = function() {
         dataSource: {
             transport: {
                 read: {
-                    url: `http://${api_base_url}/api/v1/campaigns/`,
-                    //dataType: 'jsonp',
-                    //jsonp: "jsoncallback",
+                    url: `${api_base_url}/api/v1/campaigns/`,
                     beforeSend: function (request) {
                         request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
                     },
@@ -73,7 +70,6 @@ window.initCampaignGrid = function() {
                     }
                     return data;
                 }
-                // dataType: "jsonp"
             },
             schema: {
                 data: "data",
@@ -86,17 +82,13 @@ window.initCampaignGrid = function() {
                         status: { type: 'number' },
                         user_id: { type: 'number' },
                         msg_template: { type: 'string' },
+
                         create_ts: { type: 'date' },
                         start_ts: { type: 'date' },
                         stop_ts: { type: 'date' },
                     },
                 },
             },
-            // data: [
-            //     {id: "", name: 'first', status: 'stopped', route: 'Default', message: 'abcdef', created: '2022-05-25 11:38:36', started: '2022-05-25 11:38:36', stopped: '2022-06-25 11:48:36', actions: ''},
-            //     {id: "", name: 'second', status: 'complete', route: 'Default', message: 'abcdef', created: '2022-05-25 11:38:36', started: '2022-05-25 11:38:36', stopped: '2022-06-25 11:48:36', actions: ''},
-            //     {id: "", name: 'third', status: 'low balance', route: 'Default', message: 'abcdef', created: '2022-05-25 11:38:36', started: '2022-05-25 11:38:36', stopped: '2022-06-25 11:48:36', actions: ''}
-            // ],
             pageSize: 50,
             serverPaging: true, // true
             serverFiltering: true, // true
@@ -106,58 +98,15 @@ window.initCampaignGrid = function() {
                     if (campaignShowLoader) $(".k-loading-mask").show();
                 });
             },
-            requestEnd: function(e) {
-                /*
-                e.response.data.forEach(element => {
-                    for(prop in element) {
-                        if((prop === 'create_ts' || prop === 'start_ts' || 
-                        prop === 'stop_ts') && element[prop] !== null) {
-                            let time = timeConverter(element[prop])
-                            element[prop] = time
-                        }
-                    }
-                });
-                console.log(e.response.data);
-                */
-            },
         },
-        //width: "auto",
         height: '100%',
         reorderable: true,
         resizable: true,
         selectable: "multiple, row",
         persistSelection: true,
         sortable: true,
-        /*
-        edit: function (e) {
-            form.data('kendoForm').setOptions({
-                formData: e.model,
-            });
-            popup.setOptions({
-                title: e.model.id ? 'Edit Campaign' : 'New Campaign',
-            });
-            popup.center();
-        },
-        editable: {
-            mode: 'popup',
-            template: kendo.template($('#campaigns-popup-editor').html()),
-            window: {
-                width: 488,
-                maxHeight: '90%',
-                animation: false,
-                appendTo: '#app-root',
-                visible: false,
-                open: function (e) {
-                    form = showEditForm();
-                    popup = e.sender;
-                    popup.center();
-                },
-            },
-        },
-        */
         filterable: {
             extra: false,
-            // mode: 'row'
         },
         pageable: {
             refresh: true,
@@ -219,25 +168,6 @@ window.initCampaignGrid = function() {
                         return "<span class='info info-sm info-blue'>Complete</span>"
                     }
                 },
-
-                // filterable: {
-                //     operators: {
-                //         string: {
-                //             eq: "is",
-                //         }
-                //     },
-                //     ui : function(element) {
-                //         element.kendoDropDownList({
-                //             animation: false,
-                //             dataSource: [{value: 0, text: "Created"}, {value: 1, text: "Running"}, {value: 2, text: "Stopped"}, {value: 3, text: "Complete"}],
-                //             dataTextField: "text",
-                //             dataValueField: "value",
-                //             valuePrimitive: true,
-                //             optionLabel: "-- Select Status --"
-                //         });
-                //     }
-                // }
-
                 filterable: {
                     multi: true,
                     dataSource: [
@@ -270,7 +200,7 @@ window.initCampaignGrid = function() {
                     dataSource: new kendo.data.DataSource({
                         transport: {
                             read: {
-                                url: `http://${api_base_url}/api/v1/options/tag`,
+                                url: `${api_base_url}/api/v1/options/tag`,
                                 type: 'GET',
                                 beforeSend: function (request) {
                                     request.setRequestHeader(
@@ -303,6 +233,21 @@ window.initCampaignGrid = function() {
                     if (obj.api_keys) {
                         obj.api_keys.forEach(function (key) {
                             html += `<span class="k-chip k-chip-sm k-rounded-md k-chip-solid k-chip-solid-base m-3 px-5 py-3 fs-14">${key}</span>`;
+                        });
+                    }
+                    return `<div class="inline-blocks d-flex flex-wrap m-n3">${html}</div>`;
+                }
+            },
+            {
+                field: "androids",
+                title: "Android Devices",
+                filterable: false,
+                maxWidth: 360,
+                template: function (obj) {
+                    let html = '';
+                    if (obj.android_names) {
+                        obj.android_names.forEach(function (id) {
+                            html += `<span class="k-chip k-chip-sm k-rounded-md k-chip-solid k-chip-solid-base m-3 px-5 py-3 fs-14">${id}</span>`;
                         });
                     }
                     return `<div class="inline-blocks d-flex flex-wrap m-n3">${html}</div>`;
@@ -362,14 +307,21 @@ window.initCampaignGrid = function() {
                 }
             },
             {
+                field: 'link_clicks',
+                title: 'Link Clicks',
+                filterable: false
+            },
+            {
+                field: 'fake_clicks',
+                title: 'Fake Clicks',
+                filterable: false
+            },
+            {
                 field: 'create_ts',
                 title: 'Created',
                 width: '150px',
                 format: '{0: yyyy-MM-dd HH:mm:ss}',
                 filterable: false
-                // filterable: {
-                //     ui: "datepicker",
-                // }
             },
             {
                 field: 'start_ts',
@@ -377,28 +329,13 @@ window.initCampaignGrid = function() {
                 width: '150px',
                 format: '{0: yyyy-MM-dd HH:mm:ss}',
                 filterable: false
-                // filterable: {
-                //     ui: "datepicker",
-                // }
             },
             {
                 field: 'stop_ts',
                 title: 'Stopped',
                 width: '150px',
                 format: '{0: yyyy-MM-dd HH:mm:ss}',
-                /*
-                template: function(obj) {
-                    if (obj.stop_ts) {
-                        return new Date(Date.parse(obj.stop_ts));
-                    } else {
-                        return ""
-                    }
-                },
-                */
                 filterable: false
-                // filterable: {
-                //     ui: "datepicker",
-                // }
             },
             {}
         ])

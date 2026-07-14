@@ -22,7 +22,7 @@ function showEditForm(model) {
                     dataSource: {
                         transport: {
                             read: {
-                                url: `http://${api_base_url}/api/v1/options/user`,
+                                url: `${api_base_url}/api/v1/options/user`,
                                 type: 'GET',
                                 beforeSend: function (request) {
                                     request.setRequestHeader(
@@ -84,7 +84,7 @@ function showEditForm(model) {
                     dataSource: new kendo.data.DataSource({
                         transport: {
                             read: {
-                                url: `http://${api_base_url}/api/v1/options/api_key`,
+                                url: `${api_base_url}/api/v1/options/api_key`,
                                 type: 'GET',
                                 beforeSend: function (request) {
                                     request.setRequestHeader(
@@ -144,7 +144,7 @@ function addNew(value, id) {
     let { access_token, token_type } = token;
     $.ajax({
         type: 'POST',
-        url: `http://${api_base_url}/api/v1/api_keys/`,
+        url: `${api_base_url}/api/v1/api_keys/`,
         headers: {
             Authorization: `${token_type} ${access_token}`,
             accept: 'application/json'

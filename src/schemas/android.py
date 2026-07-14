@@ -1,5 +1,6 @@
+from os import unlink
 from typing import Optional, List, Dict
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_serializer
 from datetime import datetime
 
 from .user import User
@@ -20,7 +21,7 @@ class AndroidBase(BaseModel):
     push_id: Optional[str] = Field(None, description="Push ID")
     info_data: Optional[str] = Field(None, description="Подробна информация")
     user_id: Optional[int] = Field(None, description="ID учетной записи")
-    auth_code: Optional[str] = Field(None, description="Код авторизации")
+    # auth_code: Optional[str] = Field(None, description="Код авторизации")
     is_active: Optional[bool] = Field(None, description="Активность девайса")
     model_config = ConfigDict(
         json_schema_extra={
@@ -111,8 +112,8 @@ class AndroidMessageRequest(BaseModel):
         json_schema_extra={
             'example': {
                 "device": "23ec1f50-8ad5-47a5-b719-daa6223427c8-WA",
-                "bat": "10",
-                "charging": "1"
+                "bat": 10,
+                "charging": 1
             }
         }
     )
@@ -162,7 +163,14 @@ class AndroidMessageWebhook(BaseModel):
 # Response with code
 class AndroidCodeResponse(BaseModel):
     code: str = Field("0", description="Код успешности операции")
+    error: Optional[str] = Field(None, description="Сообщение об ошибке")
 
+    @model_serializer(mode="wrap")
+    def exclude_none_error_i(self, handler):
+        data = handler(self)
+        if data.get("error") is None:
+            data.pop("error", None)
+        return data
 
 # Response for android device register
 class AndroidRegResponse(AndroidCodeResponse):

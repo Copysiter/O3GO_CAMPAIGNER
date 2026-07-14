@@ -6,3 +6,7 @@ files/
 venv
 log
 .DS_Store
+migrations/
+src/celerybeat-schedule
+src/upload/
+docker-compose.yaml

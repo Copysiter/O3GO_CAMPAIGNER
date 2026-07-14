@@ -25,7 +25,7 @@ window.initToolbar = function() {
                     }
                     kendo.confirm("<div style='padding:5px 10px 0 10px;'>Are you sure you want to delete androids?</div>").done(function() {
                         $.ajax({
-                            url: `http://${api_base_url}/api/v1/api_androids/delete`,
+                            url: `${api_base_url}/api/v1/api_androids/delete`,
                             type: "POST",
                             data: JSON.stringify({ ids: ids }),
                             processData: false,
@@ -123,6 +123,44 @@ window.initVersionToolbar = function() {
                 click: function (e) {
                     let grid = $('#versions-grid').data('kendoGrid');
                     grid.addRow();
+                },
+            }
+        ],
+    });
+}
+
+window.initAccountToolbar = function() {
+    $('#accounts-toolbar').kendoToolBar({
+        items: [
+            {
+                template: "<div class='k-window-title ps-6'>Android App Accounts</div>",
+            },
+            {
+                type: 'spacer',
+            },
+            {
+                type: 'button',
+                text: 'Refresh',
+                click: function (e) {
+                    $('#accounts-grid').data('kendoGrid').dataSource.read();
+                },
+            },
+            {
+                type: 'button',
+                text: 'Clear Filter',
+                click: function (e) {
+                    $('#accounts-grid').data('kendoGrid').dataSource.filter({});
+                },
+            },
+            {
+                type: 'button',
+                text: 'New Account',
+                icon: 'plus',
+                click: function (e) {
+                    // let grid = $('#accounts-grid').data('kendoGrid');
+                    // grid.addRow();
+                    // Если окно уже создано — просто открываем
+                    $("#account-window").data("kendoWindow").center().open();
                 },
             }
         ],

@@ -12,8 +12,9 @@ class Android(Base):
     user_id = Column(
         Integer, ForeignKey('user.id', ondelete='CASCADE'), index=True
     )
+    account_id = Column(Integer, ForeignKey('account.id'), index=True)
     auth_code = Column(String, index=True)
-    device = Column(String, index=True)
+    device = Column(String, index=True, unique=True)
     device_origin = Column(String, index=True)
     device_name = Column(String, index=True)
     manufacturer = Column(String, index=True)
@@ -27,3 +28,4 @@ class Android(Base):
     type = Column(String, index=True)
     is_active = Column(Boolean, default=True, index=True)
     user = relationship('User', lazy='joined')
+    account = relationship('Account', lazy='joined')

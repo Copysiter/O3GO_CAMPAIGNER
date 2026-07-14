@@ -15,7 +15,7 @@ window.initVersionGrid = function() {
             dataSource: {
                 transport: {
                     read: {
-                        url: `http://${api_base_url}/api/v1/android/versions/`,
+                        url: `${api_base_url}/api/v1/android/versions/`,
                         type: 'GET',
                         beforeSend: function (request) {
                             request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
@@ -23,7 +23,7 @@ window.initVersionGrid = function() {
                         dataType: 'json',
                     },
                     create: {
-                        url: `http://${api_base_url}/api/v1/android/versions/`,
+                        url: `${api_base_url}/api/v1/android/versions/`,
                         type: 'POST',
                         dataType: 'json',
                         contentType: 'application/json',
@@ -34,7 +34,7 @@ window.initVersionGrid = function() {
                     update: {
                         url: function (options) {
                             console.log(options);
-                            return `http://${api_base_url}/api/v1/android/versions/${options.id}`;
+                            return `${api_base_url}/api/v1/android/versions/${options.id}`;
                         },
 
                         type: 'PUT',
@@ -47,7 +47,7 @@ window.initVersionGrid = function() {
                     destroy: {
                         url: function (options) {
                             console.log(options);
-                            return `http://${api_base_url}/api/v1/android/versions/${options.id}`;
+                            return `${api_base_url}/api/v1/android/versions/${options.id}`;
                         },
 
                         type: 'DELETE',

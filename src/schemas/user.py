@@ -17,12 +17,14 @@ class UserCreate(UserBase):
     login: str
     password: str
     api_keys: list = []
+    permissions: list = []
 
 
 # Properties to receive via API on update
 class UserUpdate(UserBase):
     password: Optional[str] = None
     api_keys: list = []
+    permissions: list = []
 
 
 class UserInDBBase(UserBase):
@@ -35,6 +37,7 @@ class UserInDBBase(UserBase):
 # Additional properties to return via API
 class User(UserInDBBase):
     api_keys: list = []
+    permissions: list = []
 
 
 # Additional properties stored in DB

@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from api import deps
-from utils.text import safe_replace
 import services.message
 
 import crud, models, schemas
@@ -75,72 +74,54 @@ async def get(
     Get message.
     '''
     try:
-        async with session.begin():
-            result = await session.execute(
-                text(f'''
-                    SELECT campaign_dst.*, campaign.msg_status_timeout
-                    FROM campaign_dst
-                    JOIN campaign ON campaign.id = campaign_dst.campaign_id
-                    WHERE campaign_dst.dst_addr = :dst_addr
-                    AND campaign_dst.campaign_id = :campaign_id
-                    AND campaign_dst.status = :status
-                    {'AND campaign.user_id = :user_id' if not user.is_superuser else ''}
-                '''),
-                {
-                    'dst_addr': dst_addr,
-                    'campaign_id': campaign_id,
-                    'status': schemas.CampaignDstStatus.WAITING,
-                    'user_id': user.id
-                }
-            )
-            if not (row := result.fetchone()):
-                raise HTTPException(
-                    status_code=404, detail='Message not found'
-                )
-            campaign_dst = row._mapping  # noqa
-
-        sent_ts = datetime.utcnow()
-        expire_ts = sent_ts + timedelta(
-            seconds=campaign_dst.msg_status_timeout
-        ) if campaign_dst.msg_status_timeout else None
-
-        r = await session.execute(
-            text('''
-                UPDATE campaign_dst
-                SET status = :status,
-                    sent_ts = :sent_ts,
-                    expire_ts = :expire_ts
-                WHERE id = :id
-                AND campaign_id = :campaign_id
-            '''),
-            {
-                'status': schemas.CampaignDstStatus.SENT,
-                'sent_ts': sent_ts,
-                'expire_ts': expire_ts,
-                'id': campaign_dst.id,
-                'campaign_id': campaign_id,
-            }
+        msg = await services.message.get_processing(
+            session=session,
+            user=user,
+            campaign_id=campaign_id,
+            dst_addr=dst_addr
+        )
+        return msg
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"{type(e).__name__}: {e}"
         )
 
-        await session.commit()
 
+@router.get('/check') #, response_model=schemas.CampaignDst)
+async def check(
+    *, session: AsyncSession = Depends(deps.get_db),
+    campaign_id: int = None, device: str = None, api_key: str = None,
+    user = Depends(deps.get_user_by_api_key)
+) -> Any:
+    '''
+    Check availability of messages for processing.
+    Returns True if there are messages in CREATED or FAILED status with attempts > 0.
+    '''
+    now = datetime.utcnow()
+    weekday = now.isoweekday()
+    hour = now.hour
+    try:
         return {
-            'id': campaign_dst.id,
-            'phone': campaign_dst.dst_addr,
-            'text': safe_replace(campaign_dst.text)
+            "available": await services.message.check_processing(
+                session=session, user=user,
+                campaign_id=campaign_id, device=device, api_key=api_key,
+                now=now, weekday=weekday, hour=hour
+            )
         }
-
     except Exception as e:
         await session.rollback()
         raise HTTPException(
-            status_code=getattr(e, 'status_code', 500), detail=str(e)
+            status_code=getattr(e, 'status_code', 500),
+            detail=f'{type(e).__name__}: {e}'
         )
 
 
 @router.get('/next') #, response_model=schemas.CampaignDst)
 async def get_next(
     *, session: AsyncSession = Depends(deps.get_db),
-    campaign_id: int = None, api_key: str = None,
+    campaign_id: int = None, device: str = None, api_key: str = None,
     status: Literal['sent', 'waiting', 'delivered'] = 'sent',
     user = Depends(deps.get_user_by_api_key)
 ) -> Any:
@@ -152,12 +133,11 @@ async def get_next(
     weekday = str(now.isoweekday())
     hour = now.hour
     try:
-        async with session.begin():
-            return await services.message.get_next_processing(
-                session=session, user=user,
-                campaign_id=campaign_id, api_key=api_key,
-                status=status, now=now, weekday=weekday, hour=hour
-            )
+        return await services.message.get_next_processing(
+            session=session, user=user,
+            campaign_id=campaign_id, device=device, api_key=api_key,
+            status=status, now=now, weekday=weekday, hour=hour
+        )
     except Exception as e:
         await session.rollback()
         raise HTTPException(
@@ -171,19 +151,16 @@ async def set_status(
     *, session: AsyncSession = Depends(deps.get_db), id: int,
     status: Literal['delivered', 'undelivered', 'failed'],
     src_addr: Optional[str] = None,
-    user = Depends(deps.get_user_by_api_key),
-    background_tasks: BackgroundTasks
+    user = Depends(deps.get_user_by_api_key)
 ) -> Any:
     '''
     Update message status
     '''
     try:
-        async with session.begin():
-            return await services.message.set_status_processing(
-                session=session, user=user,
-                id=id, src_addr=src_addr, status=status,
-                background_tasks=background_tasks
-            )
+        return await services.message.set_status_processing(
+            session=session, user=user,
+            id=id, src_addr=src_addr, status=status
+        )
     except Exception as e:
         await session.rollback()
         raise HTTPException(

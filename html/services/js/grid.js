@@ -25,7 +25,7 @@ window.initGrid = function() {
             dataSource: {
                 transport: {
                     read: {
-                        url: `http://${api_base_url}/api/v1/services/`,
+                        url: `${api_base_url}/api/v1/services/`,
                         type: 'GET',
                         beforeSend: function (request) {
                             request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
@@ -33,7 +33,7 @@ window.initGrid = function() {
                         dataType: 'json',
                     },
                     create: {
-                        url: `http://${api_base_url}/api/v1/services/`,
+                        url: `${api_base_url}/api/v1/services/`,
                         type: 'POST',
                         dataType: 'json',
                         contentType: 'application/json',
@@ -44,7 +44,7 @@ window.initGrid = function() {
                     update: {
                         url: function (options) {
                             console.log(options);
-                            return `http://${api_base_url}/api/v1/services/${options.id}`;
+                            return `${api_base_url}/api/v1/services/${options.id}`;
                         },
 
                         type: 'PUT',
@@ -57,7 +57,7 @@ window.initGrid = function() {
                     destroy: {
                         url: function (options) {
                             console.log(options);
-                            return `http://${api_base_url}/api/v1/services/${options.id}`;
+                            return `${api_base_url}/api/v1/services/${options.id}`;
                         },
 
                         type: 'DELETE',

@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from crud.base import CRUDBase
 from models.campaign_dst import CampaignDst
-from models.campaign import Campaign
 from schemas.campaign_dst import CampaignDstCreate, CampaignDstUpdate
 
 from core.config import settings
@@ -14,22 +13,36 @@ from core.config import settings
 class CRUDCampaignDst(CRUDBase[CampaignDst, CampaignDstCreate, CampaignDstUpdate]):
     async def create_rows(
         self, db: AsyncSession, *, obj_in: List[CampaignDstCreate],
-    ) -> List[CampaignDst]:
-        statement = insert(CampaignDst)
+    ) -> List[dict]:
+        """Create multiple campaign_dst rows and return list of objects with id and dst_addr."""
+        created_objects = []
+        
+        statement = insert(CampaignDst).returning(CampaignDst.id, CampaignDst.dst_addr)
         for i in range(0, len(obj_in), settings.DATABASE_INSERT_BATCH_SIZE):
             batch = obj_in[i:i + settings.DATABASE_INSERT_BATCH_SIZE]
-            await db.execute(statement, batch)
+            result = await db.execute(statement, batch)
+            batch_objects = [{'id': row[0], 'dst_addr': row[1]} for row in result.fetchall()]
+            created_objects.extend(batch_objects)
+        
         await db.commit()
-        return len(obj_in)
+        return created_objects
 
     async def delete_rows(
-            self, db: AsyncSession, *, campaign_id: int, user_id: int = None
-    ) -> None:
-        statement = delete(CampaignDst).where(CampaignDst.campaign_id == campaign_id)
-        if user_id is not None:
-            statement = statement.where(CampaignDst.user_id == user_id)
-        await db.execute(statement=statement)
+            self, db: AsyncSession, *, campaign_id: int,
+            ids: List[int] = None, user_id: int = None
+    ) -> int:
+        if ids is not None:
+            statement = delete(CampaignDst).where(
+                CampaignDst.campaign_id == campaign_id,
+                CampaignDst.id.in_(ids),
+            )
+        else:
+            statement = delete(CampaignDst).where(CampaignDst.campaign_id == campaign_id)
+            if user_id is not None:
+                statement = statement.where(CampaignDst.user_id == user_id)
+        result = await db.execute(statement=statement)
         await db.commit()
+        return result.rowcount
     
     #def get_one(
     #    self, db: Session, *, campaign_id: int

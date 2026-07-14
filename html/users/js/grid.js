@@ -7,6 +7,28 @@ $(document).ready(function () {
     let token = window.isAuth;
     try {
         let { access_token, token_type } = token;
+        let permissionNameMap = {};
+
+        function normalizeList(value) {
+            if (value && typeof value.toJSON === 'function') value = value.toJSON();
+            if (Array.isArray(value)) return value.filter(Boolean);
+            if (!value) return [];
+            return [value].filter(Boolean);
+        }
+
+        $.ajax({
+            url: `${api_base_url}/api/v1/options/permission`,
+            type: 'GET',
+            beforeSend: function (request) {
+                request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
+            },
+        }).done(function (items) {
+            items.forEach(function (item) {
+                permissionNameMap[item.value] = item.text;
+            });
+            let grid = $('#users-grid').data('kendoGrid');
+            if (grid) grid.refresh();
+        });
 
         var popup;
         autoFitColumn = function (grid) {
@@ -17,6 +39,8 @@ $(document).ready(function () {
                 grid.autoFitColumn('balance');
                 grid.autoFitColumn('balance_lock');
                 grid.autoFitColumn('is_superuser');
+                grid.autoFitColumn('permissions');
+                grid.autoFitColumn('api_keys');
                 grid.autoFitColumn('connections');
             });
         };
@@ -25,7 +49,7 @@ $(document).ready(function () {
             dataSource: {
                 transport: {
                     read: {
-                        url: `http://${api_base_url}/api/v1/users/`,
+                        url: `${api_base_url}/api/v1/users/`,
                         type: 'GET',
                         beforeSend: function (request) {
                             request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
@@ -33,7 +57,7 @@ $(document).ready(function () {
                         dataType: 'json',
                     },
                     create: {
-                        url: `http://${api_base_url}/api/v1/users/`,
+                        url: `${api_base_url}/api/v1/users/`,
                         type: 'POST',
                         dataType: 'json',
                         contentType: 'application/json',
@@ -44,7 +68,7 @@ $(document).ready(function () {
                     update: {
                         url: function (options) {
                             console.log(options);
-                            return `http://${api_base_url}/api/v1/users/${options.id}`;
+                            return `${api_base_url}/api/v1/users/${options.id}`;
                         },
 
                         type: 'PUT',
@@ -57,7 +81,7 @@ $(document).ready(function () {
                     destroy: {
                         url: function (options) {
                             console.log(options);
-                            return `http://${api_base_url}/api/v1/users/${options.id}`;
+                            return `${api_base_url}/api/v1/users/${options.id}`;
                         },
 
                         type: 'DELETE',
@@ -122,6 +146,8 @@ $(document).ready(function () {
                             // balance_lock: { type: 'number', editable: true },
                             is_active: { type: 'boolean', editable: true },
                             is_superuser: { editable: true },
+                            permissions: { editable: true, defaultValue: [] },
+                            api_keys: { editable: true, defaultValue: [] },
                             actions: { type: 'object', editable: false },
                         },
                     },
@@ -139,6 +165,8 @@ $(document).ready(function () {
             persistSelection: true,
             sortable: true,
             edit: function (e) {
+                e.model.set('permissions', normalizeList(e.model.permissions));
+                e.model.set('api_keys', normalizeList(e.model.api_keys));
                 form.data('kendoForm').setOptions({
                     formData: e.model,
                 });
@@ -168,6 +196,8 @@ $(document).ready(function () {
                 console.log(e.model.is_superuser);
                 console.log(typeof e.model.is_superuser);
                 e.model.is_superuser = e.model.is_superuser === true || e.model.is_superuser === 'true';
+                e.model.permissions = normalizeList(e.model.permissions);
+                e.model.api_keys = normalizeList(e.model.api_keys);
                 console.log(e.model.is_superuser);
                 console.log(typeof e.model.is_superuser);
             },
@@ -289,6 +319,29 @@ $(document).ready(function () {
                             });
                         },
                     },
+                },
+                {
+                    field: 'permissions',
+                    title: 'Permissions',
+                    template: function (item) {
+                        if (!item.permissions || !item.permissions.length) return '';
+                        return item.permissions.map(function (permission) {
+                            let text = permissionNameMap[permission] || permission;
+                            return `<span class='info info-light'>${kendo.htmlEncode(text)}</span>`;
+                        }).join(' ');
+                    },
+                    filterable: false,
+                },
+                {
+                    field: 'api_keys',
+                    title: 'Default API Keys',
+                    template: function (item) {
+                        if (!item.api_keys || !item.api_keys.length) return '';
+                        return item.api_keys.map(function (apiKey) {
+                            return `<span class='info info-light'>${kendo.htmlEncode(apiKey)}</span>`;
+                        }).join(' ');
+                    },
+                    filterable: false,
                 },
                 /*
                 {

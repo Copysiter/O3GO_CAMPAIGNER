@@ -21,6 +21,7 @@ class CampaignDstBase(BaseModel):
     field_5: Optional[str] = None
     attempts: Optional[int] = None
     status: Optional[int] = None
+    score: Optional[float] = None
     create_ts: Optional[datetime] = datetime.utcnow()
     sent_ts: Optional[datetime] = None
     update_ts: Optional[datetime] = None

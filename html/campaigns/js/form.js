@@ -1,4 +1,10 @@
 window.initForm = function() {
+    const currentUser = window.isAuth.user;
+    const permissions = currentUser.permissions || [];
+    const canAssign = function (permissionSuffix) {
+        return currentUser.is_superuser || permissions.includes(`campaign.assign_${permissionSuffix}`);
+    };
+
     const user_field = window.isAuth.user.is_superuser ? [{
         field: "sep1",
         colSpan: 12,
@@ -13,7 +19,7 @@ window.initForm = function() {
             dataSource: {
                 transport: {
                     read: {
-                        url: `http://${api_base_url}/api/v1/options/user`,
+                        url: `${api_base_url}/api/v1/options/user`,
                         type: "GET",
                         beforeSend: function (request) {
                             request.setRequestHeader('Authorization', `${token_type} ${access_token}`);
@@ -22,12 +28,7 @@ window.initForm = function() {
                 }
             },
             dataBound: function (e) {
-                // console.log(isAuth.user.id);
-                // campaignCreateModel.data.set("user_id", isAuth.user.id);
-                // this.select(function(item) {
-                //     return item.value === isAuth.user.id;
-                // });
-                //this.trigger("select");
+
             },
             dataTextField: "text",
             dataValueField: "value",
@@ -36,77 +37,10 @@ window.initForm = function() {
         },
     }] : [];
 
-    $("#campaign-edit-form").kendoForm({
-        orientation: "vertical",
-        layout: "grid",
-        grid: { cols: 12, gutter: "15px 10px" },
-        items: [{
-            field: "name",
-            label: "Campaign Name:",
-            colSpan: window.isAuth.user.is_superuser ? 12 : 6
-        }].concat(user_field).concat([{
-            field: "webhook_url",
-            label: "Webhook URL:",
-            colSpan: 6
-        }, {
-            field: "sep2",
-            colSpan: 12,
-            label: false,
-            editor: "<div class='separator mx-n15'></div>"
-        }, {
-            field: "order",
-            label: "Order:",
-            editor: 'NumericTextBox',
-            editorOptions: {
-                format: "n0",
-                min: 1,
-                max: 100,
-                // value: 1
-            },
-            colSpan: 4
-        }, {
-            field: "msg_attempts",
-            label: "Message Attempts:",
-            editor: 'NumericTextBox',
-            editorOptions: {
-                format: "n0",
-                min: 1,
-                max: 100,
-                // value: 1
-            },
-            colSpan: 4
-        }, {
-            field: "follow_limit",
-            label: "Follow Limit:",
-            editor: 'NumericTextBox',
-            editorOptions: {
-                format: "n0",
-                min: 0,
-                // max: 100,
-                // value: 1
-            },
-            colSpan: 4
-        }, {
-            field: "sep3",
-            colSpan: 12,
-            label: false,
-            editor: "<div class='separator mx-n15'></div>"
-        }, {
-            field: "msg_template",
-            label: "",
-            colSpan: 12,
-            editor: "TextArea",
-            editorOptions: {
-                overflow: "auto",
-                rows: 10
-            },
-            validation: { required: false }
-        }, {
-            field: "sep4",
-            colSpan: 12,
-            label: false,
-            editor: "<div class='separator mx-n15'></div>"
-        }, {
+    const assign_fields = [];
+
+    if (canAssign('api_keys')) {
+        assign_fields.push({
             field: 'api_keys',
             label: 'Api Keys',
             editor: 'MultiSelect',
@@ -114,7 +48,7 @@ window.initForm = function() {
                 dataSource: new kendo.data.DataSource({
                     transport: {
                         read: {
-                            url: `http://${api_base_url}/api/v1/options/api_key`,
+                            url: `${api_base_url}/api/v1/options/api_key`,
                             type: 'GET',
                             beforeSend: function (request) {
                                 request.setRequestHeader(
@@ -142,12 +76,42 @@ window.initForm = function() {
                 },
             },
             colSpan: 12,
-        }, {
-            field: "sep5",
+        });
+    }
+
+    if (canAssign('androids')) {
+        assign_fields.push({
+            field: 'androids',
+            label: 'Android Devices',
+            editor: 'MultiSelect',
+            editorOptions: {
+                dataSource: new kendo.data.DataSource({
+                    transport: {
+                        read: {
+                            url: `${api_base_url}/api/v1/options/android`,
+                            type: 'GET',
+                            beforeSend: function (request) {
+                                request.setRequestHeader(
+                                    'Authorization',
+                                    `${token_type} ${access_token}`
+                                );
+                            },
+                        },
+                    },
+                }),
+                dataTextField: 'text',
+                dataValueField: 'value',
+                valuePrimitive: true,
+                downArrow: true,
+                animation: false,
+                autoClose: false
+            },
             colSpan: 12,
-            label: false,
-            editor: "<div class='separator mx-n15'></div>"
-        }, {
+        });
+    }
+
+    if (canAssign('tags')) {
+        assign_fields.push({
             field: 'tags',
             label: 'Tags',
             editor: 'MultiSelect',
@@ -155,7 +119,7 @@ window.initForm = function() {
                 dataSource: new kendo.data.DataSource({
                     transport: {
                         read: {
-                            url: `http://${api_base_url}/api/v1/options/tag`,
+                            url: `${api_base_url}/api/v1/options/tag`,
                             type: 'GET',
                             beforeSend: function (request) {
                                 request.setRequestHeader(
@@ -172,25 +136,83 @@ window.initForm = function() {
                 downArrow: true,
                 animation: false,
                 autoClose: false,
-                // noDataTemplate: function (e) {
-                //     let value = e.instance.input.val();
-                //     return `
-                //     <div class='no-data'>
-                //     <p>Api Key not found.<br>Do you want to add new Api Key ${value} ?</p>
-                //     <button class="k-button k-button-solid-base k-button-solid k-button-md k-rounded-md" onclick="addNew('${value}', 'campaign-create-window')">Append</button>
-                //     </p>
-                //     `;
-                // },
-                // tagTemplate: '<span class="k-chip k-chip-md k-rounded-md k-chip-solid k-chip-solid-base" unselectable="on" style="color::color_txt;background::color_bg;">' +
-                //     '<span unselectable="on" class="k-chip-content"><span class="k-chip-label">:name</span></span>' +
-                //     '<span class="k-chip-action k-chip-remove-action" unselectable="on" aria-hidden="true" aria-label="delete" title="delete">' +
-                //     '<span class="k-icon k-i-x-circle"></span>' +
-                //     '</span>' +
-                //     '</span>'
             },
             colSpan: 12,
+        });
+    }
+
+    if (assign_fields.length) {
+        assign_fields.unshift({
+            field: "sep4",
+            colSpan: 12,
+            label: false,
+            editor: "<div class='separator mx-n15'></div>"
+        });
+    }
+
+    $("#campaign-edit-form").kendoForm({
+        orientation: "vertical",
+        layout: "grid",
+        grid: { cols: 12, gutter: "15px 10px" },
+        items: [{
+            field: "name",
+            label: "Campaign Name:",
+            colSpan: window.isAuth.user.is_superuser ? 12 : 6
+        }].concat(user_field).concat([{
+            field: "webhook_url",
+            label: "Webhook URL:",
+            colSpan: 6
         }, {
-            field: "sep6",
+            field: "sep2",
+            colSpan: 12,
+            label: false,
+            editor: "<div class='separator mx-n15'></div>"
+        }, {
+            field: "order",
+            label: "Order:",
+            editor: 'NumericTextBox',
+            editorOptions: {
+                format: "n0",
+                min: 1,
+                max: 100,
+            },
+            colSpan: 4
+        }, {
+            field: "msg_attempts",
+            label: "Message Attempts:",
+            editor: 'NumericTextBox',
+            editorOptions: {
+                format: "n0",
+                min: 1,
+                max: 100,
+            },
+            colSpan: 4
+        }, {
+            field: "follow_limit",
+            label: "Follow Limit:",
+            editor: 'NumericTextBox',
+            editorOptions: {
+                format: "n0",
+                min: 0,
+            },
+            colSpan: 4
+        }, {
+            field: "sep3",
+            colSpan: 12,
+            label: false,
+            editor: "<div class='separator mx-n15'></div>"
+        }, {
+            field: "msg_template",
+            label: "",
+            colSpan: 12,
+            editor: "TextArea",
+            editorOptions: {
+                overflow: "auto",
+                rows: 10
+            },
+            validation: { required: false }
+        }]).concat(assign_fields).concat([{
+            field: "sep7",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -213,7 +235,7 @@ window.initForm = function() {
             },
             colSpan: 6
         }, {
-            field: "sep7",
+            field: "sep8",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -238,7 +260,7 @@ window.initForm = function() {
                 timeFormat: "HH:mm"
             }
         }, {
-            field: "sep8",
+            field: "sep9",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -248,7 +270,7 @@ window.initForm = function() {
             label: false,
             editor: "<div id='campaign-edit-schedule' class='schedule'></div>"
         }, {
-            field: "sep9",
+            field: "sep10",
             colSpan: 12,
             label: false,
             editor: "<div class='separator mx-n15'></div>"
@@ -272,11 +294,15 @@ window.initForm = function() {
             if (data.stop_ts !== undefined) {
                 data.stop_ts = kendo.toString(data.stop_ts, "yyyy-MM-dd HH:mm:ss")
             }
+            let payload = data.toJSON ? data.toJSON() : Object.assign({}, data);
+            if (!canAssign('api_keys')) delete payload.api_keys;
+            if (!canAssign('androids')) delete payload.androids;
+            if (!canAssign('tags')) delete payload.tags;
             $.ajax({
-                url: `http://${api_base_url}/api/v1/campaigns/${id}`,
+                url: `${api_base_url}/api/v1/campaigns/${id}`,
                 type: "PUT",
                 dataType: 'json',
-                data: JSON.stringify(data),
+                data: JSON.stringify(payload),
                 contentType: 'application/json;charset=UTF-8',
                 beforeSend: function (xhr) {
                     xhr.setRequestHeader ("Authorization", `${token_type} ${access_token}`);
@@ -317,7 +343,7 @@ function addNew(value, id) {
     let { access_token, token_type } = token;
     $.ajax({
         type: 'POST',
-        url: `http://${api_base_url}/api/v1/api_keys/`,
+        url: `${api_base_url}/api/v1/api_keys/`,
         headers: {
             Authorization: `${token_type} ${access_token}`,
             accept: 'application/json'
@@ -346,6 +372,7 @@ function addNew(value, id) {
         widget.trigger('change');
         widget.close();
         document.querySelector(`#${id} .k-selection-multiple`).lastChild.value = '';
+        $("#campaign-grid").data("kendoGrid").dataSource.read();
     })
     .fail(function (result) {
 

@@ -1,5 +1,5 @@
 window.initContextMenu = function() {
-    
+
     $("#campaign-menu").kendoContextMenu({
         target: "#campaign-grid tbody",
         filter: "tr[role='row']",
@@ -16,7 +16,7 @@ window.initContextMenu = function() {
             {
                 text: "",
                 cssClass: "k-separator",
-            }, 
+            },
             {
                 text: "Campaign Settings",
                 cssClass: "campaignEdit",
@@ -28,7 +28,7 @@ window.initContextMenu = function() {
             {
                 text: "",
                 cssClass: "k-separator",
-            }, 
+            },
             {
                 text: "Start Campaign",
                 cssClass: "campaignStart",
@@ -59,7 +59,7 @@ window.initContextMenu = function() {
             {
                 text: "",
                 cssClass: "k-separator",
-            }, 
+            },
             {
                 text: "Delete Campaign",
                 cssClass: "campaignDelete",
@@ -67,6 +67,18 @@ window.initContextMenu = function() {
                 spriteCssClass: "famfamfam-silk cross",
                 attr: {
                     "onclick": "campaignDelete();"
+                }
+            },
+            {
+                text: "",
+                cssClass: "k-separator",
+            },
+            {
+                text: "Check DST Numbers",
+                cssClass: "checkCampaignDst",
+                spriteCssClass: "famfamfam-silk lightning",
+                attr: {
+                    "onclick": "checkCampaignDst();"
                 }
             }
         ],
@@ -88,6 +100,47 @@ window.initContextMenu = function() {
                 menu.enable("li.campaignDetail", true);
                 menu.enable("li.campaignEdit", true);
             }
+        },
+        deactivate: function(e) {
+        },
+        select: function(e) {
+        }
+    });
+
+}
+
+window.initMessageContextMenu = function() {
+    if (!$("#message-menu").length) {
+        $("#message-grid").after('<div id="message-menu"></div>');
+    }
+    var existingMenu = $("#message-menu").data("kendoContextMenu");
+    if (existingMenu) {
+        existingMenu.destroy();
+        $("#message-menu").empty();
+        $("#message-menu").removeData("kendoContextMenu");
+    }
+
+    $("#message-menu").kendoContextMenu({
+        target: "#message-grid .k-grid-content",
+        filter: "tr[role='row']",
+        animation: false,
+        dataSource: [
+            {
+                text: "Delete Message",
+                cssClass: "messageDelete",
+                spriteCssClass: "famfamfam-silk cross",
+                attr: {
+                    "onclick": "deleteSelectedMessages();"
+                }
+            }
+        ],
+        activate: function(e) {
+            let menu = this;
+            let grid = $("#message-grid").data("kendoGrid");
+            menu.enable("li", true);
+            if (!$(e.target).is('.k-state-selected, .k-selected')) grid.clearSelection();
+            grid.select(e.target);
+            grid.trigger("change");
         },
         deactivate: function(e) {
         },

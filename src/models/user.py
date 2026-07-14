@@ -1,8 +1,11 @@
-﻿from sqlalchemy import Column, ForeignKey, Integer, BigInteger, String, Boolean  # noqa
+﻿from typing import List
+
+from sqlalchemy import Column, ForeignKey, Integer, BigInteger, String, Boolean  # noqa
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.associationproxy import AssociationProxy
 
 from db.base_class import Base  # noqa
+from models.permission import UserPermission  # noqa
 
 
 class UserApiKeys(Base):
@@ -29,3 +32,16 @@ class User(Base):
         cascade='save-update, merge, delete, delete-orphan'
     )
     api_keys = AssociationProxy('keys', 'api_key')
+
+    permission_links = relationship(
+        'UserPermission', back_populates='user', lazy='joined',
+        cascade='save-update, merge, delete, delete-orphan'
+    )
+
+    @property
+    def permissions(self) -> List[str]:
+        return [
+            link.permission.key
+            for link in self.permission_links
+            if link.permission and link.permission.is_active
+        ]
