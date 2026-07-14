@@ -9,7 +9,7 @@ services:
     env_file:
       - ./.env
     ports:
-      - '5433:5432'
+      - '5432:5432'
 
   redis:
      image: redis:7
@@ -17,7 +17,7 @@ services:
      volumes:
        - redis_data:/data
      ports:
-       - '6380:6379'
+       - '6379:6379'
 
   api:
     build:
