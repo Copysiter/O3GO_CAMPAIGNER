@@ -2,12 +2,10 @@ import aiohttp
 import logging
 from typing import Any, Optional
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.config import settings
 from db.session import async_session
 from models.link import Link
-import crud
+from schemas.link import LinkShortenItem, LinkShortenRequest, LinkShortenResult
 
 
 async def create_clicker_task(
@@ -105,62 +103,65 @@ async def create_clicker_task(
 
 
 async def shorten(
-    urls: list[str],
+    urls: list[LinkShortenItem],
     x_api_key: str,
-    db: Optional[AsyncSession] = None,
-    campaign_id: Optional[int] = None,
-) -> dict:
+) -> list[LinkShortenResult]:
     """
-    Send URLs to link shortening service and get shortened URLs.
-    Optionally saves results to database if db and campaign_id are provided.
+    Send one batch to the link shortening service.
 
     Args:
-        urls: List of URLs to shorten
+        urls: URL items to shorten (up to 500)
         x_api_key: User's API key for authentication
-        db: Database session (optional, for saving results)
-        campaign_id: Campaign ID (optional, for saving results)
 
     Returns:
-        Dict with results: {"results": [{"original": str, "short": str}, ...]}
-        Returns empty results list on error.
+        Validated results. Their order is not used for correlation.
     """
     if not urls:
-        return {"results": []}
+        return []
 
-    url = settings.LINK_SHORTENER_URL
-    params = {"x_api_key": x_api_key} if x_api_key else {}
-    payload = {"urls": urls}
+    request = LinkShortenRequest(x_api_key=x_api_key, urls=urls)
+    payload = request.model_dump(exclude_none=True)
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, params=params, json=payload) as response:
-                if response.status == 200:
-                    result = await response.json()
-
-                    # Сохраняем результаты в БД, если переданы db и campaign_id
-                    if db is not None and campaign_id is not None:
-                        if result.get("results"):
-                            try:
-                                await crud.link.insert(
-                                    db, campaign_id=campaign_id, results=result["results"]
-                                )
-                                logging.info(
-                                    f"Saved {len(result['results'])} shortened URLs "
-                                    f"for campaign {campaign_id}"
-                                )
-                            except Exception as e:
-                                logging.error(
-                                    f"Error saving shortened URLs to database: {e}"
-                                )
-                                # Не прерываем выполнение, возвращаем результаты
-
-                    return result
-                else:
-                    logging.error(
-                        f"Link shortening service returned status {response.status}: "
-                        f"{await response.text()}"
+            async with session.post(
+                settings.LINK_SHORTENER_URL,
+                json=payload,
+            ) as response:
+                if response.status < 200 or response.status >= 300:
+                    response_text = await response.text()
+                    raise RuntimeError(
+                        "Link shortening service returned "
+                        f"status {response.status}: {response_text}"
                     )
-                    return {"results": []}
+                raw_result = await response.json()
     except Exception as e:
-        logging.error(f"Error calling link shortening service: {e}")
-        return {"results": []}
+        logging.error("Error calling link shortening service: %s", e)
+        raise
+
+    if not isinstance(raw_result, list):
+        raise ValueError("Link shortening service returned a non-list response")
+
+    results = [LinkShortenResult.model_validate(item) for item in raw_result]
+    request_keys = {
+        (item.ext_id, item.dst_addr, item.url)
+        for item in request.urls
+    }
+    result_keys = [
+        (item.ext_id, item.dst_addr, item.url)
+        for item in results
+    ]
+
+    if len(request_keys) != len(request.urls):
+        raise ValueError("Link shortening request contains duplicate keys")
+    if len(result_keys) != len(set(result_keys)):
+        raise ValueError("Link shortening service returned duplicate result keys")
+    if request_keys != set(result_keys):
+        missing = request_keys - set(result_keys)
+        unexpected = set(result_keys) - request_keys
+        raise ValueError(
+            "Link shortening response does not match request: "
+            f"missing={missing}, unexpected={unexpected}"
+        )
+
+    return results

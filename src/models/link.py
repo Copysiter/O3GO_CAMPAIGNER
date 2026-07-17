@@ -15,6 +15,7 @@ class Link(Base):
     )
     original = Column(String, nullable=False, index=True)
     short = Column(String, nullable=True, index=True)
+    dst_addr = Column(String, nullable=True, index=True)
     fake = Column(
         Boolean,
         nullable=False,

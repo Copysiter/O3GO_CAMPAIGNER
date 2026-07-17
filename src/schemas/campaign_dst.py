@@ -12,7 +12,7 @@ class CampaignDstBase(BaseModel):
     ext_id: Optional[str]
     campaign_id: Optional[int]
     src_addr: Optional[str] = None
-    dst_addr: Optional[int]
+    dst_addr: Optional[str]
     text: Optional[str] = None
     field_1: Optional[str] = None
     field_2: Optional[str] = None
@@ -32,7 +32,7 @@ class CampaignDstBase(BaseModel):
 # Properties to receive on item creation
 class CampaignDstCreate(CampaignDstBase):
     campaign_id: int
-    dst_addr: int
+    dst_addr: str
 
 
 # Properties to receive on item update
@@ -53,11 +53,15 @@ class CampaignDst(CampaignDstInDBBase):
     pass
 
 
+class CampaignDstWithClickedLink(CampaignDst):
+    clicked_link: bool
+
+
 # Properties stored in DB
 class CampaignDstInDB(CampaignDstInDBBase):
     pass
 
 # List to return to client
 class CampaignDstRows(BaseModel):
-    data: List[CampaignDst]
+    data: List[CampaignDstWithClickedLink]
     total: int = 0

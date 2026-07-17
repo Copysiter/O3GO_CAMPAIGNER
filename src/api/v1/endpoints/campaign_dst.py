@@ -1,10 +1,13 @@
 from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import deps
-import crud, models, schemas
+import crud
+import models
+import schemas
 
 router = APIRouter()
 
@@ -25,7 +28,18 @@ async def read_campaign_dsts(
         db, filters=filters, orders=orders, skip=skip, limit=limit
     )
     count = await crud.campaign_dst.get_count(db, filters=filters)
-    return {'data': data, 'total': count}
+    clicked_pairs = await crud.link.get_clicked_pairs(
+        db,
+        campaign_dsts=data,
+    )
+    encoded_data = jsonable_encoder(data)
+    for db_obj, item in zip(data, encoded_data):
+        item["clicked_link"] = (
+            db_obj.campaign_id,
+            db_obj.dst_addr,
+        ) in clicked_pairs
+
+    return {'data': encoded_data, 'total': count}
 
 
 @router.post(

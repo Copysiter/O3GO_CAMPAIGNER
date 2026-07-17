@@ -283,6 +283,12 @@ window.initMessageGrid = function(id) {
                 },
             },
             {
+                ield: 'clicked_link',
+                width: '100px',
+                title: 'Clicked Link',
+                template: "<div class='marker block #=clicked_link == 1 ? 'green' : 'red'#'><i></i></div>"
+            },
+            {
                 field: 'create_ts',
                 title: 'Created',
                 format: '{0: yyyy-MM-dd HH:mm:ss}',

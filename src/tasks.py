@@ -20,6 +20,7 @@ from services.phone_checker import PhoneChecker
 
 import schemas
 import models
+import crud
 
 celery = Celery(__name__)
 celery.conf.broker_url = settings.CELERY_BROKER_URL
@@ -243,7 +244,8 @@ async def prepare_campaign(
     campaign_id: int,
     steps: List[str],
     x_api_key: str,
-    rewrite_config: Dict = None
+    rewrite_config: Dict = None,
+    unique_shorten_link: bool = False,
 ):
     """
     Главная задача предобработки кампании.
@@ -254,6 +256,7 @@ async def prepare_campaign(
         steps: Список шагов для выполнения ("shorten_links" и/или "rewrite")
         x_api_key: API-ключ пользователя для внешних сервисов
         rewrite_config: Конфигурация AI-рерайта
+        unique_shorten_link: Создавать отдельные ссылки для каждого получателя
     """
     try:
         # ШАГ 1: Быстрая загрузка данных и закрытие сессии
@@ -301,7 +304,14 @@ async def prepare_campaign(
             )
 
             workflow = chain(
-                shorten_links.si(campaign_id, campaign_dsts, msg_template, x_api_key, True),  # waiting=True
+                shorten_links.si(
+                    campaign_id=campaign_id,
+                    campaign_dsts=campaign_dsts,
+                    msg_template=msg_template,
+                    x_api_key=x_api_key,
+                    unique_shorten_link=unique_shorten_link,
+                    waiting=True,
+                ),
                 rewrite_messages.si(campaign_id, rewrite_batch_size, rewrite_config)
             )
             workflow.apply_async()
@@ -309,7 +319,14 @@ async def prepare_campaign(
         elif has_shorten:
             # Только сокращение ссылок (финальный шаг)
             logging.info(f"Запуск сокращения ссылок для кампании {campaign_id}")
-            shorten_links.si(campaign_id, campaign_dsts, msg_template, x_api_key, False).apply_async()  # waiting=False
+            shorten_links.si(
+                campaign_id=campaign_id,
+                campaign_dsts=campaign_dsts,
+                msg_template=msg_template,
+                x_api_key=x_api_key,
+                unique_shorten_link=unique_shorten_link,
+                waiting=False,
+            ).apply_async()
 
         elif has_rewrite:
             # Только AI-рерайт (без сокращения ссылок)
@@ -420,38 +437,46 @@ async def shorten_links(
     campaign_dsts: List[Dict],
     msg_template: str,
     x_api_key: str,
-    waiting: bool = False
+    unique_shorten_link: bool = False,
+    waiting: bool = False,
 ):
     """
-    Обработка и сокращение всех уникальных ссылок для кампании.
+    Обработка и сокращение ссылок для кампании.
 
     Args:
         campaign_id: ID кампании
         campaign_dsts: Список записей campaign_dst (передается из prepare_campaign)
         msg_template: Шаблон сообщения
         x_api_key: API-ключ для сервиса сокращения ссылок
+        unique_shorten_link: Создавать отдельную ссылку для каждого dst_addr
         waiting: Если True, оставить статус WAITING (есть следующий шаг обработки)
 
     Returns:
         Словарь с campaign_id для следующей задачи в цепочке
     """
     try:
-        # ШАГ 1: Собираем URL (без обращений к БД)
-        all_urls = []
+        # Ключ результата не зависит от порядка ответа внешнего сервиса.
+        request_items = {}
         for dst in campaign_dsts:
-            dst_data = {
-                "field_1": dst.get("field_1"),
-                "field_2": dst.get("field_2"),
-                "field_3": dst.get("field_3"),
-                "field_4": dst.get("field_4"),
-                "field_5": dst.get("field_5"),
-            }
-            urls = extract_links(dst.get("text", msg_template), dst_data)
-            all_urls.extend(urls)
+            urls = extract_links(dst.get("text") or msg_template, dst)
+            for original_url in urls:
+                dst_addr = None
+                if unique_shorten_link:
+                    dst_addr = dst.get("dst_addr")
+                    if not dst_addr:
+                        raise ValueError(
+                            f"CampaignDst {dst['id']} has no dst_addr"
+                        )
 
-        unique_urls = list(dict.fromkeys(all_urls))
+                key = (campaign_id, dst_addr, original_url)
+                if key not in request_items:
+                    request_items[key] = schemas.LinkShortenItem(
+                        url=original_url,
+                        ext_id=campaign_id,
+                        dst_addr=dst_addr,
+                    )
 
-        if not unique_urls:
+        if not request_items:
             logging.info(f"Нет ссылок для сокращения в кампании {campaign_id}")
 
             # Обновление статуса только если это финальный шаг
@@ -472,23 +497,50 @@ async def shorten_links(
                     await session.commit()
             return {"campaign_id": campaign_id, "shortened": 0}
 
-        logging.info(f"Сокращение {len(unique_urls)} уникальных URL для кампании {campaign_id}")
+        logging.info(
+            "Сокращение %s URL для кампании %s, unique=%s",
+            len(request_items),
+            campaign_id,
+            unique_shorten_link,
+        )
 
-        # ШАГ 2: Вызов сервиса сокращения и обновление БД
-        async with async_session() as session:
-            # Вызов API сокращения ссылок
-            shorten_result = await shorten(
-                unique_urls, x_api_key, db=session, campaign_id=campaign_id
+        all_results_by_key = {}
+        request_values = list(request_items.values())
+        batch_size = settings.LINK_SHORTENER_BATCH_SIZE
+        for offset in range(0, len(request_values), batch_size):
+            batch = request_values[offset:offset + batch_size]
+            results = await shorten(batch, x_api_key)
+
+            for result in results:
+                key = (result.ext_id, result.dst_addr, result.url)
+                if key in all_results_by_key:
+                    raise ValueError(
+                        f"Duplicate shortened URL result for key {key}"
+                    )
+                all_results_by_key[key] = result
+
+        if set(all_results_by_key) != set(request_items):
+            missing = set(request_items) - set(all_results_by_key)
+            unexpected = set(all_results_by_key) - set(request_items)
+            raise ValueError(
+                "Link shortening results do not match campaign request: "
+                f"missing={missing}, unexpected={unexpected}"
             )
 
-            if not shorten_result.get("results"):
-                logging.warning(f"Сервис сокращения не вернул результатов для кампании {campaign_id}")
-                return {"campaign_id": campaign_id, "shortened": 0}
-
-            # Создаем маппинг оригинал → короткая ссылка
-            url_map = {}
-            for item in shorten_result["results"]:
-                url_map[item["original"]] = item["short"]
+        # Сохраняем ссылки и обновляем тексты одной локальной транзакцией.
+        async with async_session() as session:
+            await crud.link.insert(
+                db=session,
+                results=[
+                    schemas.LinkCreate(
+                        campaign_id=result.ext_id,
+                        original=result.url,
+                        short=result.new_url,
+                        dst_addr=result.dst_addr,
+                    )
+                    for result in all_results_by_key.values()
+                ],
+            )
 
             # Обновляем все записи с сокращенными ссылками
             for dst in campaign_dsts:
@@ -500,19 +552,19 @@ async def shorten_links(
                     if dst.get(field_name):
                         msg_text = msg_text.replace(f"{{{field_name}}}", dst[field_name])
 
-                # Заменяем [short]{field_n}[/short]
-                for field_name in ["field_1", "field_2", "field_3", "field_4", "field_5"]:
-                    field_key = f"[short]{{{field_name}}}[/short]"
-                    if field_key in msg_text and dst.get(field_name):
-                        original_url = dst.get(field_name)
-                        if original_url in url_map:
-                            msg_text = msg_text.replace(field_key, url_map[original_url])
-
-                # Заменяем [short]URL[/short]
-                for original_url, short_url in url_map.items():
-                    link_placeholder = f"[short]{original_url}[/short]"
-                    if link_placeholder in msg_text:
-                        msg_text = msg_text.replace(link_placeholder, short_url)
+                urls = extract_links(msg_text, dst)
+                for original_url in urls:
+                    dst_addr = dst.get("dst_addr") if unique_shorten_link else None
+                    key = (campaign_id, dst_addr, original_url)
+                    result = all_results_by_key.get(key)
+                    if result is None:
+                        raise ValueError(
+                            f"No shortened URL returned for key {key}"
+                        )
+                    msg_text = msg_text.replace(
+                        f"[short]{original_url}[/short]",
+                        result.new_url,
+                    )
 
                 # Обновляем запись
                 # Если waiting=True, оставляем статус WAITING для следующего шага
@@ -551,12 +603,17 @@ async def shorten_links(
 
             await session.commit()
 
-        logging.info(f"Сокращение ссылок завершено для кампании {campaign_id}: {len(url_map)} ссылок")
-        return {"campaign_id": campaign_id, "shortened": len(url_map)}
+        shortened_count = len(all_results_by_key)
+        logging.info(
+            "Сокращение ссылок завершено для кампании %s: %s ссылок",
+            campaign_id,
+            shortened_count,
+        )
+        return {"campaign_id": campaign_id, "shortened": shortened_count}
 
     except Exception as e:
         logging.exception(f"Ошибка в shorten_links для кампании {campaign_id}: {e}")
-        return {"campaign_id": campaign_id, "shortened": 0, "error": str(e)}
+        raise
 
 
 @celery.task(name="tasks.rewrite_messages")

@@ -56,10 +56,10 @@ from .account import (
     AccountUnlinkRequest,
 )  # noqa
 from .link import (
+    LinkShortenItem,
     LinkShortenRequest,
-    LinkShortenRequestWithCampaign,
     LinkShortenResult,
-    LinkShortenResponse,
+    LinkCreate,
     LinkClickItem,
     LinkClickWebhook,
     LinkClickResponse,

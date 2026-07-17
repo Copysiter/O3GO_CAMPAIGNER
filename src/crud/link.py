@@ -1,68 +1,62 @@
-from typing import List, Dict
-from sqlalchemy import update
+from typing import Any, Dict, List
+from sqlalchemy import select, tuple_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from crud.base import CRUDBase
 from models.link import Link
-from schemas.link import LinkShortenResult, LinkClickItem
+from schemas.link import LinkClickItem, LinkCreate
 from core.config import settings
 
 
-class CRUDLink(CRUDBase[Link, LinkShortenResult, LinkShortenResult]):
+class CRUDLink(CRUDBase[Link, LinkCreate, LinkCreate]):
     async def insert(
         self,
         db: AsyncSession,
         *,
-        campaign_id: int,
-        results: List[dict],
-        fake: bool = False,
+        results: List[LinkCreate],
     ) -> List[Link]:
-        """
-        Массово создать записи о сокращённых ссылках.
-
-        Args:
-            db: Сессия БД
-            campaign_id: ID кампании
-            results: Список словарей [{"original": str, "short": str}, ...]
-
-        Returns:
-            Список созданных объектов Link
-        """
-        links = []
-        for item in results:
-            # Проверяем, не существует ли уже такая ссылка
-            existing = await self.get_by(
-                db, campaign_id=campaign_id, original=item["original"], fake=fake
-            )
-
-            if existing:
-                # Если ссылка уже существует, используем её
-                links.append(existing)
-            else:
-                # Создаём новую запись
-                link = Link(
-                    campaign_id=campaign_id,
-                    original=item["original"],
-                    short=item.get("short"),
-                    fake=fake,
-                )
-                db.add(link)
-                links.append(link)
-
-        await db.commit()
-
-        # Обновляем объекты после коммита, чтобы получить ID
-        for link in links:
-            await db.refresh(link)
+        """Create generated links without collapsing recipient-specific rows."""
+        links = [Link(**item.model_dump()) for item in results]
+        db.add_all(links)
+        await db.flush()
 
         return links
+
+    async def get_clicked_pairs(
+        self,
+        db: AsyncSession,
+        *,
+        campaign_dsts: List[Any],
+    ) -> set[tuple[int, str]]:
+        """Return campaign/recipient pairs with at least one clicked link."""
+        pairs = {
+            (dst.campaign_id, dst.dst_addr)
+            for dst in campaign_dsts
+            if dst.campaign_id is not None and dst.dst_addr
+        }
+        if not pairs:
+            return set()
+
+        statement = (
+            select(Link.campaign_id, Link.dst_addr)
+            .where(
+                tuple_(Link.campaign_id, Link.dst_addr).in_(list(pairs)),
+                Link.clicks > 0,
+            )
+            .distinct()
+        )
+        result = await db.execute(statement)
+        return {
+            (row.campaign_id, row.dst_addr)
+            for row in result.all()
+        }
 
     async def click(
         self,
         db: AsyncSession,
         *,
         items: List[LinkClickItem],
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Массово инкрементировать счетчики кликов по ссылкам.
 
@@ -92,10 +86,20 @@ class CRUDLink(CRUDBase[Link, LinkShortenResult, LinkShortenResult]):
             batch = items[i:i + batch_size]
 
             for item in batch:
+                dst_addr_filter = (
+                    Link.dst_addr.is_(None)
+                    if item.dst_addr is None
+                    else Link.dst_addr == item.dst_addr
+                )
+
                 # UPDATE с RETURNING для получения campaign_id
                 stmt = (
                     update(Link)
-                    .where(Link.short == item.short)
+                    .where(
+                        Link.short == item.short,
+                        Link.campaign_id == item.ext_id,
+                        dst_addr_filter,
+                    )
                     .values(clicks=Link.clicks + item.count)
                     .returning(Link.id, Link.campaign_id, Link.fake, Link.clicks)
                 )

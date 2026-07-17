@@ -317,7 +317,7 @@ window.initWizard = function() {
                         dataSource: [
                             { text: "space ( )", value: " " },
                             { text: "dot ( . )", value: "." },
-                            { text: "colon ( : )", value: "" },
+                            { text: "colon ( : )", value: ":" },
                             { text: "semicolon ( ; )", value: ";" },
                             { text: "comma ( , )", value: "," },
                             { text: "pipe ( | )", value: "|" }
@@ -465,6 +465,19 @@ window.initWizard = function() {
                         rows: 8
                     },
                     validation: { required: false }
+                }, {
+                    field: 'text',
+                    colSpan: 6,
+                    label: false,
+                    editor: "<div class='mt-3'>Personal unique shortened link:</div>",
+                }, {
+                    field: 'unique_shorten_link',
+                    label: '',
+                    editor: 'Switch',
+                    editorOptions: {
+                        width: 70,
+                    },
+                    colSpan: 6,
                 }, {
                     field: "sep9",
                     colSpan: 12,
@@ -662,7 +675,7 @@ window.initWizard = function() {
                 grid: {cols: 12, gutter: "15px 10px"},
                 formData: campaignCreateModel.data,
                 items: [{
-                    field: "sep1111",
+                    field: "sep15",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -750,7 +763,7 @@ window.initWizard = function() {
                         timeFormat: "HH:mm"
                     }
                 }, {
-                    field: "sep52",
+                    field: "sep16",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -768,7 +781,7 @@ window.initWizard = function() {
                     },
                     colSpan: 6,
                 }, {
-                    field: "sep521",
+                    field: "sep17",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"

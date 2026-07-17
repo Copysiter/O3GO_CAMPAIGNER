@@ -2,27 +2,33 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
+class LinkShortenItem(BaseModel):
+    url: str
+    ext_id: int
+    dst_addr: Optional[str] = None
+
+
 class LinkShortenRequest(BaseModel):
-    urls: List[str]
+    x_api_key: str
+    urls: List[LinkShortenItem] = Field(min_length=1, max_length=500)
 
 
-class LinkShortenRequestWithCampaign(BaseModel):
+class LinkShortenResult(LinkShortenItem):
+    new_url: str
+
+
+class LinkCreate(BaseModel):
     campaign_id: int
-    urls: List[str]
-
-
-class LinkShortenResult(BaseModel):
     original: str
     short: Optional[str] = None
+    dst_addr: Optional[str] = None
     fake: bool = False
-
-
-class LinkShortenResponse(BaseModel):
-    results: List[LinkShortenResult]
 
 
 class LinkClickItem(BaseModel):
     short: str
+    ext_id: int
+    dst_addr: Optional[str] = None
     count: int
 
 

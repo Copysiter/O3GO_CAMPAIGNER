@@ -1,19 +1,23 @@
 from typing import Any, List
 import hashlib
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import deps
-from services.link import shorten
-import crud, models, schemas
+import crud
+import schemas
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/shorten/mock")
+@router.post(
+    "/shorten/mock",
+    response_model=List[schemas.LinkShortenResult],
+    response_model_exclude_none=True,
+)
 async def shorten_mock(
     *,
     request: schemas.LinkShortenRequest,
@@ -25,31 +29,24 @@ async def shorten_mock(
     Use this for testing by setting in .env:
     LINK_SHORTENER_URL=http://localhost:5001/ext/api/v1/links/shorten/mock
 
-    Example request:
-    {
-        "urls": ["https://example.com/long-url-1", "https://example.com/long-url-2"]
-    }
-
-    Example response:
-    {
-        "results": [
-            {"original": "https://example.com/long-url-1", "short": "http://camp.o3go.ru/a1b2c3"},
-            {"original": "https://example.com/long-url-2", "short": "http://camp.o3go.ru/d4e5f6"}
-        ]
-    }
+    The hash includes campaign and recipient identifiers to emulate unique links.
     """
-    if not request.urls:
-        return {"results": []}
-
     results = []
-    for url in request.urls:
-        # Generate short hash from URL (first 6 characters of MD5)
-        url_hash = hashlib.md5(url.encode()).hexdigest()[:6]
+    for item in request.urls:
+        hash_source = f"{item.ext_id}:{item.dst_addr or ''}:{item.url}"
+        url_hash = hashlib.md5(hash_source.encode()).hexdigest()[:6]
         short_url = f"http://camp.o3go.ru/{url_hash}"
 
-        results.append({"original": url, "short": short_url})
+        results.append(
+            {
+                "url": item.url,
+                "dst_addr": item.dst_addr,
+                "ext_id": item.ext_id,
+                "new_url": short_url,
+            }
+        )
 
-    return {"results": results}
+    return results
 
 
 @router.post("/click", response_model=schemas.LinkClickResponse)
@@ -75,8 +72,17 @@ async def link_click_webhook(
 
     {
         "links": [
-            {"short": "http://camp.o3go.ru/a1b2c3", "count": 5},
-            {"short": "http://camp.o3go.ru/xyz123", "count": 3}
+            {
+                "short": "http://camp.o3go.ru/a1b2c3",
+                "ext_id": 501,
+                "dst_addr": "79001112233",
+                "count": 5
+            },
+            {
+                "short": "http://camp.o3go.ru/xyz123",
+                "ext_id": 501,
+                "count": 3
+            }
         ]
     }
 

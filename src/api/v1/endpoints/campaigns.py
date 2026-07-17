@@ -362,6 +362,7 @@ async def create_campaign(
                 campaign_id=campaign.id,
                 steps=steps,
                 x_api_key=current_user.ext_api_key,
+                unique_shorten_link=campaign_in.unique_shorten_link,
                 rewrite_config=rewrite_config,
             )
         else:
@@ -634,12 +635,19 @@ async def read_campaign_campaign_dsts(
     if not orders:
         orders = [{"field": "id", "dir": "asc"}]
     filters.append({"field": "campaign_id", "operator": "eq", "value": id})
-    campaign_dsts = jsonable_encoder(
-        await crud.campaign_dst.get_rows(
-            db=db, skip=skip, limit=limit, filters=filters, orders=orders
-        )
+    campaign_dst_rows = await crud.campaign_dst.get_rows(
+        db=db, skip=skip, limit=limit, filters=filters, orders=orders
     )
+    clicked_pairs = await crud.link.get_clicked_pairs(
+        db,
+        campaign_dsts=campaign_dst_rows,
+    )
+    campaign_dsts = jsonable_encoder(campaign_dst_rows)
     for i in range(len(campaign_dsts)):
+        campaign_dsts[i]["clicked_link"] = (
+            campaign_dst_rows[i].campaign_id,
+            campaign_dst_rows[i].dst_addr,
+        ) in clicked_pairs
         if not campaign_dsts[i]["text"]:
             campaign_dsts[i]["text"] = campaign.msg_template or ""
             for j in range(1, 6):
