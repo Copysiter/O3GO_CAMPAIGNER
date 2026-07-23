@@ -129,6 +129,10 @@ class Settings(BaseSettings):
     AI_OPENROUTER_URL: str = Field(
         "https://openrouter.ai/api/v1/chat/completions", env="AI_OPENROUTER_URL"
     )
+    AI_OPENROUTER_MODELS_URL: str = Field(
+        "https://openrouter.ai/api/v1/models/user",
+        env="AI_OPENROUTER_MODELS_URL",
+    )
     AI_OPENROUTER_API_KEY: str = Field("", env="AI_OPENROUTER_API_KEY")
     AI_OPENROUTER_TIMEOUT: int = Field(60, env="AI_OPENROUTER_TIMEOUT")
     AI_OPENROUTER_MAX_TOKENS: int = Field(1000, env="AI_OPENROUTER_MAX_TOKENS")

@@ -1,6 +1,6 @@
 from typing import Any, List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 
 from sqlalchemy.orm import Session
@@ -8,6 +8,13 @@ from sqlalchemy.orm import Session
 import crud, models, schemas  # noqa
 
 from api import deps  # noqa
+from core.config import settings
+from core.permissions import OPENROUTER_MODEL_PERMISSION
+from services.ai.openrouter import (
+    OpenRouterModelsError,
+    OpenRouterModelsTimeoutError,
+    fetch_openrouter_models,
+)
 from services.android import AndroidService
 
 
@@ -65,6 +72,62 @@ async def get_android_options(
     android = AndroidService()
     data = await android.get_device_options(x_api_key=user.ext_api_key)
     return JSONResponse(data)
+
+
+@router.get('/openrouter/models', response_model=List[schemas.OptionStr])
+async def get_openrouter_model_options(
+    *,
+    user: models.User = Depends(deps.get_current_active_user),
+) -> Any:
+    """Retrieve OpenRouter models available to the configured account."""
+    can_select_model = user.is_superuser or (
+        OPENROUTER_MODEL_PERMISSION in user.permissions
+    )
+    if not can_select_model:
+        return []
+
+    api_key = settings.AI_OPENROUTER_API_KEY.strip()
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail='OpenRouter is not configured',
+        )
+
+    try:
+        models_data = await fetch_openrouter_models(api_key)
+    except OpenRouterModelsTimeoutError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail='OpenRouter model catalog timed out',
+        ) from exc
+    except OpenRouterModelsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail='Unable to load OpenRouter models',
+        ) from exc
+
+    options = {}
+    for model_data in models_data:
+        if not isinstance(model_data, dict):
+            continue
+        model_id = model_data.get('id')
+        if not isinstance(model_id, str) or not model_id.strip():
+            continue
+        model_id = model_id.strip()
+        model_name = model_data.get('name')
+        text = model_name.strip() if isinstance(model_name, str) else ''
+        options.setdefault(model_id, {
+            'text': text or model_id,
+            'value': model_id,
+        })
+
+    return sorted(
+        options.values(),
+        key=lambda option: (
+            option['text'].casefold(),
+            option['value'].casefold(),
+        ),
+    )
 
 
 @router.get('/tag', response_model=List[schemas.OptionInt])

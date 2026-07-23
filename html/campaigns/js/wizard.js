@@ -155,13 +155,100 @@ window.initWizard = function() {
         });
     }
 
+    const emptyModelDataSource = new kendo.data.DataSource({ data: [] });
+    const openRouterModelDataSource = new kendo.data.DataSource({
+        transport: {
+            read: {
+                url: `${api_base_url}/api/v1/options/openrouter/models`,
+                type: 'GET',
+                beforeSend: function (request) {
+                    request.setRequestHeader(
+                        'Authorization',
+                        `${token_type} ${access_token}`
+                    );
+                }
+            }
+        }
+    });
+    let openRouterModelsLoaded = false;
+    let openRouterModelsLoading = false;
+    let modelRequestVersion = 0;
+
     let empty_data = kendo.observable({
         user_id: null,
         data_source: 1,
         data_fields: {},
         rewrite: 0,
-        provider: 'openrouter'
+        provider: 'openrouter',
+        model: null
     })
+
+    function getModelWidget() {
+        return $('#wizard #model').data('kendoDropDownList');
+    }
+
+    function clearSelectedModel() {
+        campaignCreateModel.data.set('model', null);
+        const modelWidget = getModelWidget();
+        if (modelWidget) modelWidget.value('');
+    }
+
+    function setModelLoading(modelWidget, isLoading) {
+        kendo.ui.progress(
+            modelWidget.wrapper.closest('.k-form-field'),
+            isLoading
+        );
+    }
+
+    function syncModelDataSource(provider, resetSelection) {
+        const modelWidget = getModelWidget();
+        if (!modelWidget) return;
+
+        if (resetSelection) clearSelectedModel();
+
+        if (provider !== 'openrouter') {
+            modelRequestVersion += 1;
+            openRouterModelsLoading = false;
+            setModelLoading(modelWidget, false);
+            modelWidget.setDataSource(emptyModelDataSource);
+            modelWidget.enable(false);
+            return;
+        }
+
+        if (modelWidget.dataSource !== openRouterModelDataSource) {
+            modelWidget.setDataSource(openRouterModelDataSource);
+        }
+
+        if (openRouterModelsLoaded) {
+            modelWidget.enable(openRouterModelDataSource.total() > 0);
+            return;
+        }
+        if (openRouterModelsLoading) return;
+
+        const requestVersion = ++modelRequestVersion;
+        openRouterModelsLoading = true;
+        modelWidget.enable(false);
+        setModelLoading(modelWidget, true);
+
+        openRouterModelDataSource.read().then(function () {
+            if (requestVersion !== modelRequestVersion) return;
+
+            openRouterModelsLoading = false;
+            openRouterModelsLoaded = true;
+            setModelLoading(modelWidget, false);
+            if (campaignCreateModel.data.get('provider') === 'openrouter') {
+                modelWidget.enable(openRouterModelDataSource.total() > 0);
+            }
+        }, function () {
+            if (requestVersion !== modelRequestVersion) return;
+
+            openRouterModelsLoading = false;
+            openRouterModelDataSource.data([]);
+            setModelLoading(modelWidget, false);
+            modelWidget.enable(false);
+            kendo.alert('Unable to load OpenRouter models.');
+        });
+    }
 
     function clearData(data, excludeKeys) {
         const keys = Object.keys(data.toJSON());
@@ -186,6 +273,22 @@ window.initWizard = function() {
             if (!value) {
                 delete campaignCreateModel.data[key];
             }
+        }
+        modelRequestVersion += 1;
+        openRouterModelsLoaded = false;
+        openRouterModelsLoading = false;
+        openRouterModelDataSource.data([]);
+        campaignCreateModel.data.set('rewrite', 0);
+        campaignCreateModel.data.set('provider', 'openrouter');
+        campaignCreateModel.data.set('model', null);
+        const providerWidget = $('#wizard #provider').data('kendoDropDownList');
+        if (providerWidget) providerWidget.value('openrouter');
+        const modelWidget = getModelWidget();
+        if (modelWidget) {
+            setModelLoading(modelWidget, false);
+            modelWidget.value('');
+            modelWidget.setDataSource(emptyModelDataSource);
+            modelWidget.enable(false);
         }
     }
 
@@ -505,6 +608,7 @@ window.initWizard = function() {
                         autoClose: true
                     }
                 }, {
+                    id: 'provider',
                     field: 'provider',
                     label: 'Provider',
                     colSpan: 4,
@@ -517,7 +621,11 @@ window.initWizard = function() {
                             ],
                         }),
                         value: 'openrouter',
-                        select: function (e) {},
+                        change: function (e) {
+                            const provider = e.sender.value();
+                            campaignCreateModel.data.set('provider', provider);
+                            syncModelDataSource(provider, true);
+                        },
                         dataTextField: 'text',
                         dataValueField: 'value',
                         valuePrimitive: true,
@@ -526,16 +634,22 @@ window.initWizard = function() {
                         autoClose: true
                     }
                 }, {
+                    id: 'model',
                     field: 'model',
                     label: 'Model',
                     colSpan: 4,
                     editor: 'DropDownList',
                     editorOptions: {
-                        dataSource: new kendo.data.DataSource({
-                            data: [],
-                        }),
-                        value: '',
-                        select: function (e) {},
+                        dataSource: emptyModelDataSource,
+                        autoBind: false,
+                        enable: false,
+                        optionLabel: 'Select model...',
+                        change: function (e) {
+                            campaignCreateModel.data.set(
+                                'model',
+                                e.sender.value() || null
+                            );
+                        },
                         dataTextField: 'text',
                         dataValueField: 'value',
                         valuePrimitive: true,
@@ -798,6 +912,10 @@ window.initWizard = function() {
                 break;
                 case 1:
                     //console.log(campaignCreateModel.data);
+                    syncModelDataSource(
+                        campaignCreateModel.data.get('provider'),
+                        false
+                    );
                     if (campaignCreateModel.data.data_source == 2 && campaignCreateModel.data.data_text && campaignCreateModel.data.data_text.length) {
                         const rows = campaignCreateModel.data.data_text.split(campaignCreateModel.data.data_text_row_sep);
                         const row = rows[campaignCreateModel.data.data_text_row_skip ? campaignCreateModel.data.data_text_row_skip : 0].split(campaignCreateModel.data.data_text_col_sep);

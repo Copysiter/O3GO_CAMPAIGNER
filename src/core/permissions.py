@@ -1,3 +1,6 @@
+OPENROUTER_MODEL_PERMISSION = "campaign.openrouter.model"
+
+
 DEFAULT_PERMISSIONS = [
     {
         'key': 'campaign.read',
@@ -28,6 +31,13 @@ DEFAULT_PERMISSIONS = [
         'key': 'campaign.assign_androids',
         'name': 'Assign Android devices',
         'description': 'Allows manually assigning Android devices to campaigns.',
+    },
+    {
+        'key': OPENROUTER_MODEL_PERMISSION,
+        'name': 'Select OpenRouter model',
+        'description': (
+            'Allows selecting an OpenRouter model for campaign rewrites.'
+        ),
     },
     {
         'key': 'users.read',

@@ -11,6 +11,64 @@ from .base import AIProvider, AIProviderError
 logger = logging.getLogger(__name__)
 
 
+class OpenRouterModelsError(Exception):
+    """OpenRouter model catalog request failed."""
+
+
+class OpenRouterModelsTimeoutError(OpenRouterModelsError):
+    """OpenRouter model catalog request timed out."""
+
+
+def _get_headers(api_key: str) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "X-Title": settings.AI_OPENROUTER_TITLE,
+    }
+
+
+async def fetch_openrouter_models(api_key: str) -> list[dict]:
+    """Return models available to the configured OpenRouter account."""
+    try:
+        async with httpx.AsyncClient(
+            headers=_get_headers(api_key),
+            timeout=settings.AI_OPENROUTER_TIMEOUT,
+        ) as client:
+            response = await client.get(settings.AI_OPENROUTER_MODELS_URL)
+            response.raise_for_status()
+    except httpx.TimeoutException as exc:
+        raise OpenRouterModelsTimeoutError(
+            "OpenRouter model catalog request timed out"
+        ) from exc
+    except httpx.HTTPStatusError as exc:
+        logger.warning(
+            "OpenRouter model catalog returned HTTP %s",
+            exc.response.status_code,
+        )
+        raise OpenRouterModelsError(
+            "OpenRouter model catalog returned an error"
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise OpenRouterModelsError(
+            "Unable to connect to OpenRouter model catalog"
+        ) from exc
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise OpenRouterModelsError(
+            "OpenRouter model catalog returned invalid JSON"
+        ) from exc
+
+    models_data = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(models_data, list):
+        raise OpenRouterModelsError(
+            "OpenRouter model catalog returned an invalid response"
+        )
+
+    return models_data
+
+
 class OpenRouterProvider(AIProvider):
     """OpenRouter provider for cloud AI text generation."""
 
@@ -33,16 +91,13 @@ class OpenRouterProvider(AIProvider):
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client with headers."""
         if self._client is None or self._client.is_closed:
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-                "X-Title": settings.AI_OPENROUTER_TITLE
-            }
             # Устанавливаем max_connections равным размеру батча из настроек
             # чтобы избежать "All connection attempts failed"
             batch_size = settings.AI_OPENROUTER_BATCH_SIZE
             self._client = httpx.AsyncClient(
-                headers=headers, timeout=self.timeout, limits=httpx.Limits(
+                headers=_get_headers(self.api_key),
+                timeout=self.timeout,
+                limits=httpx.Limits(
                     max_keepalive_connections=batch_size,
                     max_connections=batch_size * 2  # x2 для запаса
                 )
