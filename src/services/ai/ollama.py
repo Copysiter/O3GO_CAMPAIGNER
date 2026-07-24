@@ -21,7 +21,7 @@ class OllamaProvider(AIProvider):
             api_key: Ollama API key
             model: Model name
         """
-        super().__init__(model if model else "deepseek-r1:8b")
+        super().__init__(model if model else "gemma4:12b")
         self.api_key = api_key
         self.url = settings.AI_OLLAMA_URL
         self.timeout = settings.AI_OLLAMA_TIMEOUT
