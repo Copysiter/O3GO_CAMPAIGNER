@@ -39,7 +39,7 @@ class PhoneChecker:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:
                 response = await client.post(
-                    f"{self.base_url}/api/v1/check/realtime",
+                    f"{self.base_url}/realtime",
                     json={
                         "phone_number": phone_number,
                         "timeout": self.timeout,
@@ -123,7 +123,7 @@ class PhoneChecker:
         async with httpx.AsyncClient(timeout=30) as client:  # Short timeout for submission
             try:
                 response = await client.post(
-                    f"{self.base_url}/api/v1/check/webhook",
+                    f"{self.base_url}/webhook",
                     json={
                         "phones": phone_numbers,
                         "callback_url": callback_url,
