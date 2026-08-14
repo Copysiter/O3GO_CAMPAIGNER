@@ -639,8 +639,7 @@ async def read_campaign_campaign_dsts(
         db=db, skip=skip, limit=limit, filters=filters, orders=orders
     )
     clicked_pairs = await crud.link.get_clicked_pairs(
-        db,
-        campaign_dsts=campaign_dst_rows,
+        db, campaign_dsts=campaign_dst_rows
     )
     campaign_dsts = jsonable_encoder(campaign_dst_rows)
     for i in range(len(campaign_dsts)):
@@ -715,6 +714,11 @@ async def download_campaign_report(
     if not campaign_dsts:
         raise HTTPException(status_code=404, detail="No campaign messages found")
 
+    clicked_pairs = await crud.link.get_clicked_pairs(
+        db,
+        campaign_dsts=campaign_dsts,
+    )
+
     output = BytesIO()
     workbook = openpyxl.Workbook()
     sheet = workbook.active
@@ -725,6 +729,7 @@ async def download_campaign_report(
         "Номер телефона",
         "Время отправки",
         "Статус",
+        "Клики",
         "Сообщение",
     ]
     sheet.append(headers)
@@ -741,6 +746,7 @@ async def download_campaign_report(
                 dst.dst_addr,
                 dst.sent_ts.strftime("%Y-%m-%d %H:%M:%S") if dst.sent_ts else "",
                 schemas.CampaignDstStatus.name(dst.status),
+                (dst.campaign_id, dst.dst_addr) in clicked_pairs,
                 ILLEGAL_CHARACTERS_RE.sub("", (dst.text or text)),
             ]
         )
