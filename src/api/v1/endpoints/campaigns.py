@@ -746,7 +746,7 @@ async def download_campaign_report(
                 dst.dst_addr,
                 dst.sent_ts.strftime("%Y-%m-%d %H:%M:%S") if dst.sent_ts else "",
                 schemas.CampaignDstStatus.name(dst.status),
-                (dst.campaign_id, dst.dst_addr) in clicked_pairs,
+                int((dst.campaign_id, dst.dst_addr) in clicked_pairs),
                 ILLEGAL_CHARACTERS_RE.sub("", (dst.text or text)),
             ]
         )
