@@ -178,6 +178,7 @@ window.initWizard = function() {
         user_id: null,
         data_source: 1,
         data_fields: {},
+        auto_shorten_links: false,
         rewrite: 0,
         provider: 'openrouter',
         model: null
@@ -278,6 +279,7 @@ window.initWizard = function() {
         openRouterModelsLoaded = false;
         openRouterModelsLoading = false;
         openRouterModelDataSource.data([]);
+        campaignCreateModel.data.set('auto_shorten_links', false);
         campaignCreateModel.data.set('rewrite', 0);
         campaignCreateModel.data.set('provider', 'openrouter');
         campaignCreateModel.data.set('model', null);
@@ -448,7 +450,7 @@ window.initWizard = function() {
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
                 }, {
-                    field: 'text',
+                    field: 'check_dst_label',
                     colSpan: 6,
                     label: false,
                     editor: "<div class='mt-3'>Check DST Numbers:</div>",
@@ -569,7 +571,30 @@ window.initWizard = function() {
                     },
                     validation: { required: false }
                 }, {
-                    field: 'text',
+                    field: "sep9",
+                    colSpan: 12,
+                    label: false,
+                    editor: "<div class='separator mx-n15'></div>"
+                }, {
+                    field: 'auto_shorten_links_label',
+                    colSpan: 6,
+                    label: false,
+                    editor: "<div class='mt-3'>Automatic link shortening:</div>",
+                }, {
+                    field: 'auto_shorten_links',
+                    label: '',
+                    editor: 'Switch',
+                    editorOptions: {
+                        width: 70,
+                    },
+                    colSpan: 6,
+                }, {
+                    field: "sep10",
+                    colSpan: 12,
+                    label: false,
+                    editor: "<div class='separator mx-n15'></div>"
+                }, {
+                    field: 'unique_shorten_link_label',
                     colSpan: 6,
                     label: false,
                     editor: "<div class='mt-3'>Personal unique shortened link:</div>",
@@ -582,7 +607,7 @@ window.initWizard = function() {
                     },
                     colSpan: 6,
                 }, {
-                    field: "sep9",
+                    field: "sep11",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"

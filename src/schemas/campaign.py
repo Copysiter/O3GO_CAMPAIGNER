@@ -60,6 +60,7 @@ class CampaignRequest(CampaignBase):
     model: Optional[str] = None
     prompt: Optional[str] = None
     check_dst: Optional[bool] = False
+    auto_shorten_links: bool = False
     unique_shorten_link: bool = False
     clicker_url: Optional[str] = None
     clicker_goal: Optional[int] = None

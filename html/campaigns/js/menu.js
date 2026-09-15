@@ -61,6 +61,18 @@ window.initContextMenu = function() {
                 cssClass: "k-separator",
             },
             {
+                text: "Retry Undelivered",
+                cssClass: "campaignRetryUndelivered",
+                spriteCssClass: "famfamfam-silk page_copy",
+                attr: {
+                    "onclick": "retryUndeliveredCampaign();"
+                }
+            },
+            {
+                text: "",
+                cssClass: "k-separator",
+            },
+            {
                 text: "Delete Campaign",
                 cssClass: "campaignDelete",
                 //spriteCssClass: "famfamfam-silk cut_red_ broom",
@@ -100,6 +112,11 @@ window.initContextMenu = function() {
                 menu.enable("li.campaignDetail", true);
                 menu.enable("li.campaignEdit", true);
             }
+            menu.enable(
+                "li.campaignRetryUndelivered",
+                selectedCampaignItems.length === 1 &&
+                    Number(selectedCampaignItem.msg_undelivered) > 0
+            );
         },
         deactivate: function(e) {
         },

@@ -204,6 +204,56 @@ window.updateCampaignStatus = function(status) {
     }
 }
 
+window.retryUndeliveredCampaign = function() {
+    if (!window.selectedCampaignItem || window.selectedCampaignItems.length !== 1) {
+        return;
+    }
+
+    kendo.confirm(
+        "<div style='padding:5px 10px 0 10px;'>Create a new Campaign from undelivered messages?</div>"
+    ).done(function() {
+        $.ajax({
+            url: `${api_base_url}/api/v1/campaigns/${window.selectedCampaignItem.id}/retry`,
+            type: "POST",
+            beforeSend: function(xhr) {
+                xhr.setRequestHeader("Authorization", `${token_type} ${access_token}`);
+            }
+        }).done(function(data) {
+            if (!data.id) {
+                return;
+            }
+            $("#campaign-grid").data("kendoGrid").dataSource.read();
+            $("#campaign-notification").kendoNotification({
+                position: {
+                    top: 54,
+                    right: 8
+                },
+                width: "auto",
+                allowHideAfter: 1000,
+                autoHideAfter: 5000
+            });
+            $("#campaign-notification").getKendoNotification().show(
+                `Campaign "${data.name}" has been created.`,
+                "success"
+            );
+        }).fail(function(jqXHR) {
+            const message = jqXHR.responseJSON && jqXHR.responseJSON.detail
+                ? jqXHR.responseJSON.detail
+                : "Campaign retry failed.";
+            $("#campaign-notification").kendoNotification({
+                position: {
+                    top: 54,
+                    right: 8
+                },
+                width: "auto",
+                allowHideAfter: 1000,
+                autoHideAfter: 5000
+            });
+            $("#campaign-notification").getKendoNotification().show(message, "error");
+        });
+    });
+}
+
 window.campaignDelete = function() {
     if (window.selectedCampaignItems.length > 1) {
         kendo.confirm(`<div style='padding:5px 10px 0 10px;'>Are you sure you want to delete Campaigns ?</div>`).done(function() {

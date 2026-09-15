@@ -11,7 +11,9 @@ from datetime import datetime, timedelta
 from io import BytesIO
 from celery import group
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, Request, HTTPException
+from fastapi import (
+    APIRouter, BackgroundTasks, Body, Depends, Request, HTTPException, status
+)
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.encoders import jsonable_encoder
 
@@ -26,6 +28,35 @@ from services.android import AndroidService
 from services.link import create_clicker_task
 
 router = APIRouter()
+
+AUTO_SHORTEN_TOKEN_RE = re.compile(
+    r"\[short\].*?\[/short\]|https?://[^\s<>\[\]\"']+",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def mark_links_for_shortening(text: str) -> str:
+    """Wrap unmarked HTTP(S) URLs in the existing shortening syntax."""
+    def replace_token(match: re.Match) -> str:
+        token = match.group(0)
+        if token.lower().startswith("[short]"):
+            return token
+
+        url = token
+        suffix = ""
+        while url and url[-1] in ".,!?;:":
+            suffix = url[-1] + suffix
+            url = url[:-1]
+        while url.endswith(")") and url.count(")") > url.count("("):
+            suffix = ")" + suffix
+            url = url[:-1]
+        while url.endswith("}") and url.count("}") > url.count("{"):
+            suffix = "}" + suffix
+            url = url[:-1]
+
+        return f"[short]{url}[/short]{suffix}"
+
+    return AUTO_SHORTEN_TOKEN_RE.sub(replace_token, text)
 
 
 def extract_links(msg_template: str, dst_data: Dict) -> List[str]:
@@ -314,6 +345,8 @@ async def create_campaign(
                     text_with_fields = text_with_fields.replace(
                         "{" + field_name + "}", dst_data[field_name]
                     )
+            if campaign_in.auto_shorten_links:
+                text_with_fields = mark_links_for_shortening(text_with_fields)
             dst_data["text"] = text_with_fields
 
         # Проверяем наличие ссылок для сокращения
@@ -579,6 +612,32 @@ async def check_campaign_dst(
         job.apply_async()
 
     return campaign
+
+
+@router.post(
+    "/{id}/retry",
+    response_model=schemas.Campaign,
+    status_code=status.HTTP_201_CREATED,
+)
+async def retry_campaign(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_user),
+    id: int,
+) -> Any:
+    """Create a campaign containing the source campaign's undelivered messages."""
+    campaign = await crud.campaign.get(db=db, id=id)
+    if not campaign or (
+        campaign.user_id != current_user.id and not current_user.is_superuser
+    ):
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    retry = await crud.campaign.retry_undelivered(db=db, source=campaign)
+    if not retry:
+        raise HTTPException(
+            status_code=404, detail="No undelivered messages found"
+        )
+    return retry
 
 
 @router.get("/{id}", response_model=schemas.Campaign)
