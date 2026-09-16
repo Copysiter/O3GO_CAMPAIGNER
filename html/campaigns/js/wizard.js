@@ -832,7 +832,7 @@ window.initWizard = function() {
                     editorOptions: {
                         dataSource: new kendo.data.DataSource({
                             data: [
-                                { text: 'Web', value: 'web' },
+                                // { text: 'Web', value: 'web' },
                                 { text: 'Mobile', value: 'mobile' }
                             ],
                         }),
