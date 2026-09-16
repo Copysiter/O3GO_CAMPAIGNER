@@ -1,4 +1,5 @@
 OPENROUTER_MODEL_PERMISSION = "campaign.openrouter.model"
+AUTO_SHORTEN_LINKS_PERMISSION = "campaign.auto_shorten_links"
 
 
 DEFAULT_PERMISSIONS = [
@@ -37,6 +38,13 @@ DEFAULT_PERMISSIONS = [
         'name': 'Select OpenRouter model',
         'description': (
             'Allows selecting an OpenRouter model for campaign rewrites.'
+        ),
+    },
+    {
+        'key': AUTO_SHORTEN_LINKS_PERMISSION,
+        'name': 'Automatically shorten campaign links',
+        'description': (
+            'Allows automatically detecting and shortening links in campaigns.'
         ),
     },
     {

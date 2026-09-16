@@ -4,6 +4,8 @@ window.initWizard = function() {
     const canAssign = function (permissionSuffix) {
         return currentUser.is_superuser || permissions.includes(`campaign.assign_${permissionSuffix}`);
     };
+    const canAutoShortenLinks = currentUser.is_superuser ||
+        permissions.includes('campaign.auto_shorten_links');
 
     const user_field = window.isAuth.user.is_superuser ? [{
         field: "sep0",
@@ -570,7 +572,7 @@ window.initWizard = function() {
                         rows: 8
                     },
                     validation: { required: false }
-                }, {
+                }, ...(canAutoShortenLinks ? [{
                     field: "sep9",
                     colSpan: 12,
                     label: false,
@@ -588,7 +590,7 @@ window.initWizard = function() {
                         width: 70,
                     },
                     colSpan: 6,
-                }, {
+                }] : []), {
                     field: "sep10",
                     colSpan: 12,
                     label: false,
@@ -607,7 +609,7 @@ window.initWizard = function() {
                     },
                     colSpan: 6,
                 }, {
-                    field: "sep11",
+                    field: "sep12",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -693,7 +695,7 @@ window.initWizard = function() {
                     },
                     validation: { required: false }
                 }, {
-                    field: "sep10",
+                    field: "sep14",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -709,7 +711,7 @@ window.initWizard = function() {
                 grid: { cols: 12, gutter: "15px 10px" },
                 formData: campaignCreateModel.data,
                 items: [{
-                    field: "sep11",
+                    field: "sep15",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -747,7 +749,7 @@ window.initWizard = function() {
                     },
                     colSpan: 4
                 }, {
-                    field: "sep12",
+                    field: "sep16",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -770,7 +772,7 @@ window.initWizard = function() {
                     },
                     colSpan: 6
                 }, {
-                    field: "sep13",
+                    field: "sep17",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -800,7 +802,7 @@ window.initWizard = function() {
                     colSpan: 12,
                     editor: "<div id='campaign-create-schedule' class='schedule'></div>",
                 }, {
-                    field: "sep14",
+                    field: "sep18",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -814,7 +816,7 @@ window.initWizard = function() {
                 grid: {cols: 12, gutter: "15px 10px"},
                 formData: campaignCreateModel.data,
                 items: [{
-                    field: "sep15",
+                    field: "sep19",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -902,7 +904,7 @@ window.initWizard = function() {
                         timeFormat: "HH:mm"
                     }
                 }, {
-                    field: "sep16",
+                    field: "sep20",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"
@@ -920,7 +922,7 @@ window.initWizard = function() {
                     },
                     colSpan: 6,
                 }, {
-                    field: "sep17",
+                    field: "sep21",
                     colSpan: 12,
                     label: false,
                     editor: "<div class='separator mx-n15'></div>"

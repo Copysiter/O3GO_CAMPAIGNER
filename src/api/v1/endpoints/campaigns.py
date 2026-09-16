@@ -20,6 +20,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
+from core.permissions import AUTO_SHORTEN_LINKS_PERMISSION
 from api import deps
 from tasks import prepare_campaign, check_dst_batch
 
@@ -57,6 +58,10 @@ def mark_links_for_shortening(text: str) -> str:
         return f"[short]{url}[/short]{suffix}"
 
     return AUTO_SHORTEN_TOKEN_RE.sub(replace_token, text)
+
+
+def can_auto_shorten_links(user: models.User) -> bool:
+    return user.is_superuser or AUTO_SHORTEN_LINKS_PERMISSION in user.permissions
 
 
 def extract_links(msg_template: str, dst_data: Dict) -> List[str]:
@@ -201,6 +206,12 @@ async def create_campaign(
     """
     Create new campaign.
     """
+
+    if campaign_in.auto_shorten_links and not can_auto_shorten_links(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions to automatically shorten links",
+        )
 
     ts = datetime.utcnow()
     campaign_user_id = campaign_in.user_id if campaign_in.user_id else current_user.id
