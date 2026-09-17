@@ -2,7 +2,13 @@ from typing import Optional, List
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, model_serializer
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    field_validator,
+)
 
 from .user import User
 from .tag import Tag
@@ -45,7 +51,7 @@ class CampaignRequest(CampaignBase):
     data_text_col_sep: Optional[str] = ';'
     data_text_row_skip: Optional[int] = 0
     data_fields: Optional[dict] = {
-        'dst_addr' : 0,
+        'dst_addr': 0,
         'field_1': 1,
         'field_2': 2,
         'field_3': 3
@@ -89,10 +95,50 @@ class CampaignCreate(CampaignUpdate):
     msg_total: Optional[int] = 0
 
 
+class ExternalCampaignCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1)
+    msg_template: Optional[str] = None
+    webhook_url: Optional[HttpUrl] = None
+    androids: list[str] = Field(default_factory=list)
+    api_keys: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    msg_attempts: int = Field(default=1, ge=1)
+    msg_sending_timeout: Optional[int] = Field(default=None, gt=0)
+    msg_status_timeout: Optional[int] = Field(default=None, gt=0)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Name must not be empty")
+        return value
+
+    @field_validator("androids", "api_keys", "tags")
+    @classmethod
+    def normalize_relation_values(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip() for value in values if value.strip()]
+        return list(dict.fromkeys(normalized))
+
+
+class ExternalCampaignResponse(BaseModel):
+    id: int
+    name: Optional[str] = None
+    status: int
+    create_ts: Optional[datetime] = None
+    start_ts: Optional[datetime] = None
+    stop_ts: Optional[datetime] = None
+    androids: list[str] = Field(default_factory=list)
+    api_keys: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+
+
 # Properties shared by models stored in DB
 class CampaignInDBBase(CampaignBase):
     id: int
-    
+
     class Config:
         from_attributes = True
 
@@ -114,9 +160,11 @@ class Campaign(CampaignInDBBase):
     android_names: list = []
     tags: List[Tag] = []
 
+
 # Properties stored in DB
 class CampaignInDB(CampaignInDBBase):
     pass
+
 
 # List to return to client
 class CampaignRows(BaseModel):

@@ -21,6 +21,8 @@ from .campaign import (
     CampaignInDB,
     CampaignUpdate,
     CampaignRows,
+    ExternalCampaignCreate,
+    ExternalCampaignResponse,
 )  # noqa
 from .campaign_dst import (
     CampaignDst,

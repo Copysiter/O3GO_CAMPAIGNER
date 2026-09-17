@@ -35,6 +35,15 @@ async def send(
                 detail=f'Campaign not found '
                        f'(campaign_id={message.campaign_id})'
             )
+        if campaign.status in (
+            schemas.CampaignStatus.STOPPED,
+            schemas.CampaignStatus.COMPLETE,
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=f'Campaign does not accept messages '
+                       f'(campaign_id={message.campaign_id})'
+            )
         obj_in = message.model_dump(exclude_none=True)
         obj_in['ext_id'] = str(obj_in.pop('id')) if 'id' in obj_in else None
         obj_in['attempts'] = campaign.msg_attempts
@@ -55,7 +64,7 @@ async def send(
             msg_total=models.Campaign.msg_total + case(*[
                 (models.Campaign.id == campaign_id, count)
                 for campaign_id, count in campaigns_count.items()
-            ], else_=0), status = schemas.CampaignStatus.RUNNING
+            ], else_=0)
         )
     )
     await db.execute(statement)

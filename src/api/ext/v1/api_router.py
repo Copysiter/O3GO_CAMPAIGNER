@@ -1,12 +1,31 @@
 from fastapi import APIRouter
 
-from .endpoints import messeges, messages, webhook, teleraptor, android, account, links, hs  # noqa
+from .endpoints import (  # noqa
+    account,
+    android,
+    campaigns,
+    hs,
+    links,
+    messages,
+    messeges,
+    teleraptor,
+    webhook,
+)
 
 api_router = APIRouter()
 
-api_router.include_router(messeges.router, prefix="/messeges", tags=["Messages (OLD)"])
-api_router.include_router(messages.router, prefix="/messages", tags=["Messages"])
-api_router.include_router(webhook.router, prefix="/webhook", tags=["Test Webhook"])
+api_router.include_router(
+    messeges.router, prefix="/messeges", tags=["Messages (OLD)"]
+)
+api_router.include_router(
+    messages.router, prefix="/messages", tags=["Messages"]
+)
+api_router.include_router(
+    campaigns.router, prefix="/campaigns", tags=["Campaigns"]
+)
+api_router.include_router(
+    webhook.router, prefix="/webhook", tags=["Test Webhook"]
+)
 
 api_router.include_router(
     teleraptor.router, prefix="/teleraptor/message", tags=["TeleRaptor"]

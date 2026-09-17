@@ -118,7 +118,7 @@ async def get_messages(
                 status_code=404, detail='Android Device not found'
             )
         message = await services.message.get_next_processing(
-            session=session, user=user, api_key=db_obj.device,
+            session=session, user=user, device=db_obj.device,
             status=schemas.CampaignDstStatus.WAITING,
             now=now, weekday=weekday, hour=hour
         )
