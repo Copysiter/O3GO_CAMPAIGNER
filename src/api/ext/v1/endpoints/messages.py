@@ -176,3 +176,23 @@ async def set_status(
             status_code=getattr(e, 'status_code', 500),
             detail=f'{type(e).__name__}: {e}'
         )
+
+
+@router.get('/ban')
+async def ban(
+    *, session: AsyncSession = Depends(deps.get_db), id: int,
+    user = Depends(deps.get_user_by_api_key)
+) -> Any:
+    """Register a WhatsApp account ban associated with a message."""
+    try:
+        return await services.message.ban_processing(
+            session=session, user=user, id=id
+        )
+    except HTTPException:
+        await session.rollback()
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500, detail=f'{type(e).__name__}: {e}'
+        )

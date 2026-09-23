@@ -98,6 +98,7 @@ class Campaign(Base):
     stop_ts = Column(DateTime, index=True)
     order = Column(Integer, index=True)
     status  = Column(Integer, index=True)
+    ban_count = Column(Integer, nullable=False, index=True, default=0, server_default=text("0"))
     user = relationship('User', lazy='joined')
 
     keys = relationship(

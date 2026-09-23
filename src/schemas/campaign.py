@@ -145,6 +145,7 @@ class CampaignInDBBase(CampaignBase):
 
 # Properties to return to client
 class Campaign(CampaignInDBBase):
+    ban_count: int = 0
     msg_total: Optional[int] = 0
     msg_sent: Optional[int] = 0
     msg_delivered: Optional[int] = 0

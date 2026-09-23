@@ -43,6 +43,7 @@ class CampaignDstUpdate(CampaignDstBase):
 # Properties shared by models stored in DB
 class CampaignDstInDBBase(CampaignDstBase):
     id: int
+    ban_count: int = 0
     
     class Config:
         from_attributes = True

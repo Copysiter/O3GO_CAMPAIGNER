@@ -53,6 +53,7 @@ window.initMessageGrid = function(id) {
                         field_2: { type: 'string' },
                         field_3: { type: 'string' },
                         status: { type: 'number' },
+                        ban_count: { type: 'number' },
                         create_ts: { type: 'date' },
                         sent_ts: { type: 'date' },
                         expire_ts: { type: 'date' },
@@ -220,6 +221,20 @@ window.initMessageGrid = function(id) {
                 title: 'Attempts',
                 filterable: false,
                 sortable: false
+            },
+            {
+                field: 'ban_count',
+                title: 'Bans',
+                width: '90px',
+                filterable: {
+                    operators: {
+                        number: {
+                            eq: 'Equal to',
+                            gt: 'Greater than',
+                            gte: 'At least'
+                        }
+                    }
+                }
             },
             {
                 field: 'text',

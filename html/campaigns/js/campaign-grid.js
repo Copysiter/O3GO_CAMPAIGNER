@@ -80,6 +80,7 @@ window.initCampaignGrid = function() {
                         id: { type: 'string' },
                         name: { type: 'string' },
                         status: { type: 'number' },
+                        ban_count: { type: 'number' },
                         user_id: { type: 'number' },
                         msg_template: { type: 'string' },
 
@@ -185,6 +186,20 @@ window.initCampaignGrid = function() {
                         } else {
                             //handle the other checkboxes
                             return "<div class=''><label class='d-flex align-items-center py-8 ps-3 border-bottom cursor-pointer'><input type='checkbox' name='" + e.field + "' value='#=value#' class='k-checkbox k-checkbox-md k-rounded-md'/><span class='ms-8'>#=text#</span></label></div>"
+                        }
+                    }
+                }
+            },
+            {
+                field: 'ban_count',
+                title: 'Bans',
+                width: '90px',
+                filterable: {
+                    operators: {
+                        number: {
+                            eq: 'Equal to',
+                            gt: 'Greater than',
+                            gte: 'At least'
                         }
                     }
                 }

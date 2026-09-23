@@ -498,8 +498,62 @@ FROM upd u
 JOIN upd_campaign uc ON uc.id = u.campaign_id
 """)
 
+SQL_BAN_PROCESSING = text("""
+WITH upd AS (
+    UPDATE campaign_dst d
+    SET ban_count = d.ban_count + 1
+    FROM campaign c
+    WHERE d.id = :id
+      AND c.id = d.campaign_id
+      {USER_CLAUSE}
+    RETURNING d.id, d.campaign_id, d.status, d.ban_count
+),
+upd_campaign AS (
+    UPDATE campaign c
+    SET ban_count = c.ban_count + 1
+    FROM upd u
+    WHERE c.id = u.campaign_id
+    RETURNING c.id, c.ban_count AS campaign_ban_count
+)
+SELECT u.id, u.campaign_id, u.status, u.ban_count, uc.campaign_ban_count
+FROM upd u
+JOIN upd_campaign uc ON uc.id = u.campaign_id
+""")
+
 
 # ================== Python API ==================
+
+async def ban_processing(
+    session: AsyncSession,
+    user: models.User,
+    *,
+    id: int,
+) -> dict[str, Any]:
+    """Count one ban event without changing the message or campaign status."""
+    sql = text(
+        SQL_BAN_PROCESSING.text.replace(
+            "{USER_CLAUSE}",
+            "AND c.user_id = :user_id" if not user.is_superuser else "",
+        )
+    )
+    result = await session.execute(
+        sql,
+        {
+            "id": id,
+            "user_id": user.id,
+        },
+    )
+    row = result.mappings().first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Message not found")
+    await session.commit()
+    return {
+        "id": row["id"],
+        "campaign_id": row["campaign_id"],
+        "status": schemas.CampaignDstStatus.name(row["status"]).lower(),
+        "ban_count": row["ban_count"],
+        "campaign_ban_count": row["campaign_ban_count"],
+    }
 
 async def get_next_processing(
     session: AsyncSession,
