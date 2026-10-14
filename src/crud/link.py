@@ -37,19 +37,48 @@ class CRUDLink(CRUDBase[Link, LinkCreate, LinkCreate]):
         if not pairs:
             return set()
 
+        # PostgreSQL/asyncpg has a limit on the number of bind parameters
+        # in one statement. A tuple IN over 18k recipients produces 36k+
+        # parameters, so split the query into safe batches.
+        pair_list = list(pairs)
+        batch_size = 10_000
+        clicked_pairs: set[tuple[int, str]] = set()
+
+        for i in range(0, len(pair_list), batch_size):
+            batch = pair_list[i:i + batch_size]
+            statement = (
+                select(Link.campaign_id, Link.dst_addr)
+                .where(
+                    tuple_(Link.campaign_id, Link.dst_addr).in_(batch),
+                    Link.clicks > 0,
+                )
+                .distinct()
+            )
+            result = await db.execute(statement)
+            clicked_pairs.update(
+                (row.campaign_id, row.dst_addr)
+                for row in result.all()
+            )
+
+        return clicked_pairs
+
+    async def get_campaign_clicked_recipients(
+        self,
+        db: AsyncSession,
+        *,
+        campaign_id: int,
+    ) -> set[str]:
+        """Return recipients with clicked links for a full campaign report."""
         statement = (
-            select(Link.campaign_id, Link.dst_addr)
+            select(Link.dst_addr)
             .where(
-                tuple_(Link.campaign_id, Link.dst_addr).in_(list(pairs)),
+                Link.campaign_id == campaign_id,
                 Link.clicks > 0,
             )
             .distinct()
         )
         result = await db.execute(statement)
-        return {
-            (row.campaign_id, row.dst_addr)
-            for row in result.all()
-        }
+        return {dst_addr for dst_addr in result.scalars().all() if dst_addr}
 
     async def click(
         self,

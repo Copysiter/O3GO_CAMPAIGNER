@@ -784,9 +784,9 @@ async def download_campaign_report(
     if not campaign_dsts:
         raise HTTPException(status_code=404, detail="No campaign messages found")
 
-    clicked_pairs = await crud.link.get_clicked_pairs(
+    clicked_recipients = await crud.link.get_campaign_clicked_recipients(
         db,
-        campaign_dsts=campaign_dsts,
+        campaign_id=campaign_id,
     )
 
     output = BytesIO()
@@ -816,7 +816,7 @@ async def download_campaign_report(
                 dst.dst_addr,
                 dst.sent_ts.strftime("%Y-%m-%d %H:%M:%S") if dst.sent_ts else "",
                 schemas.CampaignDstStatus.name(dst.status),
-                int((dst.campaign_id, dst.dst_addr) in clicked_pairs),
+                int(dst.dst_addr in clicked_recipients),
                 ILLEGAL_CHARACTERS_RE.sub("", (dst.text or text)),
             ]
         )
