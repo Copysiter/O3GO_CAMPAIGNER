@@ -374,6 +374,11 @@ html, body {
   -webkit-line-clamp: 5;
 }
 
+.reply_text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .short_text {
   min-width: 249px;
   max-width: 320px;

@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Float, text as sql_text
+from sqlalchemy import (
+    Column, ForeignKey, Integer, String, Text, DateTime, Float, text as sql_text,
+)
 from sqlalchemy.orm import relationship
 
 from db.base_class import Base
@@ -27,6 +29,8 @@ class CampaignDst(Base):
     field_4 = Column(String, index=True)
     field_5 = Column(String, index=True)
     text = Column(String, index=True)
+    reply_text = Column(Text, nullable=True)
+    reply_ts = Column(DateTime, nullable=True)
     attempts = Column(Integer, index=True, default=1)
     ban_count = Column(Integer, nullable=False, index=True, default=0, server_default=sql_text("0"))
     status = Column(Integer, index=True, default=0)

@@ -700,7 +700,9 @@ async def read_campaign_campaign_dsts(
     Get campaign campaign_dsts.
     """
     campaign = await crud.campaign.get(db=db, id=id)
-    if not campaign:
+    if not campaign or (
+        campaign.user_id != current_user.id and not current_user.is_superuser
+    ):
         raise HTTPException(status_code=404, detail="Campaign not found")
     if not orders:
         orders = [{"field": "id", "dir": "asc"}]

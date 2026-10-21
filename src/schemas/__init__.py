@@ -9,7 +9,7 @@ from .permission import (
 )  # noqa
 from .user import User, UserCreate, UserInDB, UserUpdate, UserRows  # noqa
 from .tag import Tag, TagCreate, TagInDB, TagUpdate, TagRows  # noqa
-from .message import MessageCreate, Message  # noqa
+from .message import MessageCreate, Message, MessageReply  # noqa
 from .webhook import WebhookRequest, WebhookResponse  # noqa
 from .option import OptionStr, OptionInt, OptionBool  # noqa
 from .status import CampaignStatus, CampaignDstStatus, AccountStatus  # noqa

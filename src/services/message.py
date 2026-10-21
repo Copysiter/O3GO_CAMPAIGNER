@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import text
@@ -521,7 +521,77 @@ JOIN upd_campaign uc ON uc.id = u.campaign_id
 """)
 
 
+SQL_GET_REPLY_FOR_UPDATE = text("""
+SELECT d.id, d.campaign_id, d.reply_text, d.reply_ts
+FROM campaign_dst d
+JOIN campaign c ON c.id = d.campaign_id
+WHERE d.id = :id
+  {USER_CLAUSE}
+FOR UPDATE OF d
+""")
+
+SQL_UPDATE_REPLY = text("""
+UPDATE campaign_dst
+SET reply_text = :reply_text, reply_ts = :reply_ts
+WHERE id = :id
+""")
+
+
 # ================== Python API ==================
+
+async def reply_processing(
+    session: AsyncSession,
+    user: models.User,
+    *,
+    id: int,
+    reply_text: str,
+    reply_ts: Optional[datetime] = None,
+) -> dict[str, Any]:
+    """Store only the latest reply, without changing delivery state.
+
+    Lock the destination until commit so concurrent callbacks cannot overwrite
+    a newer reply with an older one. Database timestamps are naive UTC, like
+    the other CampaignDst timestamps; the response explicitly includes UTC.
+    """
+    if not reply_text.strip():
+        raise HTTPException(status_code=422, detail="Reply text must not be blank")
+
+    ts = reply_ts if reply_ts is not None else datetime.utcnow()
+    if ts.tzinfo is not None:
+        ts = ts.astimezone(timezone.utc).replace(tzinfo=None)
+
+    sql = text(
+        SQL_GET_REPLY_FOR_UPDATE.text.replace(
+            "{USER_CLAUSE}",
+            "AND c.user_id = :user_id" if not user.is_superuser else "",
+        )
+    )
+    result = await session.execute(sql, {"id": id, "user_id": user.id})
+    row = result.mappings().first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    stored_text, stored_ts = row["reply_text"], row["reply_ts"]
+    if stored_ts == ts and stored_text != reply_text:
+        raise HTTPException(
+            status_code=409,
+            detail="A different reply with this timestamp is already stored",
+        )
+    if stored_ts is None or ts > stored_ts:
+        await session.execute(
+            SQL_UPDATE_REPLY,
+            {"id": id, "reply_text": reply_text, "reply_ts": ts},
+        )
+        stored_text, stored_ts = reply_text, ts
+
+    await session.commit()
+    return {
+        "id": row["id"],
+        "campaign_id": row["campaign_id"],
+        "reply_text": stored_text,
+        "reply_ts": stored_ts.replace(tzinfo=timezone.utc),
+    }
+
 
 async def ban_processing(
     session: AsyncSession,

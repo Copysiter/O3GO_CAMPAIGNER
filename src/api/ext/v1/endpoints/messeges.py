@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Any, Optional, Literal, List
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import text, insert, update, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -186,4 +186,41 @@ async def ban(
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f'{type(e).__name__}: {e}'
+        )
+
+
+@router.get('/reply', response_model=schemas.MessageReply)
+async def reply(
+    *,
+    response: Response,
+    session: AsyncSession = Depends(deps.get_db),
+    id: int = Query(..., gt=0, description="Internal CampaignDst.id"),
+    text: str = Query(..., min_length=1, max_length=10000),
+    ts: Optional[datetime] = Query(
+        None,
+        description="Reply time in ISO 8601; defaults to current UTC time. "
+                    "A timestamp without a timezone is treated as UTC.",
+    ),
+    user = Depends(deps.get_user_by_api_key),
+) -> Any:
+    """Save the latest reply (this GET changes data).
+
+    Older replies are ignored. Identical text and timestamp are idempotent;
+    different text with the same timestamp returns 409.
+    """
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        return await services.message.reply_processing(
+            session=session, user=user, id=id, reply_text=text, reply_ts=ts,
+        )
+    except HTTPException as exc:
+        await session.rollback()
+        exc.headers = {**(exc.headers or {}), "Cache-Control": "no-store"}
+        raise
+    except Exception:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save message reply",
+            headers={"Cache-Control": "no-store"},
         )

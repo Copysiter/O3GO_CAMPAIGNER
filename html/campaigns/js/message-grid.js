@@ -49,6 +49,8 @@ window.initMessageGrid = function(id) {
                         id: { type: 'number' },
                         dst_addr: { type: 'string' },
                         text: { type: 'string' },
+                        reply_text: { type: 'string' },
+                        reply_ts: { type: 'date' },
                         field_1: { type: 'string' },
                         field_2: { type: 'string' },
                         field_3: { type: 'string' },
@@ -247,6 +249,26 @@ window.initMessageGrid = function(id) {
                             </div>`
                 },
                 sortable: false,
+                minWidth: 480,
+                maxWidth: 640
+            },
+            {
+                field: 'reply_text',
+                title: 'Reply',
+                template: function(item) {
+                    if (!item.reply_text) return '';
+                    const reply = kendo.htmlEncode(item.reply_text);
+                    return `<div class="long_text reply_text" title="${reply}">${reply}</div>`;
+                },
+                sortable: false,
+                filterable: {
+                    operators: {
+                        string: {
+                            contains: 'Contains',
+                            eq: 'Equal to'
+                        }
+                    }
+                },
                 minWidth: 480,
                 maxWidth: 640
             }, {

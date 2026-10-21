@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, Union
 from pydantic import BaseModel
 
@@ -27,3 +28,12 @@ class Message(MessageBase):
     dst_addr: Union[str, int]
     text: str
     status: Optional[str] = None
+
+
+class MessageReply(BaseModel):
+    """The latest reply stored for an outgoing message."""
+
+    id: int
+    campaign_id: int
+    reply_text: str
+    reply_ts: datetime

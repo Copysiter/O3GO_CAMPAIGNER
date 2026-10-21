@@ -44,6 +44,8 @@ class CampaignDstUpdate(CampaignDstBase):
 class CampaignDstInDBBase(CampaignDstBase):
     id: int
     ban_count: int = 0
+    reply_text: Optional[str] = None
+    reply_ts: Optional[datetime] = None
     
     class Config:
         from_attributes = True
