@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Any, Optional, Literal, List
+from typing import Any, Optional, Literal, List, Union
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -189,12 +189,26 @@ async def ban(
         )
 
 
-@router.get('/reply', response_model=schemas.MessageReply)
+@router.get(
+    '/reply',
+    response_model=Union[schemas.MessageReply, List[schemas.MessageReply]],
+)
 async def reply(
     *,
     response: Response,
     session: AsyncSession = Depends(deps.get_db),
-    id: int = Query(..., gt=0, description="Internal CampaignDst.id"),
+    id: Optional[int] = Query(
+        None, gt=0,
+        description="Internal CampaignDst.id; takes priority over the pair",
+    ),
+    campaign_id: Optional[int] = Query(
+        None, gt=0, description="Required with dst_addr when id is omitted",
+    ),
+    dst_addr: Optional[str] = Query(
+        None, min_length=1,
+        description="Exact recipient address; required with campaign_id "
+                    "when id is omitted",
+    ),
     text: str = Query(..., min_length=1, max_length=10000),
     ts: Optional[datetime] = Query(
         None,
@@ -205,13 +219,20 @@ async def reply(
 ) -> Any:
     """Save the latest reply (this GET changes data).
 
-    Older replies are ignored. Identical text and timestamp are idempotent;
-    different text with the same timestamp returns 409.
+    With id, only that message is processed and one object is returned.
+    Otherwise campaign_id and dst_addr are required; all exact matches are
+    processed in one transaction and returned as a list, ordered by id.
+    Missing identifiers return 422; no accessible matches return 404.
+    Older replies are ignored per message. Identical text and timestamp are
+    idempotent; different text with the same timestamp aborts the whole
+    transaction with 409.
     """
     response.headers["Cache-Control"] = "no-store"
     try:
         return await services.message.reply_processing(
-            session=session, user=user, id=id, reply_text=text, reply_ts=ts,
+            session=session, user=user, id=id,
+            campaign_id=campaign_id, dst_addr=dst_addr,
+            reply_text=text, reply_ts=ts,
         )
     except HTTPException as exc:
         await session.rollback()

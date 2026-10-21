@@ -525,8 +525,9 @@ SQL_GET_REPLY_FOR_UPDATE = text("""
 SELECT d.id, d.campaign_id, d.reply_text, d.reply_ts
 FROM campaign_dst d
 JOIN campaign c ON c.id = d.campaign_id
-WHERE d.id = :id
+WHERE {LOOKUP_CLAUSE}
   {USER_CLAUSE}
+ORDER BY d.id
 FOR UPDATE OF d
 """)
 
@@ -543,16 +544,38 @@ async def reply_processing(
     session: AsyncSession,
     user: models.User,
     *,
-    id: int,
+    id: Optional[int] = None,
+    campaign_id: Optional[int] = None,
+    dst_addr: Optional[str] = None,
     reply_text: str,
     reply_ts: Optional[datetime] = None,
-) -> dict[str, Any]:
-    """Store only the latest reply, without changing delivery state.
+) -> dict[str, Any] | list[dict[str, Any]]:
+    """Store the latest reply for an ID or all matching campaign recipients.
 
-    Lock the destination until commit so concurrent callbacks cannot overwrite
-    a newer reply with an older one. Database timestamps are naive UTC, like
-    the other CampaignDst timestamps; the response explicitly includes UTC.
+    Lock destinations in ID order until commit so concurrent callbacks cannot
+    overwrite newer replies or deadlock when processing the same duplicates.
+    Database timestamps are naive UTC; responses explicitly include UTC.
     """
+    if id is not None:
+        lookup_clause = "d.id = :id"
+        params = {"id": id, "user_id": user.id}
+    else:
+        missing = []
+        if campaign_id is None:
+            missing.append("campaign_id")
+        if dst_addr is None or not dst_addr.strip():
+            missing.append("dst_addr")
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail="Missing required parameters when id is not provided: "
+                       + ", ".join(missing),
+            )
+        lookup_clause = "d.campaign_id = :campaign_id AND d.dst_addr = :dst_addr"
+        params = {
+            "campaign_id": campaign_id, "dst_addr": dst_addr, "user_id": user.id,
+        }
+
     if not reply_text.strip():
         raise HTTPException(status_code=422, detail="Reply text must not be blank")
 
@@ -562,35 +585,43 @@ async def reply_processing(
 
     sql = text(
         SQL_GET_REPLY_FOR_UPDATE.text.replace(
+            "{LOOKUP_CLAUSE}", lookup_clause,
+        ).replace(
             "{USER_CLAUSE}",
             "AND c.user_id = :user_id" if not user.is_superuser else "",
         )
     )
-    result = await session.execute(sql, {"id": id, "user_id": user.id})
-    row = result.mappings().first()
-    if row is None:
+    result = await session.execute(sql, params)
+    rows = result.mappings().all()
+    if not rows:
         raise HTTPException(status_code=404, detail="Message not found")
 
-    stored_text, stored_ts = row["reply_text"], row["reply_ts"]
-    if stored_ts == ts and stored_text != reply_text:
-        raise HTTPException(
-            status_code=409,
-            detail="A different reply with this timestamp is already stored",
-        )
-    if stored_ts is None or ts > stored_ts:
-        await session.execute(
-            SQL_UPDATE_REPLY,
-            {"id": id, "reply_text": reply_text, "reply_ts": ts},
-        )
-        stored_text, stored_ts = reply_text, ts
+    updates = []
+    replies = []
+    for row in rows:
+        stored_text, stored_ts = row["reply_text"], row["reply_ts"]
+        if stored_ts == ts and stored_text != reply_text:
+            raise HTTPException(
+                status_code=409,
+                detail="A different reply with this timestamp is already stored",
+            )
+        if stored_ts is None or ts > stored_ts:
+            updates.append({
+                "id": row["id"], "reply_text": reply_text, "reply_ts": ts,
+            })
+            stored_text, stored_ts = reply_text, ts
+        replies.append({
+            "id": row["id"],
+            "campaign_id": row["campaign_id"],
+            "reply_text": stored_text,
+            "reply_ts": stored_ts.replace(tzinfo=timezone.utc),
+        })
 
+    # Validate every match before writing; one conflict aborts the entire batch.
+    if updates:
+        await session.execute(SQL_UPDATE_REPLY, updates)
     await session.commit()
-    return {
-        "id": row["id"],
-        "campaign_id": row["campaign_id"],
-        "reply_text": stored_text,
-        "reply_ts": stored_ts.replace(tzinfo=timezone.utc),
-    }
+    return replies[0] if id is not None else replies
 
 
 async def ban_processing(
