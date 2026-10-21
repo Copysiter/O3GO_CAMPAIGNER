@@ -261,14 +261,6 @@ window.initMessageGrid = function(id) {
                     return `<div class="long_text reply_text" title="${reply}">${reply}</div>`;
                 },
                 sortable: false,
-                filterable: {
-                    operators: {
-                        string: {
-                            contains: 'Contains',
-                            eq: 'Equal to'
-                        }
-                    }
-                },
                 minWidth: 480,
                 maxWidth: 640
             }, {

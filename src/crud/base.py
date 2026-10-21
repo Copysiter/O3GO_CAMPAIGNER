@@ -41,8 +41,14 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 else filters[i]['field']
             )
             column = inspect(self.model).columns.get(filters[i]['field'])
-            if column is not None and isinstance(
-                    column.type, (String, Text, Unicode, UnicodeText)):
+            if (
+                column is not None
+                and isinstance(column.type, (String, Text, Unicode, UnicodeText))
+                and filters[i]['operator'] not in (
+                    'isnull', 'isnotnull', 'isempty', 'isnotempty',
+                    'isnullorempty', 'isnotnullorempty',
+                )
+            ):
                 filters[i]['value'] = str(filters[i]['value'])
             if filters[i]['operator'] == 'eq':
                 where = field == filters[i]['value']
@@ -72,6 +78,14 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 where = field.is_(None)
             if filters[i]['operator'] == 'isnotnull':
                 where = field.is_not(None)
+            if filters[i]['operator'] == 'isempty':
+                where = field == ''
+            if filters[i]['operator'] == 'isnotempty':
+                where = field != ''
+            if filters[i]['operator'] == 'isnullorempty':
+                where = or_(field.is_(None), field == '')
+            if filters[i]['operator'] == 'isnotnullorempty':
+                where = field.is_not(None) & (field != '')
             if filters[i]['operator'] == '?':
                 where = field.op('?')(filters[i]['value'])
             if filters[i]['operator'] == 'overlaps':
