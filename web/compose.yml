@@ -1,0 +1,11 @@
+services:
+  web:
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+    environment:
+      API_ORIGIN: ${API_ORIGIN:-http://host.docker.internal:5001}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

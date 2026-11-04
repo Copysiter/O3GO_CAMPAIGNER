@@ -1,0 +1,28 @@
+.o3go-weekly-scheduler { min-width: 0; }
+.o3go-weekly-scheduler .scheduler-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; border: 0; }
+.o3go-weekly-scheduler .scheduler { width: 100%; min-width: 920px; border: 0; color: var(--foreground); background: var(--background); }
+.o3go-weekly-scheduler .scheduler tr, .o3go-weekly-scheduler .scheduler th, .o3go-weekly-scheduler .scheduler td { border: 1px solid var(--border); height: 32px; line-height: 1.2; padding: 0; }
+.o3go-weekly-scheduler .scheduler td, .o3go-weekly-scheduler .scheduler th { font-size: 11px; font-weight: 400; }
+.o3go-weekly-scheduler .scheduler th, .o3go-weekly-scheduler .scheduler-day-toggle { background: var(--tablehead); color: var(--muted-foreground); }
+.o3go-weekly-scheduler .scheduler .slash { width: 68px; height: 56px; }
+.o3go-weekly-scheduler .scheduler-hour, .o3go-weekly-scheduler .scheduler-hour-toggle { min-width: 32px; cursor: pointer; }
+.o3go-weekly-scheduler .scheduler .scheduler-active, .o3go-weekly-scheduler .scheduler-disabled .scheduler-active { background: color-mix(in srgb, var(--primary) 55%, var(--background)); }
+.o3go-weekly-scheduler .scheduler-active::after { content: ''; position: absolute; inset: 12px 10px; min-width: 3px; background: var(--primary); }
+.o3go-weekly-scheduler .scheduler [role=button]:focus-visible { z-index: 2; outline: 2px solid var(--primary); outline-offset: -3px; }
+.o3go-weekly-scheduler .scheduler > tfoot > tr > td { height: 36px; padding: 6px 10px; text-align: left; color: var(--muted-foreground); }
+.o3go-weekly-scheduler .scheduler-reset { padding: 4px 0 4px 12px; color: var(--primary); cursor: pointer; }
+.o3go-weekly-scheduler .scheduler-disabled .scheduler-hour { cursor: default; }
+@media (pointer: coarse) {
+  .o3go-weekly-scheduler .scheduler { min-width: 1124px; }
+  .o3go-weekly-scheduler .scheduler th, .o3go-weekly-scheduler .scheduler td { min-width: 44px; height: 44px; }
+  .o3go-weekly-scheduler .scheduler .slash { width: 68px; height: 88px; }
+  .o3go-weekly-scheduler .scheduler-active::after { inset: 19px 18px; }
+  .o3go-weekly-scheduler .scheduler-reset { min-height: 44px; display: inline-flex; align-items: center; }
+}
+/* Inline containment keeps the original fixed-width grid inside its own viewport. */
+.o3go-weekly-scheduler { width: 100%; max-width: 100%; min-width: 0; overflow: hidden; contain: inline-size; box-sizing: border-box; }
+.o3go-weekly-scheduler .scheduler-scroll { display: block; width: 100%; min-width: 0; max-width: 100%; overflow-y: hidden; box-sizing: border-box; touch-action: pan-x pan-y; }
+.o3go-weekly-scheduler:not(.scheduler-readonly) .scheduler-hour { touch-action: none; }
+.o3go-weekly-scheduler .scheduler thead, .o3go-weekly-scheduler .scheduler thead th,
+.o3go-weekly-scheduler .scheduler-day-toggle, .o3go-weekly-scheduler .scheduler tfoot { touch-action: pan-x pan-y; }
+.o3go-weekly-scheduler.scheduler-readonly .scheduler-hour { touch-action: pan-x pan-y; }
