@@ -1,6 +1,46 @@
 import { currentText } from "./i18n";
 export type Row = Record<string, any> & { id: number };
 export type PageData = { data: Row[]; total: number };
+export type ImportFields = Record<string, number | null>;
+export type CampaignImportSource = {
+  id: string;
+  name: string;
+  row_count: number;
+  column_count?: number;
+  sample_rows: string[][];
+  suggested_skip_rows?: number;
+  suggested_fields?: ImportFields;
+  delimiter?: string | null;
+};
+export type CampaignImportUpload = {
+  filename: string;
+  fields: string[];
+  import_id?: string;
+  format?: string;
+  sources?: CampaignImportSource[];
+  message?: string | null;
+  warnings?: string[];
+  total_rows?: number;
+};
+export type CampaignImportMapping = {
+  source_id: string;
+  data_fields: ImportFields;
+  skip_rows: number;
+  delimiter?: string | null;
+};
+export type CampaignImportPreview = {
+  total_rows: number;
+  valid_count: number;
+  invalid_count: number;
+  geo_groups: { geo: string | null; count: number }[];
+  errors: { source: string; row: number; message: string }[];
+  warnings: string[];
+};
+export type CreatedCampaigns = {
+  import_id: string;
+  created_count: number;
+  campaigns: { id: number; name: string; geo: string | null; msg_total: number; status: number }[];
+};
 export type User = {
   id: number;
   name: string;
@@ -64,7 +104,7 @@ export async function api<T = any>(
     response = await fetch(`${origin}/api/v1${path}`, {
       ...init,
       headers,
-      credentials: origin ? "include" : "same-origin",
+      credentials: "same-origin",
       cache: "no-store",
     });
   } catch (error) {
@@ -114,6 +154,19 @@ export async function downloadReport(id: number) {
   a.href = url;
   a.download = `campaign-${id}.xlsx`;
   a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+export async function downloadGeoLinksReport(importId: string) {
+  const response = await api<Response>(
+    `/campaigns/imports/${encodeURIComponent(importId)}/geo-links-report`,
+    {},
+    true,
+  );
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `links-geo-${importId}.xlsx`;
+  anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export async function uploadFile(path: string, file: File) {

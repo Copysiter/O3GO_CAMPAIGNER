@@ -18,7 +18,7 @@ test('touch-friendly table, full details, scroll mode, selection and context men
   page.on('pageerror', (e) => errors.push(e.message))
   await setup(page)
   await page.goto('/campaigns')
-  await expect(page.getByRole('heading', { name: 'Кампании', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Рассылки', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Действия строки 101' })).toBeVisible()
   await assertFit(page)
   if (isMobile) {
@@ -63,14 +63,33 @@ test('touch-friendly table, full details, scroll mode, selection and context men
   expect(errors).toEqual([])
 })
 test('flat status filters use backend scalar format and clear resets selection', async ({
-  page,
+  page, isMobile,
 }) => {
   const requests = await setup(page)
   await page.goto('/campaigns')
   await page.getByRole('button', { name: 'Фильтры' }).click()
   await page.getByLabel('Колонка', { exact: true }).selectOption('status')
-  await page.getByLabel('В работе', { exact: true }).check()
-  await page.getByLabel('Остановлена', { exact: true }).check()
+  const trigger = page.getByRole('button', { name: 'Значение фильтра', exact: true })
+  const popup = page.getByRole('dialog', { name: 'Значение фильтра', exact: true })
+  const toggle = () => isMobile ? trigger.tap() : trigger.click()
+  const rowHeight = () => page.locator('.filter-row').evaluate(row => (row as HTMLElement).offsetHeight)
+  const closedHeight = await rowHeight()
+  await expect(trigger).toHaveText('Выбрано: 0')
+  await toggle()
+  const search = popup.getByRole('textbox', { name: 'Поиск значений', exact: true })
+  await expect(search).toBeVisible()
+  if (isMobile) await expect(search).not.toBeFocused()
+  await search.fill('В работе')
+  await popup.getByRole('checkbox', { name: 'В работе', exact: true }).check()
+  await expect(trigger).toHaveText('Выбрано: 1')
+  await search.fill('Остановлена')
+  await popup.getByRole('checkbox', { name: 'Остановлена', exact: true }).check()
+  await expect(popup).toBeVisible()
+  await expect(trigger).toHaveText('Выбрано: 2')
+  expect(await rowHeight()).toBe(closedHeight)
+  await toggle()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  await expect(popup).toBeHidden()
   await page.getByRole('button', { name: 'Применить', exact: true }).click()
   await expect
     .poll(
@@ -156,7 +175,7 @@ test('theme, accents and table mode persist without white backgrounds', async ({
 test('campaign wizard creates exact existing API payload without starting it', async ({ page }) => {
   const requests = await setup(page)
   await page.goto('/campaigns')
-  await page.getByRole('button', { name: 'Новая кампания', exact: true }).click()
+  await page.getByRole('button', { name: 'Новая рассылка', exact: true }).click()
   await assertFit(page)
   await page.getByLabel('Название', { exact: false }).fill('Draft touch test')
   await page
@@ -167,7 +186,7 @@ test('campaign wizard creates exact existing API payload without starting it', a
   await page.getByRole('button', { name: 'Далее', exact: false }).click()
   await page.getByRole('button', { name: 'Понедельник, 09:00 UTC', exact: true }).click()
   await page.getByRole('button', { name: 'Далее', exact: false }).click()
-  await page.getByRole('button', { name: 'Создать кампанию', exact: false }).click()
+  await page.getByRole('button', { name: 'Создать', exact: true }).click()
   await expect
     .poll(() => requests.some((r) => r.path === '/campaigns/' && r.method === 'POST'))
     .toBe(true)
@@ -280,7 +299,7 @@ test('non-admin cannot access administrative pages or owner options', async ({ p
   await expect(page.getByRole('heading', { name: 'Доступ только администратору' })).toBeVisible()
   expect(requests.some((r) => r.path === '/users/')).toBe(false)
   await page.goto('/campaigns')
-  await page.getByRole('button', { name: 'Новая кампания', exact: true }).click()
+  await page.getByRole('button', { name: 'Новая рассылка', exact: true }).click()
   await expect(page.getByLabel('Владелец', { exact: true })).toHaveCount(0)
   expect(requests.some((r) => r.path === '/options/user')).toBe(false)
 })

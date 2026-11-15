@@ -90,7 +90,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 where = field.op('?')(filters[i]['value'])
             if filters[i]['operator'] == 'overlaps':
                 if None in filters[i]['value']:
-                    values = [v for v in filters[i]['value'] if v]
+                    values = [v for v in filters[i]['value'] if v is not None]
                     where = or_(
                         field.is_(None),
                         field.in_(values)

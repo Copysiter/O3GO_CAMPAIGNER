@@ -214,8 +214,11 @@ async def start_campaign(
             detail="Campaign cannot be started",
         )
     if campaign.status != schemas.CampaignStatus.RUNNING:
+        from services.campaign_lifecycle import initialize_import_deadlines
+        started = datetime.utcnow()
+        await initialize_import_deadlines(db, campaign, {"start_ts": started})
         campaign.status = schemas.CampaignStatus.RUNNING
-        campaign.start_ts = datetime.utcnow()
+        campaign.start_ts = started
         campaign.stop_ts = None
         await db.commit()
         await db.refresh(campaign)

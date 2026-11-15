@@ -43,6 +43,8 @@ class CampaignDstUpdate(CampaignDstBase):
 # Properties shared by models stored in DB
 class CampaignDstInDBBase(CampaignDstBase):
     id: int
+    geo: Optional[str] = None
+    link: Optional[str] = None
     ban_count: int = 0
     reply_text: Optional[str] = None
     reply_ts: Optional[datetime] = None

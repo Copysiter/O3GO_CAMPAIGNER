@@ -10,7 +10,7 @@ export default function NotFound() {
         className="mt-4 inline-flex text-primary underline"
         href="/campaigns"
       >
-        {t("К кампаниям")}
+        {t("К рассылкам")}
       </Link>
     </div>
   );

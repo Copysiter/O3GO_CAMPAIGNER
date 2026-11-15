@@ -332,9 +332,9 @@ export function WeeklySchedule({
       className={`o3go-weekly-scheduler w-full min-w-0 max-w-full space-y-2 ${disabled ? "scheduler-readonly" : ""}`}
       aria-label={t("Недельное расписание отправки")}
     >
-      <h3 className="text-sm font-medium">{t("Часы отправки · UTC")}</h3>
+      <h3 className="text-sm font-medium text-form-caption">{t("Часы отправки · UTC")}</h3>
       {!disabled && (
-        <p className="text-xs leading-relaxed text-muted-foreground">
+        <p className="text-xs leading-relaxed text-form-caption">
           {t(
             "Проведите по ячейкам для выбора диапазона. Для прокрутки проводите по заголовкам часов или дней недели.",
           )}

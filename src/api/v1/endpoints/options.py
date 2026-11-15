@@ -40,25 +40,25 @@ async def get_user_options(
     } for i in range(len(rows))])
 
 
-@router.get('/api_key', response_model=List[schemas.OptionInt])
-async def get_api_keys_options(
+async def api_key_option_rows(
     *,
     db: Session = Depends(deps.get_db),
     user: models.User = Depends(deps.get_current_active_user)
-) -> Any:
-    """
-    Retrieve api_key options.
-    """
-    # user_id = user.id if not user.is_superuser else None
-    # rows = await crud.user.get_api_keys(db, user_id=user_id)
+) -> List[models.ApiKey]:
     filters = [
         {'field': 'user_id', 'operator': 'eq', 'value': user.id}
     ] if not user.is_superuser else []
-    rows = await crud.api_key.get_rows(db, filters=filters, limit=None)
-    return JSONResponse([{
-        'text': rows[i].value,
-        'value': rows[i].value
-    } for i in range(len(rows)) if rows[i].value])
+    return await crud.api_key.get_rows(db, filters=filters, limit=None)
+
+
+@router.get('/api_key', response_model=List[schemas.OptionStr])
+async def get_api_keys_options(rows: list = Depends(api_key_option_rows)):
+    return [{'text': row.value, 'value': row.value} for row in rows if row.value]
+
+
+@router.get('/api_key_id', response_model=List[schemas.OptionInt])
+async def get_api_key_id_options(rows: list = Depends(api_key_option_rows)):
+    return [{'text': row.value, 'value': row.id} for row in rows if row.value]
 
 
 @router.get('/android', response_model=List[schemas.OptionInt])

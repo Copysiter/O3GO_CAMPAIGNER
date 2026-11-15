@@ -8,6 +8,8 @@ FROM ${NODE_IMAGE} AS build
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
+ARG NEXT_PUBLIC_API_ORIGIN
+ENV NEXT_PUBLIC_API_ORIGIN=$NEXT_PUBLIC_API_ORIGIN
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

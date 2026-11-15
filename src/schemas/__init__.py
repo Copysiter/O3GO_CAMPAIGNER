@@ -17,6 +17,8 @@ from .api_key import ApiKey, ApiKeyCreate, ApiKeyInDB, ApiKeyUpdate, ApiKeyRows 
 from .campaign import (
     Campaign,
     CampaignRequest,
+    CampaignFromImportRequest,
+    CampaignImportResult,
     CampaignCreate,
     CampaignInDB,
     CampaignUpdate,

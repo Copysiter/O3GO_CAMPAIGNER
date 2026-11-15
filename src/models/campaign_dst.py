@@ -23,6 +23,8 @@ class CampaignDst(Base):
     )
     src_addr = Column(String, index=True)
     dst_addr = Column(String, index=True)
+    geo = Column(String(2), nullable=True)
+    link = Column(Text, nullable=True)
     field_1 = Column(String, index=True)
     field_2 = Column(String, index=True)
     field_3 = Column(String, index=True)

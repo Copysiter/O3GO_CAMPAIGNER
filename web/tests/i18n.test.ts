@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { english, messages, translate } from '../src/lib/messages'
+import { resources } from '../src/lib/resources'
 import { accentTokens, defaults, normalizePreferences, neutralHover, palette, type Color } from '../src/lib/appearance'
 describe('central interface translations', () => {
   it('covers both languages with identical message keys', () => {
@@ -8,15 +9,28 @@ describe('central interface translations', () => {
     for (const text of Object.values(english)) expect(text.trim()).not.toBe('')
   })
   it('translates the full theme and navigation controls', () => {
-    expect(translate('en', 'Кампании')).toBe('Campaigns')
+    expect(translate('en', 'Рассылки')).toBe('Campaigns')
     expect(translate('en', 'Тёмная')).toBe('Dark')
     expect(translate('en', 'Светлая')).toBe('Light')
     expect(translate('en', 'Обновить')).toBe('Refresh')
     expect(translate('ru', 'Обновить')).toBe('Обновить')
   })
+  it('uses Russian mailing terminology while preserving English campaign labels and API routes', () => {
+    const oldTerm = /кампани/iu
+    expect(Object.keys(messages.ru).filter((key) => oldTerm.test(key))).toEqual([])
+    expect(resources.campaigns.title).toBe('Рассылки')
+    expect(resources.campaigns.singular).toBe('рассылка')
+    expect(resources.campaigns.endpoint).toBe('/campaigns/')
+    expect(translate('ru', 'Настройки рассылки #{id}', { id: 101 })).toBe('Настройки рассылки #101')
+    expect(translate('en', 'Настройки рассылки #{id}', { id: 101 })).toBe('Campaign #101 settings')
+    expect(translate('ru', 'Все рассылки')).toBe('Все рассылки')
+    expect(translate('en', 'Все рассылки')).toBe('All campaigns')
+    expect(translate('ru', 'Создать')).toBe('Создать')
+    expect(translate('en', 'Создать')).toBe('Create')
+  })
   it('interpolates values without translating user data', () => {
     expect(translate('en', 'Цвет: {name}', { name: 'Cobalt' })).toBe('Color: Cobalt')
-    expect(translate('en', 'Произвольное имя кампании')).toBe('Произвольное имя кампании')
+    expect(translate('en', 'Произвольное имя рассылки')).toBe('Произвольное имя рассылки')
   })
   it('retains all named placeholders across translations', () => {
     const names = (value: string) => [...new Set([...value.matchAll(/\{(\w+)\}/g)].map(match => match[1]))].sort()

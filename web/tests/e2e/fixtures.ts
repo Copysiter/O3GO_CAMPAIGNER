@@ -16,7 +16,7 @@ export const user = {
 }
 export const row = {
   id: 101,
-  name: 'Тестовая кампания с достаточно длинным названием',
+  name: 'Тестовая рассылка с достаточно длинным названием',
   status: 0,
   user_id: 1,
   user,
@@ -116,7 +116,7 @@ export async function setup(page: Page, admin = true) {
           : row
     else if (path === '/campaigns/101') response = row
     else if (path === '/campaigns/' && r.method() === 'GET')
-      response = { data: [row, { ...row, id: 102, name: 'Вторая кампания', status: 1 }], total: 2 }
+      response = { data: [row, { ...row, id: 102, name: 'Вторая рассылка', status: 1 }], total: 2 }
     else if (path === '/campaigns/' && r.method() === 'POST')
       response = { ...row, ...body, id: 103 }
     else if (path === '/android/accounts/' && r.method() === 'POST')

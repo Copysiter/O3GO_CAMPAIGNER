@@ -61,7 +61,7 @@ test('login sends OAuth form data, reports a failed attempt and persists the val
 
   await page.getByLabel('Пароль', { exact: true }).fill('correct & password=2')
   await page.getByRole('button', { name: 'Войти в рабочее пространство', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Кампании', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Рассылки', exact: true })).toBeVisible()
   expect(attempts[1].body.get('password')).toBe('correct & password=2')
   expect(
     await page.evaluate(
@@ -69,7 +69,7 @@ test('login sends OAuth form data, reports a failed attempt and persists the val
     ),
   ).toBe('valid-fixture')
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Кампании', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Рассылки', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'С возвращением', exact: true })).toHaveCount(0)
 })
 
@@ -124,7 +124,7 @@ test('resource-level forbidden responses preserve an otherwise valid login', asy
   await expect(
     page.getByRole('alert').filter({ hasText: 'Permission denied for this resource' }),
   ).toContainText('Permission denied for this resource')
-  await expect(page.getByRole('heading', { name: 'Кампании', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Рассылки', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'С возвращением', exact: true })).toHaveCount(0)
   expect(
     await page.evaluate(

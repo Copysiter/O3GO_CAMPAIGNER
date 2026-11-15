@@ -1,0 +1,199 @@
+.page {
+  gap: 0;
+}
+
+.toolbar {
+  flex-shrink: 0;
+  padding: var(--workspace-gutter);
+  border-bottom: 1px solid var(--border);
+}
+
+.toolbar [role='tablist'] {
+  height: 40px;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.toolbar [role='tab'] {
+  padding-inline: 16px;
+  border-radius: 3px;
+}
+
+.tabPanel {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.layout {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.contents {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--workspace-gutter);
+  border-right: 1px solid var(--border);
+}
+
+.desktopContents h2 {
+  margin: 6px 8px 12px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.desktopContents a {
+  display: block;
+  padding: 10px 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  border-radius: 3px;
+}
+
+.desktopContents a:hover,
+.desktopContents a:focus-visible {
+  color: var(--foreground);
+  background: var(--hover);
+}
+
+.mobileContents {
+  display: none;
+}
+
+.readingPane {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--workspace-gutter);
+}
+
+.article {
+  max-width: 1040px;
+  margin-inline: auto;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.intro {
+  padding: 4px 2px 12px;
+  color: var(--muted-foreground);
+}
+
+.section {
+  min-width: 0;
+  padding: 20px;
+  margin-bottom: var(--workspace-gutter);
+}
+
+.section > * + * {
+  margin-top: 14px;
+}
+
+.section h2 {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.section ul,
+.section ol {
+  padding-left: 20px;
+}
+
+.section ul { list-style: disc; }
+.section ol { list-style: decimal; }
+.section li + li { margin-top: 8px; }
+.section li::marker { color: var(--primary); }
+
+.note {
+  border-left: 2px solid var(--primary);
+  background: var(--background);
+  padding: 10px 14px;
+}
+
+.example {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--field);
+}
+
+.exampleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 8px 4px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--heading);
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.example pre {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding: 14px;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.tableScroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.tableScroll table {
+  width: 100%;
+  min-width: 440px;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 12px;
+}
+
+.tableScroll th,
+.tableScroll td {
+  padding: 10px 12px;
+  vertical-align: top;
+}
+
+.tableScroll th {
+  font-weight: 500;
+  background: var(--tablehead);
+}
+
+.tableScroll td {
+  border-top: 1px solid var(--border);
+}
+
+.tableScroll td:first-child {
+  min-width: 130px;
+  font-weight: 500;
+}
+
+@media (max-width: 767px) {
+  .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .contents { border-right: 0; border-bottom: 1px solid var(--border); }
+  .desktopContents { display: none; }
+  .mobileContents { display: block; width: 100%; min-width: 0; }
+  .section { padding: 14px; }
+  .toolbar [role='tablist'] { width: 100%; height: 44px; }
+  .toolbar [role='tab'] { padding-inline: 10px; font-size: 13px; }
+  .exampleHeader [data-slot='button'] { width: 40px; height: 40px; }
+}

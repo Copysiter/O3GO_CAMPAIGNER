@@ -22,7 +22,7 @@ import { Editor } from './editor'
 import { CampaignForm } from './campaign-form'
 import { useAuth } from './providers'
 export const campaignActions: Action[] = [
-  { key: 'edit', label: 'Настройки кампании' },
+  { key: 'edit', label: 'Настройки рассылки' },
   { key: 'start', label: 'Запустить' },
   { key: 'pause', label: 'Поставить на паузу' },
   { key: 'stop', label: 'Остановить' },
@@ -30,7 +30,7 @@ export const campaignActions: Action[] = [
   { key: 'check_dst', label: 'Проверить номера' },
   { key: 'export', label: 'Скачать Excel' },
   { key: 'clear', label: 'Очистить сообщения', danger: true },
-  { key: 'delete', label: 'Удалить кампанию', danger: true },
+  { key: 'delete', label: 'Удалить рассылку', danger: true },
 ]
 export function getResourceActions(
   resource: Resource,
@@ -115,6 +115,8 @@ export function useResourceActions(resource: Resource) {
     await client.invalidateQueries({ queryKey: ['rows'] })
     await client.invalidateQueries({ queryKey: ['campaign'] })
     await client.invalidateQueries({ queryKey: ['campaign-count'] })
+    if (resource.key === 'keys' && successes.length)
+      await client.invalidateQueries({ queryKey: ['options'] })
     if (failures.length) {
       setError(
         new Error(
@@ -198,7 +200,7 @@ export function useResourceActions(resource: Resource) {
                 ? t('Данные будут удалены. Это действие нельзя отменить.')
                 : confirm?.action === 'retry'
                   ? t(
-                      'Будет создана новая кампания из недоставленных сообщений.',
+                      'Будет создана новая рассылка из недоставленных сообщений.',
                     )
                   : t('Проверьте выбранные записи перед продолжением.')}
           </p>
@@ -259,11 +261,11 @@ function CampaignOverview() {
     <div
       className="resource-stats campaign-overview grid shrink-0 grid-cols-3 gap-2"
       role="group"
-      aria-label={t('Статистика всех кампаний')}
+      aria-label={t('Статистика всех рассылок')}
       title={t('Без учёта фильтров таблицы')}
     >
       {[
-        { label: 'Всего кампаний', icon: Layers },
+        { label: 'Всего рассылок', icon: Layers },
         { label: 'В работе', icon: Activity },
         { label: 'Остановлены', icon: Pause },
       ].map(({ label, icon: Icon }, i) => (
@@ -296,7 +298,7 @@ export function ResourcePage({ resourceKey }: { resourceKey: string }) {
           )}
         </p>
         <Button className="mt-4" onClick={() => router.push('/campaigns')}>
-          {t('К кампаниям')}
+          {t('К рассылкам')}
         </Button>
       </div>
     )
@@ -346,7 +348,7 @@ function ResourceContent({ resource }: { resource: Resource }) {
               ? {
                   label:
                     resource.key === 'campaigns'
-                      ? 'Новая кампания'
+                      ? 'Новая рассылка'
                       : 'Добавить',
                   onClick: create,
                 }

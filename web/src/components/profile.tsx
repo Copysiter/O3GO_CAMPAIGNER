@@ -14,7 +14,7 @@ export function ProfileModal({open,onOpenChange}:{open:boolean;onOpenChange:(ope
   const {t}=useI18n()
   const formId=useId()
   const [pending,setPending]=useState(false)
-  return <Modal open={open} onOpenChange={onOpenChange} title={t('Мой профиль')} footer={<>
+  return <Modal className="form-surface" open={open} onOpenChange={onOpenChange} title={t('Мой профиль')} footer={<>
     <Button variant="outline" onClick={()=>onOpenChange(false)}>{t('Закрыть')}</Button>
     <Button form={formId} type="submit" disabled={pending}><Save size={16}/>{pending?t('Сохранение…'):t('Сохранить')}</Button>
   </>}>
@@ -77,7 +77,7 @@ function ProfileForm({ user,embedded,formId,onPendingChange }: { user: Row;embed
           {pending ? t('Сохранение…') : t('Сохранить')}
         </Button>
       </header>}
-      <div className={embedded?'profile-form-content':'resource-body scroll-content'}>
+      <div className={embedded?'profile-form-content':'form-surface resource-body scroll-content'}>
         <div className="max-w-3xl">
           <form
             id={formId}
@@ -85,7 +85,7 @@ function ProfileForm({ user,embedded,formId,onPendingChange }: { user: Row;embed
             onSubmit={save}
           >
             {error != null && <ErrorBox error={error} />}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="form-flow">
               <div className="form-field">
                 <label htmlFor="profile-name">{t('Имя')}</label>
                 <Input
@@ -118,7 +118,7 @@ function ProfileForm({ user,embedded,formId,onPendingChange }: { user: Row;embed
                 autoComplete="new-password"
                 disabled={pending}
               />
-              <span className="block font-normal text-muted-foreground">
+              <span className="block font-normal text-form-caption">
                 {t('Оставьте пустым, чтобы сохранить текущий пароль.')}
               </span>
             </div>
@@ -128,7 +128,7 @@ function ProfileForm({ user,embedded,formId,onPendingChange }: { user: Row;embed
               <h2 className="text-sm font-semibold">
                 {t('Доступ к интеграциям')}
               </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-form-caption">
                 {t('Внешний API-ключ выдаётся администратором.')}
               </p>
             </div>
@@ -159,19 +159,19 @@ function ProfileForm({ user,embedded,formId,onPendingChange }: { user: Row;embed
                 </Button>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-form-caption">
                 {t('Внешний API-ключ ещё не назначен')}
               </p>
             )}
             <dl className="grid gap-3 text-xs sm:grid-cols-2">
               <div>
-                <dt className="text-muted-foreground">{t('Роль')}</dt>
+                <dt className="text-form-caption">{t('Роль')}</dt>
                 <dd className="mt-1">
                   {user.is_superuser ? t('Администратор') : t('Пользователь')}
                 </dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">{t('Идентификатор')}</dt>
+                <dt className="text-form-caption">{t('Идентификатор')}</dt>
                 <dd className="mt-1 font-mono">#{user.id}</dd>
               </div>
             </dl>

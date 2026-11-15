@@ -60,7 +60,7 @@ export type Action = {
 }
 export type TableSummary = { total: number; visible: number; selected: number }
 const entityNames: Record<string, string> = {
-  campaigns: 'Кампания',
+  campaigns: 'Рассылка',
   tags: 'Тег',
   keys: 'API-ключ',
   users: 'Пользователь',
@@ -89,7 +89,6 @@ export function DataTable({
 }) {
   const { preferences } = usePreferences()
   const { t, locale } = useI18n()
-  const viewport = useTableViewport()
   const messages = resource.key.startsWith('messages-')
   const entityName = messages ? t('Сообщение') : t(entityNames[resource.key] || resource.singular)
   const pageSizes = messages ? [100, 250, 500, 1000] : [20, 50, 100, 250, 500, 1000]
@@ -214,11 +213,9 @@ export function DataTable({
     })
   }, [data.data, data.isPlaceholderData])
   const eligible = resource.columns.filter((c) => !hidden.includes(c.key))
-  const compactLimit =
-    viewport.width < 260 ? 1 : viewport.width < 560 ? 2 : viewport.width < 900 ? 3 : 5
-  const compact = compactKeys
-    .map((key) => resource.columns.find((c) => c.key === key))
-    .filter((c): c is Column => !!c)
+  const viewport = useTableViewport(mode === 'compact', compactKeys, resource.columns, data.data?.data, locale)
+  const { compactLimit, compactWidths } = viewport
+  const displayed = mode === 'scroll' ? eligible : viewport.columns
   const kindOf = (column: Column) =>
     column.key === 'id' || column.key === 'dst_addr' || column.key === 'ext_id'
       ? 'identifier'
@@ -227,60 +224,6 @@ export function DataTable({
         : column.type === 'number' && column.key !== 'user_id'
           ? 'number'
           : 'text'
-  const available = Math.max(1, viewport.width - 96)
-  const samples = data.data?.data.slice(0, 50) || []
-  const compactMetrics = compact.slice(0, compactLimit).map((column) => {
-    const kind = kindOf(column)
-    const lengths = samples.map((row) => {
-      const value = column.key === 'user_id' ? (row.user?.name ?? row.user_id) : row[column.key]
-      const choice = column.choices?.find(([key]) => String(key) === String(value))?.[1]
-      const label = choice
-        ? t(choice)
-        : kind === 'number' && value != null && Number.isFinite(Number(value))
-          ? Number(value).toLocaleString(locale)
-          : String(value ?? '')
-      return label.length
-    })
-    const characters = Math.max(1, ...lengths)
-    const width =
-      column.key === 'id'
-        ? 64
-        : kind === 'number'
-          ? Math.max(60, characters * 7 + 20)
-          : kind === 'status'
-            ? Math.min(180, Math.max(72, characters * 6.5 + 24))
-            : kind === 'identifier'
-              ? Math.max(96, characters * 7 + 20)
-              : 64
-    return {
-      column,
-      width,
-      flexible: kind === 'text',
-      weight: Math.min(3, Math.max(1, characters / 12)),
-    }
-  })
-  // Keep numeric/status/identifier values intact. Lower-priority columns move
-  // into the row details when their readable minima no longer fit.
-  while (
-    compactMetrics.length > 1 &&
-    compactMetrics.reduce((sum, metric) => sum + metric.width, 0) > available
-  )
-    compactMetrics.pop()
-  const displayed = mode === 'scroll' ? eligible : compactMetrics.map(({ column }) => column)
-  const compactWidths = new Map<string, number>()
-  if (mode === 'compact' && compactMetrics.length) {
-    const total = compactMetrics.reduce((sum, metric) => sum + metric.width, 0)
-    const weight = compactMetrics
-      .filter((metric) => metric.flexible)
-      .reduce((sum, metric) => sum + metric.weight, 0)
-    for (const [index, metric] of compactMetrics.entries()) {
-      const share = weight ? (metric.flexible ? metric.weight / weight : 0) : index === 0 ? 1 : 0
-      compactWidths.set(
-        metric.column.key,
-        Math.min(available, metric.width + Math.max(0, available - total) * share),
-      )
-    }
-  }
   const openFilter = (column: Column) => {
     const index = filters.findIndex((filter) => filter.field === column.key)
     if (index >= 0) {
@@ -331,9 +274,9 @@ export function DataTable({
         accessorFn: (row: Row) =>
           c.key === 'user_id' ? (row.user?.name ?? row.user_id) : row[c.key],
         header: ({ column }: any) => (
-          <div className={`flex items-center gap-1 ${c.key === 'id' ? 'px-1' : 'px-2'}`}>
+          <div className={`table-header-controls flex items-center gap-1 ${c.key === 'id' ? 'px-1' : 'px-2'}`}>
             <button
-              className="flex min-h-11 min-w-0 items-center gap-1 text-xs md:min-h-9"
+              className="table-sort-button flex min-h-11 min-w-0 items-center gap-1 text-xs md:min-h-9"
               title={
                 c.sort === false ? t(c.label) : t('Сортировать: {column}', { column: t(c.label) })
               }
@@ -349,7 +292,7 @@ export function DataTable({
                 setSelection({})
               }}
             >
-              {t(c.label)}
+              <span className="truncate">{t(c.label)}</span>
               {c.sort !== false &&
                 (column.getIsSorted() === 'asc' ? (
                   <ArrowUp size={12} />
@@ -423,7 +366,7 @@ export function DataTable({
               </DropdownMenuItem>
               {onOpen && (
                 <DropdownMenuItem onSelect={() => onOpen(row.original)}>
-                  {t('Открыть кампанию')}
+                  {t('Открыть рассылку')}
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
@@ -466,7 +409,7 @@ export function DataTable({
     manualSorting: true,
     manualFiltering: true,
     getRowId: (r) => String(r.id),
-    state: { sorting, rowSelection: selection },
+    state: { sorting, rowSelection: selection, columnVisibility: { spacer: mode === 'scroll' } },
     onRowSelectionChange: setSelection,
     enableRowSelection: true,
   })
@@ -504,7 +447,6 @@ export function DataTable({
   }
   return (
     <div
-      ref={viewport.stageRef}
       className="data-table-stage min-w-0"
       data-mode={mode}
       data-mode-preference={modePreference}
@@ -685,12 +627,15 @@ export function DataTable({
         </div>
         <div className="table-viewport" aria-busy={showLoading}>
           <div
+            ref={viewport.scrollRef}
             className="table-scroll"
             tabIndex={0}
             role="region"
             aria-label={t('{resource}: таблица с прокруткой', { resource: t(resource.title) })}
           >
             <table
+              ref={viewport.tableRef}
+              data-measure-compact={viewport.measuring || undefined}
               aria-busy={showLoading}
               className={`data-table ${mode === 'scroll' ? 'full-table' : ''}`}
             >
@@ -705,9 +650,7 @@ export function DataTable({
                     key={column.id}
                     className={columnClass(column.id)}
                     style={
-                      compactWidths.has(column.id)
-                        ? { width: compactWidths.get(column.id) }
-                        : undefined
+                      compactWidths?.has(column.id) ? { width: compactWidths.get(column.id) } : undefined
                     }
                   />
                 ))}
@@ -723,11 +666,6 @@ export function DataTable({
                         data-column-id={header.column.id}
                         aria-hidden={header.column.id === 'spacer' || undefined}
                         data-no-interaction={header.column.id === 'spacer' || undefined}
-                        style={
-                          header.column.id === 'id'
-                            ? { width: 64, minWidth: 64, maxWidth: 64 }
-                            : undefined
-                        }
                         aria-sort={
                           header.column.getIsSorted() === 'asc'
                             ? 'ascending'
@@ -755,11 +693,6 @@ export function DataTable({
                         {row.getVisibleCells().map((cell) => (
                           <td
                             key={cell.id}
-                            style={
-                              cell.column.id === 'id'
-                                ? { width: 64, minWidth: 64, maxWidth: 64 }
-                                : undefined
-                            }
                             className={`${columnClass(cell.column.id)}${cell.column.id === 'select' ? ' !p-0' : ''}`}
                             data-column-id={cell.column.id}
                             aria-hidden={cell.column.id === 'spacer' || undefined}
@@ -790,7 +723,7 @@ export function DataTable({
                       </ContextMenuItem>
                       {onOpen && (
                         <ContextMenuItem onSelect={() => onOpen(row.original)}>
-                          {t('Открыть кампанию')}
+                          {t('Открыть рассылку')}
                         </ContextMenuItem>
                       )}
                       <ContextMenuItem disabled={staleRows} onSelect={() => row.toggleSelected()}>

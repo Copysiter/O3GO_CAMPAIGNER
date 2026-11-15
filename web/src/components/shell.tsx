@@ -36,7 +36,7 @@ import { ProfileModal } from "./profile";
 import { ErrorBox, Loading, Modal } from "./common";
 import { api, setSession, type Row, type Session } from "@/lib/api";
 const navigation = [
-  { key: "campaigns", label: "Кампании", icon: Layers },
+  { key: "campaigns", label: "Рассылки", icon: Layers },
   { key: "tags", label: "Теги", icon: Tags },
   { key: "keys", label: "API-ключи", icon: KeyRound },
   { key: "users", label: "Пользователи", icon: Users, admin: true },
@@ -55,7 +55,7 @@ function Login({ onSettings }: { onSettings: () => void }) {
     [error, setError] = useState<unknown>(null);
   return (
     <div className="login-screen grid min-h-dvh place-items-center p-5">
-      <div className="login-card panel w-full max-w-md">
+      <div className="form-surface login-card panel w-full max-w-md">
         <div className="login-brand flex items-center gap-3 text-primary">
           <BrandIcon className="size-7" />
           <span className="text-lg font-medium">
@@ -65,8 +65,8 @@ function Login({ onSettings }: { onSettings: () => void }) {
         </div>
         <div className="login-body">
           <h1 className="mb-2 text-xl font-medium">{t("С возвращением")}</h1>
-          <p className="mb-6 text-sm text-muted-foreground">
-            {t("Войдите, чтобы управлять кампаниями и доставкой сообщений.")}
+          <p className="mb-6 text-sm text-form-caption">
+            {t("Войдите, чтобы управлять рассылками и доставкой сообщений.")}
           </p>
           <form
             className="space-y-4"
@@ -93,11 +93,11 @@ function Login({ onSettings }: { onSettings: () => void }) {
             }}
           >
             <label className="form-field">
-              {t("Логин")}
+              <span>{t("Логин")}</span>
               <Input name="login" autoComplete="username" required />
             </label>
             <label className="form-field">
-              {t("Пароль")}
+              <span>{t("Пароль")}</span>
               <Input
                 name="password"
                 type="password"
@@ -378,7 +378,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <SheetDescription className="sr-only">
               {t("Навигация по рабочему пространству")}
             </SheetDescription>
-            <div className="flex items-center border-b">
+            <div className="mobile-sidebar-header flex items-center border-b">
               <div className="min-w-0 flex-1">
                 <Brand expanded close={() => setMenu(false)} />
               </div>
@@ -392,7 +392,7 @@ export function Shell({ children }: { children: ReactNode }) {
               </Button>
             </div>
             {nav(true)}
-            <div className="mt-auto border-t p-2">
+            <div className="sidebar-bottom">
               <div className="sidebar-profile-row">
               <button
                 type="button"

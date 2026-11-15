@@ -1,4 +1,5 @@
 from typing import Optional, List
+from uuid import UUID
 
 from datetime import datetime
 
@@ -12,6 +13,7 @@ from pydantic import (
 
 from .user import User
 from .tag import Tag
+from .campaign_import import ImportMapping
 
 
 # Shared properties
@@ -78,6 +80,32 @@ class CampaignRequest(CampaignBase):
     clicker_utm_source: Optional[str] = None
 
 
+class CampaignFromImportRequest(CampaignRequest):
+    import_id: UUID
+    name: str = Field(min_length=1, max_length=500)
+    mappings: list[ImportMapping] = Field(default_factory=list)
+    split_by_geo: bool = False
+    exclude_invalid: bool = False
+    default_region: Optional[str] = None
+    msg_attempts: int = Field(default=1, ge=1)
+    msg_sending_timeout: Optional[int] = Field(default=None, ge=0)
+    msg_status_timeout: Optional[int] = Field(default=None, ge=0)
+
+
+class ImportedCampaign(BaseModel):
+    id: int
+    name: str
+    geo: Optional[str] = None
+    msg_total: int
+    status: int
+
+
+class CampaignImportResult(BaseModel):
+    import_id: UUID
+    campaigns: list[ImportedCampaign]
+    created_count: int
+
+
 # Properties to receive on item update
 class CampaignUpdate(CampaignBase):
     model_config = ConfigDict(from_attributes=True)
@@ -138,6 +166,8 @@ class ExternalCampaignResponse(BaseModel):
 # Properties shared by models stored in DB
 class CampaignInDBBase(CampaignBase):
     id: int
+    import_id: Optional[UUID] = None
+    geo: Optional[str] = None
 
     class Config:
         from_attributes = True

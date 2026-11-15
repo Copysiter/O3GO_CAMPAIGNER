@@ -2,12 +2,43 @@
 export type Language = "ru" | "en";
 export type TranslationParams = Record<string, string | number>;
 export const english: Record<string, string> = {
+  "Выберите один файл CSV, TXT, XLS, XLSX или ZIP": "Choose one CSV, TXT, XLS, XLSX or ZIP file",
+  "Один файл: CSV, TXT, XLS, XLSX или ZIP. В ZIP — text.txt с общим сообщением и остальные TXT с одним телефоном на строке.": "One file: CSV, TXT, XLS, XLSX or ZIP. A ZIP contains text.txt with the shared message and other TXT files with one phone number per line.",
+  "{name} · {count} строк": "{name} · {count} rows",
+  "Номера из архива": "Phone numbers from the archive",
+  "Все TXT со списками объединены. В каждой строке архива принимается только телефон; text.txt задаёт общее сообщение.": "All TXT phone lists are combined. Each archive list line must contain only a phone number; text.txt supplies the shared message.",
+  "Выберите телефон и дополнительные поля для каждого листа. Заголовок можно исключить из получателей.": "Select the phone number and custom fields for each sheet. The header can be excluded from recipients.",
+  "Строк: {count}": "Rows: {count}",
+  "Первая строка — названия колонок": "The first row contains column names",
+  "Страна для местных номеров": "Country for national-format numbers",
+  "Оставьте пустым для международных номеров. Для местного формата укажите код страны, например RU или KZ.": "Leave empty for international numbers. For national-format numbers, enter a country code such as RU or KZ.",
+  "Проверяем номера и определяем GEO…": "Checking numbers and identifying GEO…",
+  "Предпросмотр создаваемых рассылок": "Preview of campaigns to create",
+  "Будут созданы рассылки: {count}": "Campaigns to create: {count}",
+  "Принято строк: {valid}. С ошибками: {invalid}.": "Accepted rows: {valid}. Rows with errors: {invalid}.",
+  "Количество строк для отправки. Повторяющиеся номера сохраняются. Рассылки создаются без запуска.": "Rows to send. Duplicate numbers are preserved. Campaigns are created without starting.",
+  "Пропустить строки с ошибками ({count})": "Skip rows with errors ({count})",
+  "Строка {row}": "Row {row}",
+  "Показаны первые ошибки. Всего: {count}.": "Showing the first errors. Total: {count}.",
+  "Дождитесь проверки номеров": "Wait for the phone number check to finish",
+  "Нет корректных номеров для создания рассылки": "No valid phone numbers are available to create a campaign",
+  "Исправьте номера или разрешите пропустить строки с ошибками": "Correct the numbers or allow rows with errors to be skipped",
+  "Разделить по GEO": "Split by GEO",
+  "Для каждой страны будет создана отдельная рассылка с префиксом [ru], [kz] и т. д.": "A separate campaign will be created for each country with a prefix such as [ru] or [kz].",
+  "Рассылки созданы": "Campaigns created",
+  "Создано рассылок: {count}": "Campaigns created: {count}",
+  "Все рассылки созданы без запуска. Скачайте общую сводку по ссылкам этой загрузки.": "All campaigns were created without starting. Download the combined link summary for this import.",
+  "Перейти к рассылкам": "Go to campaigns",
+  "Один Excel для всех созданных рассылок: страна, исходная ссылка и количество уникальных номеров.": "One Excel file for all created campaigns: country, original link and unique phone number count.",
+  "Ссылки по GEO — Excel": "Links by GEO — Excel",
+  "Создать {count}": "Create {count}",
+  "Clicker доступен при создании одной рассылки без разделения по GEO.": "Clicker is available when creating one campaign without splitting by GEO.",
   "Добавить условие": "Add condition",
   "Удалить условие {count}": "Remove condition {count}",
   "Условие {count}": "Condition {count}",
   "Условия не добавлены": "No conditions added",
   Уведомления: "Notifications",
-  "Управление кампаниями, сообщениями и устройствами O3GO":
+  "Управление рассылками, сообщениями и устройствами O3GO":
     "Manage O3GO campaigns, messages and devices",
   "-1 — без ограничения количества сообщений.": "-1 means no message limit.",
   "· Создаётся в статусе «Создана»": "· Created with the Created status",
@@ -46,7 +77,7 @@ export const english: Record<string, string> = {
   Больше: "Greater than",
   "Больше или равно": "Greater than or equal to",
   "Браузер не разрешил копирование": "The browser did not allow copying",
-  "Будет создана новая кампания из недоставленных сообщений.":
+  "Будет создана новая рассылка из недоставленных сообщений.":
     "A new campaign will be created from undelivered messages.",
   "В меню «Колонки» можно выбрать видимые поля или включить полную таблицу с внутренней горизонтальной прокруткой. Мультивыбор действует на текущую страницу и сбрасывается при смене страницы или фильтров.":
     "Use Columns to choose visible fields or switch to the full table with horizontal scrolling. Selection applies to the current page and resets when the page or filters change.",
@@ -78,20 +109,20 @@ export const english: Record<string, string> = {
     "Your administrator provides the external API key.",
   "Внешний API-ключ ещё не назначен": "No external API key assigned",
   "Внешний ID": "External ID",
-  "Войдите, чтобы управлять кампаниями и доставкой сообщений.":
+  "Войдите, чтобы управлять рассылками и доставкой сообщений.":
     "Sign in to manage campaigns and message delivery.",
   "Войти в рабочее пространство": "Sign in to workspace",
   Воскресенье: "Sunday",
   "Время ответа": "Reply time",
   ВС: "SUN",
-  "Все действия кампании": "All campaign actions",
-  "Все кампании": "All campaigns",
+  "Все действия рассылки": "All campaign actions",
+  "Все рассылки": "All campaigns",
   "Все колонки — горизонтальная прокрутка": "All columns — horizontal scroll",
   "Все поля и подробности": "All fields and details",
   "Все поля строки, включая скрытые в компактном режиме.":
     "All row fields, including those hidden in compact view.",
   Всего: "Total",
-  "Всего кампаний": "Total campaigns",
+  "Всего рассылок": "Total campaigns",
   "Вставить текст": "Paste text",
   "Вся неделя: {hour}:00 UTC": "Whole week: {hour}:00 UTC",
   ВТ: "TUE",
@@ -133,7 +164,7 @@ export const english: Record<string, string> = {
   Готово: "Done",
   "Готово к созданию": "Ready to create",
   Графитовый: "Graphite",
-  "Группы кампаний, цветовые метки и доступ API-ключей":
+  "Группы рассылок, цветовые метки и доступ API-ключей":
     "Campaign groups, color labels, and API key access",
   Да: "Yes",
   Далее: "Next",
@@ -165,12 +196,12 @@ export const english: Record<string, string> = {
   "Добавлено аккаунтов: {count}": "Accounts added: {count}",
   "Добавьте хотя бы одного получателя": "Add at least one recipient",
   "Дополнительная информация": "Additional information",
-  "Дополнительные переходы через сервис Clicker. Для кампании без Clicker оставьте целевой URL пустым.":
+  "Дополнительные переходы через сервис Clicker. Для рассылки без Clicker оставьте целевой URL пустым.":
     "Additional visits through the Clicker service. Leave the target URL blank to create a campaign without Clicker.",
   "Доставка, ответы и история отправки":
     "Delivery, replies, and sending history",
   Доставлено: "Delivered",
-  "Доступ интеграций к кампаниям": "Integration access to campaigns",
+  "Доступ интеграций к рассылкам": "Integration access to campaigns",
   "Доступ к интеграциям": "Integration access",
   "Доступ только администратору": "Administrator access only",
   Доступен: "Available",
@@ -224,13 +255,13 @@ export const english: Record<string, string> = {
   Использован: "Last used",
   Истекает: "Expires",
   "Исходный текст": "Original text",
-  "К кампаниям": "Back to campaigns",
+  "К рассылкам": "Back to campaigns",
   "К содержимому": "Skip to content",
-  Кампании: "Campaigns",
-  кампания: "campaign",
-  Кампания: "Campaign",
-  "Кампания обновлена": "Campaign updated",
-  "Кампания создана. Запустите её, когда будете готовы.":
+  Рассылки: "Campaigns",
+  рассылка: "campaign",
+  Рассылка: "Campaign",
+  "Рассылка обновлена": "Campaign updated",
+  "Рассылка создана. Запустите её, когда будете готовы.":
     "Campaign created. Start it when you are ready.",
   Клики: "Clicks",
   Ключ: "Key",
@@ -290,8 +321,8 @@ export const english: Record<string, string> = {
   "Найти или выбрать…": "Search or select…",
   "Настроить колонки": "Configure columns",
   Настройки: "Settings",
-  "Настройки кампании": "Campaign settings",
-  "Настройки кампании #{id}": "Campaign #{id} settings",
+  "Настройки рассылки": "Campaign settings",
+  "Настройки рассылки #{id}": "Campaign #{id} settings",
   "Настройки отправки, шаблон сообщения и расписание.":
     "Sending settings, message template and schedule.",
   Начало: "Start",
@@ -313,7 +344,7 @@ export const english: Record<string, string> = {
   Небесный: "Sky",
   "Недельное расписание · UTC": "Weekly schedule · UTC",
   "Недельное расписание отправки": "Weekly sending schedule",
-  "Недостаточно прав для просмотра кампаний.":
+  "Недостаточно прав для просмотра рассылок.":
     "You do not have permission to view campaigns.",
   "Недостаточно прав для этого действия":
     "You do not have permission for this action",
@@ -328,11 +359,11 @@ export const english: Record<string, string> = {
     "Cannot connect to the API. Check your connection and server address.",
   "Новая выбранная колонка становится первой. Остальные поля — в ⋯.":
     "A newly selected column appears first. Other fields are available under ⋯.",
-  "Новая кампания": "New campaign",
+  "Новая рассылка": "New campaign",
   "Новая строка": "New line",
   "Новый пароль": "New password",
   Обновить: "Refresh",
-  "Обновить статистику кампании": "Refresh campaign statistics",
+  "Обновить статистику рассылки": "Refresh campaign statistics",
   "Обновить таблицу": "Refresh table",
   "Обновление…": "Refreshing…",
   Обновлено: "Updated",
@@ -355,7 +386,7 @@ export const english: Record<string, string> = {
   Ответ: "Reply",
   "Отдельная короткая ссылка для каждого получателя":
     "A separate short link for each recipient",
-  "Открыть кампанию": "Open campaign",
+  "Открыть рассылку": "Open campaign",
   "Открыть меню": "Open navigation",
   Отмена: "Cancel",
   Отправитель: "Sender",
@@ -373,7 +404,7 @@ export const english: Record<string, string> = {
   "Пауза, мин.": "Cooldown, min",
   "Первая непустая строка — заголовок": "The first non-empty row is a header",
   "Первые строки после обработки": "First rows after processing",
-  "Передавайте выданный API-ключ в заголовке X-Api-Key. Внешний id связывает сообщение с вашей системой; webhook кампании получает изменения статуса.":
+  "Передавайте выданный API-ключ в заголовке X-Api-Key. Внешний id связывает сообщение с вашей системой; webhook рассылки получает изменения статуса.":
     "Send your API key in the X-Api-Key header. The external id links the message to your system; the campaign webhook receives status updates.",
   "Переключить режим таблицы": "Switch table mode",
   "Перетащите, чтобы выбрать часы": "Drag to select hours",
@@ -384,7 +415,7 @@ export const english: Record<string, string> = {
   Повторить: "Retry",
   "Повторить недоставленные": "Retry undelivered",
   Подготовка: "Preparing",
-  "Подготовьте аудиторию и сообщение. Запустить кампанию можно после создания.":
+  "Подготовьте аудиторию и сообщение. Запустить рассылку можно после создания.":
     "Prepare your audience and message. You can start the campaign after creating it.",
   "Поддерживаются поля {field_1} … {field_5}. Для сокращения ссылки используйте [short]https://example.com[/short]. Предпросмотр использует первую строку контактов; окончательный текст подготавливает сервер.":
     "Fields {field_1} … {field_5} are supported. Use [short]https://example.com[/short] to shorten a link. The preview uses the first contact row; the server prepares the final text.",
@@ -418,8 +449,6 @@ export const english: Record<string, string> = {
   "Предпросмотр первого получателя": "First recipient preview",
   "Предпросмотр по образцу из файла": "Preview using the file sample",
   "Предыдущая страница": "Previous page",
-  "При редактировании оставьте пустым, чтобы не менять пароль.":
-    "Leave blank when editing to keep the password.",
   Приложение: "App",
   Применить: "Apply",
   Приоритет: "Priority",
@@ -435,8 +464,8 @@ export const english: Record<string, string> = {
   Производитель: "Manufacturer",
   "Прокрутите таблицу влево или вправо": "Scroll the table horizontally",
   Прокрутка: "Scroll",
-  "Простые условия по колонкам. Разные поля объединяются через И; несколько выбранных статусов или тегов — «любое из».":
-    "Simple column conditions. Different fields use AND; selected statuses or tags match any selected value.",
+  "Условия по разным полям применяются вместе. Для статуса, тегов и API-ключей достаточно совпадения с одним из выбранных значений поля.":
+    "Conditions on different fields must all match. For status, tags, and API keys, any selected value within each field matches.",
   Профиль: "Profile",
   "Профиль обновлён": "Profile updated",
   ПТ: "FRI",
@@ -484,14 +513,14 @@ export const english: Record<string, string> = {
   Содержит: "Contains",
   Создан: "Created",
   Создана: "Created",
-  "Создание кампании": "Creating a campaign",
-  "Создание не запускает отправку. Нажмите «Запустить» и подтвердите действие. «Повторить недоставленные» создаёт отдельную кампанию.":
+  "Создание рассылки": "Creating a campaign",
+  "Создание не запускает отправку. Нажмите «Запустить» и подтвердите действие. «Повторить недоставленные» создаёт отдельную рассылку.":
     "Creating a campaign does not start sending. Click Start and confirm. Retry undelivered creates a separate campaign.",
   "Создание недоступно для вашей учётной записи":
     "Your account cannot create records",
   Создано: "Created",
   Создать: "Create",
-  "Создать кампанию": "Create campaign",
+  "Создать рассылку": "Create campaign",
   "Создать ключ «{key}»": "Create key “{key}”",
   сообщение: "message",
   Сообщение: "Message",
@@ -532,19 +561,19 @@ export const english: Record<string, string> = {
   Тип: "Type",
   "Тип кликов": "Click type",
   "Точка с запятой": "Semicolon",
-  "Удаление и запуск требуют подтверждения. При частичной ошибке массовой операции повторяются только неуспешные записи. Отчёт Excel доступен в кампании.":
+  "Удаление и запуск требуют подтверждения. При частичной ошибке массовой операции повторяются только неуспешные записи. Отчёт Excel доступен в рассылке.":
     "Deletion and starting require confirmation. If a bulk action partly fails, only failed records are retried. The Excel report is available within the campaign.",
   Удалить: "Delete",
   "Удалить выбранные": "Delete selected",
   "Удалить выбранные записи": "Delete selected records",
-  "Удалить кампанию": "Delete campaign",
+  "Удалить рассылку": "Delete campaign",
   "Удалить сообщение": "Delete message",
   "Удалить фильтр {count}": "Remove filter {count}",
-  "Укажите название кампании": "Enter a campaign name",
+  "Укажите название рассылки": "Enter a campaign name",
   "Укажите пароль нового пользователя": "Enter a password for the new user",
   "Укажите разделители строк и колонок": "Specify row and column separators",
   "Укажите шаблон сообщения": "Enter a message template",
-  "УПРАВЛЕНИЕ КАМПАНИЯМИ": "CAMPAIGN MANAGEMENT",
+  "УПРАВЛЕНИЕ РАССЫЛКАМИ": "CAMPAIGN MANAGEMENT",
   "Условия добавляются над таблицей или из заголовка колонки. Поддерживаются сравнения, строковые операторы, пустые значения и NULL. Разные поля объединяются через И. Статусы и теги позволяют выбрать несколько значений «любое из».":
     "Add conditions above the table or from a column header. Comparisons, text operators, empty values, and NULL are supported. Different fields use AND. Status and tag filters support multiple values with any-of matching.",
   Устройства: "Devices",
@@ -575,7 +604,7 @@ export const english: Record<string, string> = {
   "Шаблон, расписание и дополнительные сведения":
     "Template, schedule and additional details",
   "Шаблоны и ссылки": "Templates and links",
-  "Шаги кампании": "Campaign steps",
+  "Шаги рассылки": "Campaign steps",
   Шалфейный: "Sage",
   "Это действие недоступно для вашей учётной записи":
     "This action is unavailable for your account",
@@ -602,14 +631,14 @@ export const english: Record<string, string> = {
   "WA-аккаунты": "WA accounts",
   "Workspace": "Workspace",
   "Путь раздела": "Breadcrumb",
-  "Сводка кампании": "Campaign overview",
+  "Сводка рассылки": "Campaign overview",
   "Без учёта фильтров таблицы": "Independent of table filters",
   "Выбранные строки текущей страницы": "Selected rows on the current page",
   "Загружено на текущей странице": "Loaded rows on the current page",
   "Записей": "Records",
   "На странице": "On this page",
   "С учётом фильтров таблицы": "Matching the current table filters",
-  "Статистика всех кампаний": "Statistics for all campaigns",
+  "Статистика всех рассылок": "Statistics for all campaigns",
   "Статистика таблицы": "Table statistics",
   "Серебро": "Silver",
   "Графит": "Graphite",

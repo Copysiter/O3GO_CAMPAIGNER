@@ -1,8 +1,6 @@
 from fastapi import APIRouter
 
 from .endpoints import (  # noqa
-    account,
-    android,
     campaigns,
     hs,
     links,
@@ -31,7 +29,5 @@ api_router.include_router(
     teleraptor.router, prefix="/teleraptor/message", tags=["TeleRaptor"]
 )
 
-api_router.include_router(android.router, prefix="/android", tags=["Android"])
-api_router.include_router(account.router, prefix="/account", tags=["Account"])
 api_router.include_router(links.router, prefix="/links", tags=["Links"])
 api_router.include_router(hs.router, prefix="/hs", tags=["HS Phone Checker"])

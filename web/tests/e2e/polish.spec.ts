@@ -25,9 +25,7 @@ async function formOrder(dialog: Locator) {
     Array.from(grid.children).map((element) => {
       const separator = element.getAttribute('data-separator')
       if (separator) return separator
-      const control = element.querySelector(
-        'input,select,textarea,[role="switch"]',
-      )
+      const control = element.querySelector('[id^="field-"]')
       return control?.id.replace(/^field-/, '')
     }),
   )
@@ -157,9 +155,12 @@ test('reference theme colors and table control gradients stay consistent in both
         'background-color',
         'rgb(191, 195, 197)',
       )
-      await expect(input).toHaveCSS('background-color', 'rgb(194, 200, 203)')
-      await expect(owner).toHaveCSS('background-color', 'rgb(194, 200, 203)')
+      await expect(input).toHaveCSS('background-color', 'rgb(196, 200, 201)')
+      await expect(owner).toHaveCSS('background-color', 'rgb(196, 200, 201)')
     }
+    await expect(dialog.locator('label[for="field-value"]')).toHaveCSS(
+      'color', theme === 'Тёмная' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(46, 53, 58, 0.5)',
+    )
     await expect(dialog).toHaveCSS('opacity', '1')
     await page.screenshot({
       path: testInfo.outputPath(
@@ -237,7 +238,7 @@ test('form inputs and selects share height and focus treatment while textarea st
   await expect(number).toHaveValue('8')
 })
 
-test('pagination controls stay 32px without shrinking the existing footer', async ({
+test('pagination controls match the shared toolbar size without shrinking the footer', async ({
   page,
 }) => {
   await setup(page)
@@ -249,11 +250,11 @@ test('pagination controls stay 32px without shrinking the existing footer', asyn
     footer.getByRole('button', { name: 'Предыдущая страница', exact: true }),
     footer.getByRole('button', { name: 'Следующая страница', exact: true }),
   ]
-  for (const control of controls)
-    await expect(control).toHaveCSS('height', '32px')
   const coarse = await page.evaluate(
     () => matchMedia('(pointer: coarse)').matches,
   )
+  for (const control of controls)
+    await expect(control).toHaveCSS('height', coarse ? '44px' : '32px')
   const before = (await footer.boundingBox())!.height
   expect(before).toBeGreaterThanOrEqual(coarse ? 54 : 44)
   await page
@@ -272,7 +273,7 @@ test('generic forms retain original field groups, role selection, switches and s
 }, testInfo) => {
   const requests = await setup(page)
   const layouts = [
-    { path: '/keys', order: ['value', 'user_id', 'description', 'sep1'] },
+    { path: '/keys', order: ['value', 'user_id', 'description'] },
     {
       path: '/tags',
       order: [
@@ -282,18 +283,18 @@ test('generic forms retain original field groups, role selection, switches and s
         'color_txt',
         'color_bg',
         'description',
-        'sep1',
       ],
     },
-    { path: '/versions', order: ['file_name', 'sep2', 'description', 'sep3'] },
+    { path: '/versions', order: ['file_name', 'sep2', 'description'] },
     {
       path: '/accounts',
-      order: ['limit', 'cooldown', 'sep0', 'files', 'sep1'],
+      order: ['limit', 'cooldown', 'sep0', 'files'],
     },
   ]
   for (const layout of layouts) {
     const dialog = await addForm(page, layout.path)
     expect(await formOrder(dialog)).toEqual(layout.order)
+    expect(await dialog.evaluate((node) => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1)
     for (const separator of await dialog.locator('.form-divider').all()) {
       await expect(separator).toHaveAttribute('role', 'separator')
       await expect(separator).toHaveCSS('border-top-width', '1px')
@@ -314,7 +315,6 @@ test('generic forms retain original field groups, role selection, switches and s
     'ext_api_key',
     'sep3',
     'is_active',
-    'sep4',
   ])
   const role = dialog.getByLabel('Роль', { exact: true })
   await expect(role).toHaveValue('user')
@@ -372,10 +372,10 @@ test('styled datetime calendar edits campaign UTC values and supports keyboard d
   await page.goto('/campaigns/101')
   await settled(page)
   await page
-    .getByRole('button', { name: 'Все действия кампании', exact: true })
+    .getByRole('button', { name: 'Все действия рассылки', exact: true })
     .click()
   await page
-    .getByRole('menuitem', { name: 'Настройки кампании', exact: true })
+    .getByRole('menuitem', { name: 'Настройки рассылки', exact: true })
     .click()
   const form = page.locator('.modal-content').filter({ has: page.locator('#field-start_ts') })
   await expect(form).toBeVisible()

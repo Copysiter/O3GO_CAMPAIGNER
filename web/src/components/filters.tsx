@@ -8,7 +8,7 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Modal, ErrorBox } from './common'
 import { useOptions } from './fields'
-import { Checkbox } from './ui/checkbox'
+import { MultiSelect } from './multiselect'
 import { useAuth } from './providers'
 import { useI18n } from '@/lib/i18n'
 import { DateTimePicker } from './date-time-picker'
@@ -22,16 +22,15 @@ function FilterValue({
   onChange: (v: Filter) => void
 }) {
   const { session } = useAuth()
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const optionsPath =
     column.options === 'user' && !session?.user.is_superuser ? undefined : column.options
   const options = useOptions(optionsPath)
-  const [search, setSearch] = useState('')
   const choices =
     column.choices?.map(([value, text]) => ({ value, text: t(text) })) || options.data || []
   if (unary.has(filter.operator))
     return (
-      <p className="py-3 text-sm text-muted-foreground">
+      <p className="py-3 text-sm text-form-caption">
         {t('Для этого оператора значение не нужно.')}
       </p>
     )
@@ -39,57 +38,15 @@ function FilterValue({
     if (filter.operator === 'in' || filter.operator === 'overlaps')
       return (
         <div className="filter-value-control flex min-w-0 flex-col gap-2">
-          <Input
-            aria-label={t('Поиск значений')}
-            placeholder={t('Найти значение…')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+          <MultiSelect
+            label={t('Значение фильтра')}
+            searchLabel={t('Поиск значений')}
+            options={choices}
+            value={Array.isArray(filter.value) ? filter.value.map((value) => value ?? 'null') : []}
+            onChange={(value) => onChange({ ...filter, value })}
+            loading={Boolean(optionsPath) && options.isPending}
           />
-          <div className="max-h-56 overflow-auto overscroll-contain rounded-sm border p-2">
-            {optionsPath && options.isPending && (
-              <p className="px-2 py-3 text-xs text-muted-foreground">{t('Загрузка значений…')}</p>
-            )}
-            {choices
-              .filter((o) =>
-                String(o.text).toLocaleLowerCase(locale).includes(search.toLocaleLowerCase(locale)),
-              )
-              .map((o) => (
-                <label
-                  key={o.value}
-                  className="flex min-h-11 cursor-pointer items-center gap-3 px-2 text-sm hover:bg-secondary/50"
-                >
-                  <Checkbox
-                    className="size-5"
-                    checked={
-                      Array.isArray(filter.value) &&
-                      filter.value.map(String).includes(String(o.value))
-                    }
-                    onCheckedChange={(checked) => {
-                      const current = Array.isArray(filter.value) ? filter.value : []
-                      onChange({
-                        ...filter,
-                        value: checked
-                          ? [...current.filter((v) => String(v) !== String(o.value)), o.value]
-                          : current.filter((v) => String(v) !== String(o.value)),
-                      })
-                    }}
-                  />
-                  {o.text}
-                </label>
-              ))}
-            {!options.isPending &&
-              !options.error &&
-              !choices.some((option) =>
-                String(option.text)
-                  .toLocaleLowerCase(locale)
-                  .includes(search.toLocaleLowerCase(locale)),
-              ) && (
-                <p className="px-2 py-3 text-xs text-muted-foreground">
-                  {t('Нет подходящих значений')}
-                </p>
-              )}
-          </div>
-          {options.error && <ErrorBox error={options.error} />}
+          {options.error && <ErrorBox error={options.error} retry={() => options.refetch()} />}
         </div>
       )
     return (
@@ -148,17 +105,16 @@ function FilterValue({
         />
       )}
       {column.type === 'date' && (
-        <p className="text-xs text-muted-foreground">{t('Дата и время в UTC.')}</p>
+        <p className="text-xs text-form-caption">{t('Дата и время в UTC.')}</p>
       )}
     </div>
   )
 }
 type DraftRow = { id: number; filter: Filter }
-const newFilter = (column: Column): Filter => ({
-  field: column.key,
-  operator: allowedOperators(column.type || 'text')[0],
-  value: ['tags', 'campaign-status'].includes(column.type || '') ? [] : '',
-})
+const newFilter = (column: Column): Filter => {
+  const operator = allowedOperators(column.type || 'text')[0]
+  return { field: column.key, operator, value: operator === 'overlaps' ? [] : '' }
+}
 const cloneFilter = (filter: Filter): Filter => ({
   ...filter,
   value: Array.isArray(filter.value) ? [...filter.value] : filter.value,
@@ -216,11 +172,11 @@ export function FilterDialog({
     <Modal
       open
       autoFocus={false}
-      className="filter-dialog"
+      className="form-surface filter-dialog"
       onOpenChange={(open) => !open && onClose()}
       title={t('Фильтры')}
       description={t(
-        'Простые условия по колонкам. Разные поля объединяются через И; несколько выбранных статусов или тегов — «любое из».',
+        'Условия по разным полям применяются вместе. Для статуса, тегов и API-ключей достаточно совпадения с одним из выбранных значений поля.',
       )}
       footer={
         <div className="filter-footer">
@@ -251,7 +207,7 @@ export function FilterDialog({
     >
       <div className="filter-dialog-rows">
         {!draft.length && (
-          <p className="filter-empty text-sm text-muted-foreground">{t('Условия не добавлены')}</p>
+          <p className="filter-empty text-sm text-form-caption">{t('Условия не добавлены')}</p>
         )}
         {draft.map(({ id, filter }, index) => {
           const column = available.find((candidate) => candidate.key === filter.field)
@@ -264,7 +220,7 @@ export function FilterDialog({
               data-active={initial?.field === filter.field || undefined}
             >
               <label className="filter-row-property grid min-w-0 gap-1.5 text-xs">
-                {t('Колонка')}
+                <span className="text-form-caption">{t('Колонка')}</span>
                 <select
                   aria-label={t('Колонка')}
                   className="native-select w-full"
@@ -282,7 +238,7 @@ export function FilterDialog({
                 </select>
               </label>
               <label className="filter-row-operator grid min-w-0 gap-1.5 text-xs">
-                {t('Оператор')}
+                <span className="text-form-caption">{t('Оператор')}</span>
                 <select
                   aria-label={t('Оператор')}
                   className="native-select w-full"
@@ -303,7 +259,7 @@ export function FilterDialog({
                 </select>
               </label>
               <div className="filter-row-value grid min-w-0 gap-1.5">
-                <span className="text-xs">{t('Значение')}</span>
+                <span className="text-xs text-form-caption">{t('Значение')}</span>
                 <FilterValue
                   key={filter.field + filter.operator}
                   column={column}

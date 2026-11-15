@@ -1,15 +1,14 @@
 'use client'
 
-import { useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Upload } from 'lucide-react'
-import { api } from '@/lib/api'
+import { Upload } from 'lucide-react'
+import { api, ApiError } from '@/lib/api'
 import type { Field } from '@/lib/resources'
 import { Input } from './ui/input'
 import { Textarea } from './ui/textarea'
-import { Checkbox } from './ui/checkbox'
+import { MultiSelect } from './multiselect'
 import { Switch } from './ui/switch'
 import { DateTimePicker } from './date-time-picker'
 import { Button } from './ui/button'
@@ -22,7 +21,17 @@ export function useOptions(path?: string) {
   return useQuery<Option[]>({
     queryKey: ['options', path],
     queryFn: async () => {
-      const result = await api(`/options/${path}`)
+      const result = await api(`/options/${path}`).catch((error: unknown) => {
+        if (
+          path === 'openrouter/models' &&
+          error instanceof ApiError &&
+          error.status === 503 &&
+          error.message === 'OpenRouter is not configured'
+        ) {
+          return []
+        }
+        throw error
+      })
       if (!Array.isArray(result))
         throw new Error(t('Не удалось получить список вариантов'))
       return result
@@ -56,15 +65,13 @@ export function FieldControl({
   const client = useQueryClient()
   const visible = canUseField(field, session?.user)
   const options = useOptions(visible ? field.options : undefined)
-  const [search, setSearch] = useState(''),
-    [creating, setCreating] = useState(false)
   if (!visible) return null
   if (field.type === 'separator')
     return (
       <div
         role="separator"
         aria-orientation="horizontal"
-        className="form-divider md:col-span-2"
+        className="form-divider"
         data-separator={field.key}
       />
     )
@@ -78,47 +85,37 @@ export function FieldControl({
     options.data ||
     []
   const selected: (string | number)[] = Array.isArray(value) ? value : []
-  const available = [
-    ...choices,
-    ...selected
-      .filter((item) => !choices.some((o) => String(o.value) === String(item)))
-      .map((item) => ({ value: item, text: String(item) })),
-  ]
-  const filtered = available.filter((o) =>
-    String(o.text).toLowerCase().includes(search.toLowerCase()),
-  )
   const id = `field-${field.key}`
   const canCreateKey =
     field.options === 'api_key' &&
-    !!search.trim() &&
-    !available.some((o) => String(o.value) === search.trim()) &&
     (session?.user.is_superuser ||
       session?.user.permissions?.includes('api_keys.manage'))
-  async function addKey() {
-    setCreating(true)
+  async function addKey(key: string) {
     try {
       const result = await api('/api_keys/', {
         method: 'POST',
-        body: JSON.stringify({ value: search.trim() }),
+        body: JSON.stringify({ value: key }),
       })
       onChange([...selected, result.value])
-      setSearch('')
-      await client.invalidateQueries({ queryKey: ['options', 'api_key'] })
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['options', 'api_key'] }),
+        client.invalidateQueries({ queryKey: ['options', 'api_key_id'] }),
+      ])
       toast.success(t('API-ключ добавлен'))
+      return true
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
           : t('Не удалось добавить API-ключ'),
       )
-    } finally {
-      setCreating(false)
+      return false
     }
   }
   if (field.type === 'boolean')
     return (
       <div
-        className={`form-field form-field-switch ${span === 2 ? 'md:col-span-2' : ''}`}
+        className={`form-field form-field-switch ${span === 2 ? 'form-full' : ''}`}
       >
         <label htmlFor={id}>{t(field.label)}</label>
         <Switch
@@ -130,7 +127,7 @@ export function FieldControl({
       </div>
     )
   return (
-    <div className={`form-field min-w-0 ${span === 2 ? 'md:col-span-2' : ''}`}>
+    <div className={`form-field min-w-0 ${span === 2 ? 'form-full' : ''}`}>
       <label htmlFor={id} className="text-xs font-medium">
         {t(field.label)}
         {field.required && (
@@ -140,83 +137,16 @@ export function FieldControl({
         )}
       </label>
       {field.type === 'multi' ? (
-        <div className="rounded-sm border bg-background p-2">
-          <Input
-            id={id}
-            aria-label={t('Поиск: {field}', { field: t(field.label) })}
-            placeholder={t('Найти или выбрать…')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            autoComplete="off"
-          />
-          <div
-            role="group"
-            aria-label={t(field.label)}
-            className="mt-2 max-h-48 overflow-auto overscroll-contain"
-          >
-            {filtered.map((o) => (
-              <label
-                key={String(o.value)}
-                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-2 hover:bg-secondary md:min-h-9"
-              >
-                <Checkbox
-                  className="size-4"
-                  checked={selected.map(String).includes(String(o.value))}
-                  onCheckedChange={(checked) =>
-                    onChange(
-                      checked
-                        ? [
-                            ...selected.filter(
-                              (v) => String(v) !== String(o.value),
-                            ),
-                            o.value,
-                          ]
-                        : selected.filter((v) => String(v) !== String(o.value)),
-                    )
-                  }
-                />
-                <span className="break-all text-xs">{o.text}</span>
-              </label>
-            ))}
-            {options.isPending && field.options && (
-              <p role="status" className="p-2 text-xs text-muted-foreground">
-                {t('Загрузка вариантов…')}
-              </p>
-            )}
-            {!options.isFetching && !filtered.length && (
-              <p className="p-2 text-xs text-muted-foreground">
-                {t('Нет подходящих вариантов')}
-              </p>
-            )}
-          </div>
-          {canCreateKey && (
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-2 w-full"
-              disabled={creating}
-              onClick={addKey}
-            >
-              <Plus size={14} />
-              {creating
-                ? t('Добавление…')
-                : t('Создать ключ «{key}»', { key: search.trim() })}
-            </Button>
-          )}
-          <div className="mt-2 flex items-center justify-between border-t pt-2 text-xs text-muted-foreground">
-            <span>{t('Выбрано: {count}', { count: selected.length })}</span>
-            {selected.length > 0 && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onChange([])}
-              >
-                {t('Сбросить')}
-              </Button>
-            )}
-          </div>
-        </div>
+        <MultiSelect
+          id={id}
+          label={t(field.label)}
+          searchLabel={t('Поиск: {field}', { field: t(field.label) })}
+          options={choices}
+          value={selected}
+          onChange={onChange}
+          loading={Boolean(field.options) && options.isPending}
+          onCreate={canCreateKey ? addKey : undefined}
+        />
       ) : field.type === 'role' ? (
         <select
           id={id}
@@ -269,10 +199,10 @@ export function FieldControl({
         />
       ) : field.type === 'file' || field.type === 'files' ? (
         <>
-          <Input
+          <input
             id={id}
             type="file"
-            className="sr-only"
+            hidden
             accept={field.type === 'files' ? '.tar.gz' : '.apk'}
             multiple={field.type === 'files'}
             onChange={(e) => onChange(Array.from(e.target.files || []))}
@@ -287,20 +217,20 @@ export function FieldControl({
               {t(field.type === 'files' ? 'Выбрать файлы' : 'Выбрать файл')}
             </Button>
             {(!value || (Array.isArray(value) && !value.length)) && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-form-caption">
                 {t('Файл не выбран')}
               </span>
             )}
           </div>
           {editing && typeof value === 'string' && (
-            <p className="break-all text-xs text-muted-foreground">
+            <p className="break-all text-xs text-form-caption">
               {t('Текущий файл: {filename}. Для замены выберите новый.', {
                 filename: value,
               })}
             </p>
           )}
           {Array.isArray(value) && value.length > 0 && (
-            <ul className="space-y-1 text-xs text-muted-foreground">
+            <ul className="space-y-1 text-xs text-form-caption">
               {value.map((file: File) => (
                 <li className="break-all" key={`${file.name}-${file.size}`}>
                   {file.name} ·{' '}
@@ -343,7 +273,7 @@ export function FieldControl({
         />
       )}
       {field.help && (
-        <p className="text-xs leading-relaxed text-muted-foreground">
+        <p className="text-xs leading-relaxed text-form-caption">
           {t(field.help)}
         </p>
       )}
@@ -365,7 +295,7 @@ export function FormFields({
   editing?: boolean
 }) {
   return (
-    <div className="form-grid grid grid-cols-1 gap-x-2.5 gap-y-[15px] md:grid-cols-2">
+    <div className="form-grid form-flow">
       {fields.map((field) => (
         <FieldControl
           key={field.key}

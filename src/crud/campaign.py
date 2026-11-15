@@ -38,6 +38,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         msg_attempts = source.msg_attempts if source.msg_attempts is not None else 1
         campaign = Campaign(
             name=f"[Retry] {source.name or ''}",
+            geo=getattr(source, "geo", None),
             user_id=source.user_id,
             schedule=deepcopy(source.schedule),
             msg_template=source.msg_template,
@@ -84,6 +85,8 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
                     "campaign_id": campaign.id,
                     "src_addr": None,
                     "dst_addr": item.dst_addr,
+                    "geo": getattr(item, "geo", None),
+                    "link": getattr(item, "link", None),
                     "field_1": item.field_1,
                     "field_2": item.field_2,
                     "field_3": item.field_3,
@@ -271,9 +274,16 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             ).values(
                 expire_ts=(datetime.utcnow() + timedelta(
                     seconds=update_data['msg_sending_timeout']
-                )) if update_data['msg_sending_timeout'] else None
+                )) if update_data['msg_sending_timeout'] and not (
+                    getattr(db_obj, 'import_id', None)
+                    and db_obj.status in (CampaignStatus.CREATED, CampaignStatus.PAUSED, CampaignStatus.STOPPED)
+                ) else None
             )
             await db.execute(statement)
+
+        if update_data.get('status') == CampaignStatus.RUNNING:
+            from services.campaign_lifecycle import initialize_import_deadlines
+            await initialize_import_deadlines(db, db_obj, update_data)
 
         campaign = await super().update(db, db_obj=db_obj, obj_in=update_data)
 
@@ -304,6 +314,14 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         self, db: AsyncSession, *, ids: List[int],
         obj_in: Dict[str, Any], user_id: int = None
     ) -> List[Campaign]:
+        if obj_in.get('status') == CampaignStatus.RUNNING:
+            from services.campaign_lifecycle import initialize_import_deadlines
+            statement = select(Campaign).where(Campaign.id.in_(ids))
+            if user_id is not None:
+                statement = statement.where(Campaign.user_id == user_id)
+            campaigns_to_start = (await db.execute(statement)).unique().scalars().all()
+            for campaign in campaigns_to_start:
+                await initialize_import_deadlines(db, campaign, obj_in)
         statement = update(self.model).where(self.model.id.in_(ids))
         if user_id is not None:
             statement = statement.where(Campaign.user_id == user_id)

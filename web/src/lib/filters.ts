@@ -37,7 +37,8 @@ export const unary = new Set([
   'isfalse',
 ])
 export function allowedOperators(type: string): Operator[] {
-  if (type === 'campaign-status' || type === 'tags') return ['overlaps']
+  if (['campaign-status', 'tags', 'api-keys'].includes(type)) return ['overlaps']
+  if (type === 'message-status') return ['overlaps', 'eq', 'neq', 'isnull', 'isnotnull']
   if (type === 'boolean') return ['istrue', 'isfalse', 'isnull', 'isnotnull']
   if (type === 'enum') return ['eq', 'neq', 'in', 'isnull', 'isnotnull']
   if (type === 'number' || type === 'date')
@@ -57,7 +58,7 @@ export function allowedOperators(type: string): Operator[] {
     'isnotnullorempty',
   ]
 }
-// Keep filters flat: the campaign endpoint itself merges status/tag scalar values.
+// The campaign endpoint groups repeated equality filters for these fields.
 export function serializeQuery(
   filters: Filter[],
   orders: { id: string; desc: boolean }[],
@@ -67,7 +68,7 @@ export function serializeQuery(
 ) {
   const params = new URLSearchParams({ skip: String(page * size), limit: String(size) })
   const flattened = filters.flatMap((f) =>
-    campaign && ['status', 'tags'].includes(f.field)
+    campaign && ['status', 'tags', 'api_keys'].includes(f.field)
       ? (Array.isArray(f.value) ? f.value : [f.value]).map((value) => ({
           ...f,
           operator: 'eq',

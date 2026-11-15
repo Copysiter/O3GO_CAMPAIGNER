@@ -17,7 +17,7 @@ export function Settings({
   const { t } = useI18n()
   const labelIndex = resolvedTheme === 'dark' ? 2 : 3
   return (
-    <Modal
+    <Modal className="form-surface"
       open={open}
       onOpenChange={onOpenChange}
       title={t('Внешний вид')}
@@ -38,9 +38,9 @@ export function Settings({
         </>
       }
     >
-      <div className="settings-form space-y-5">
+      <div className="settings-form form-sections">
         <section>
-          <h3 className="mb-2 text-xs font-medium">{t('Оформление')}</h3>
+          <h3 className="mb-2 text-xs font-medium text-form-caption">{t('Оформление')}</h3>
           <div className="theme-choice-grid theme-choice-grid-fixed">
             {(
               [
@@ -80,8 +80,8 @@ export function Settings({
         </section>
         <section>
           <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-xs font-medium">{t('Основной цвет')}</h3>
-            <span className="text-xs text-muted-foreground">
+            <h3 className="text-xs font-medium text-form-caption">{t('Основной цвет')}</h3>
+            <span className="text-xs text-form-caption">
               {t(palette[p.accent][labelIndex])}
             </span>
           </div>

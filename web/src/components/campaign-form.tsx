@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
+import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -8,10 +9,14 @@ import {
   ChevronLeft,
   ChevronRight,
   FileCheck2,
+  Download,
   LoaderCircle,
   UploadCloud,
 } from "lucide-react";
-import { api, type Row } from "@/lib/api";
+import {
+  api, downloadGeoLinksReport, type Row, type CampaignImportUpload,
+  type CampaignImportMapping, type CampaignImportPreview, type CreatedCampaigns,
+} from "@/lib/api";
 import { campaignFields, type Field } from "@/lib/resources";
 import { canUseField, FieldControl } from "./fields";
 import { useAuth } from "./providers";
@@ -19,6 +24,7 @@ import { Modal, ErrorBox } from "./common";
 import { Button } from "./ui/button";
 import { WeeklySchedule as Schedule } from "./weekly-schedule";
 import { useI18n } from "@/lib/i18n";
+import { CampaignImportFields, CampaignImportSummary, initialImportMappings } from "./campaign-import";
 
 const weekDays = [
   "Понедельник",
@@ -161,6 +167,7 @@ export function CampaignForm({
     provider: "openrouter",
     auto_shorten_links: false,
     unique_shorten_link: false,
+    split_by_geo: false,
     clicker_type: "mobile",
     clicker_split: false,
     ...row,
@@ -177,14 +184,21 @@ export function CampaignForm({
   const [step, setStep] = useState(0);
   const [source, setSource] = useState<"text" | "file">("text");
   const [file, setFile] = useState<File | null>(null);
-  const [uploaded, setUploaded] = useState<{
-    filename: string;
-    fields: string[];
-  } | null>(null);
+  const [uploaded, setUploaded] = useState<CampaignImportUpload | null>(null);
+  const [importMappings, setImportMappings] = useState<CampaignImportMapping[]>([]);
+  const [defaultRegion, setDefaultRegion] = useState("");
+  const [excludeInvalid, setExcludeInvalid] = useState(false);
+  const [importPreview, setImportPreview] = useState<CampaignImportPreview | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewError, setPreviewError] = useState<unknown>(null);
+  const [completedPreviewKey, setCompletedPreviewKey] = useState("");
+  const [created, setCreated] = useState<CreatedCampaigns | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [pending, setPending] = useState(false);
   const busy = pending || uploading;
+  const importMode = !row && source === "file" && Boolean(uploaded?.import_id);
   const change = (key: string, value: any) =>
     setValues((v) => ({ ...v, [key]: value }));
   const names = row
@@ -197,7 +211,7 @@ export function CampaignForm({
   );
   const sample: string[] =
     source === "file"
-      ? uploaded?.fields || []
+      ? (uploaded?.sources?.[0]?.sample_rows[importMappings[0]?.skip_rows || 0] || uploaded?.fields || [])
       : (rows[0] || "").split(values.data_text_col_sep || ";");
   const sampleRows =
     source === "file"
@@ -211,6 +225,46 @@ export function CampaignForm({
     source === "file"
       ? sample.length
       : Math.max(1, ...sampleRows.map((items) => items.length));
+  const importPreviewKey = importMode ? JSON.stringify({
+    import_id: uploaded?.import_id,
+    mappings: importMappings,
+    default_region: defaultRegion || null,
+  }) : "";
+  useEffect(() => {
+    setImportPreview(null);
+    setPreviewError(null);
+    setCompletedPreviewKey("");
+    if (!importPreviewKey) {
+      setPreviewing(false);
+      return;
+    }
+    const controller = new AbortController();
+    setPreviewing(true);
+    const timer = setTimeout(async () => {
+      const { import_id, ...body } = JSON.parse(importPreviewKey);
+      try {
+        const result = await api<CampaignImportPreview>(`/upload/${import_id}/preview`, {
+          method: "POST", body: JSON.stringify(body), signal: controller.signal,
+        });
+        if (!controller.signal.aborted) {
+          setImportPreview(result);
+          setCompletedPreviewKey(importPreviewKey);
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) setPreviewError(error);
+      } finally {
+        if (!controller.signal.aborted) setPreviewing(false);
+      }
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [importPreviewKey]);
+  const importReady = !importMode || Boolean(
+    importPreview && !previewing && completedPreviewKey === importPreviewKey &&
+    importPreview.valid_count > 0 && (importPreview.invalid_count === 0 || excludeInvalid),
+  );
 
   async function selectFile(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] || null;
@@ -218,13 +272,15 @@ export function CampaignForm({
     uploadController.current?.abort();
     setFile(selected);
     setUploaded(null);
+    setImportMappings([]);
+    setExcludeInvalid(false);
     setError(null);
     if (!selected) {
       setUploading(false);
       return;
     }
-    if (!/\.(csv|txt|xlsx|xls)$/i.test(selected.name)) {
-      setError(new Error(t("Выберите файл CSV, TXT, XLS или XLSX")));
+    if (!/\.(csv|txt|xlsx|xls|zip)$/i.test(selected.name)) {
+      setError(new Error(t("Выберите один файл CSV, TXT, XLS, XLSX или ZIP")));
       return;
     }
     setUploading(true);
@@ -258,13 +314,14 @@ export function CampaignForm({
         );
       if (version !== uploadVersion.current) return;
       mappingInitialized.current = true;
-      setUploaded({
-        filename: result.filename,
-        fields: result.fields.map(String),
-      });
+      const upload = { ...result, fields: result.fields.map(String) } as CampaignImportUpload;
+      setUploaded(upload);
+      const mappings = initialImportMappings(upload);
+      setImportMappings(mappings);
+      if (upload.format === "zip" && upload.message != null) change("msg_template", upload.message);
       change(
         "data_fields",
-        Object.fromEntries(
+        mappings[0]?.data_fields || Object.fromEntries(
           contactFields.map((key, index) => [
             key,
             index < result.fields.length ? index : null,
@@ -289,7 +346,7 @@ export function CampaignForm({
   function validateSection(index: number) {
     if (index === 0) {
       if (!String(values.name || "").trim())
-        throw new Error(t("Укажите название кампании"));
+        throw new Error(t("Укажите название рассылки"));
       if (values.webhook_url) {
         try {
           const url = new URL(values.webhook_url);
@@ -320,7 +377,7 @@ export function CampaignForm({
           throw new Error(t("Укажите разделители строк и колонок"));
       }
     }
-    if (index === 1 && !row) {
+    if (index === 1 && !row && !importMode) {
       const phoneColumn = values.data_fields.dst_addr;
       if (
         phoneColumn === null ||
@@ -339,6 +396,17 @@ export function CampaignForm({
             "В одной из строк отсутствует телефон. Проверьте сопоставление колонок.",
           ),
         );
+    }
+    if (index === 1 && importMode) {
+      if (importMappings.some((mapping) => mapping.data_fields.dst_addr == null))
+        throw new Error(t("Выберите колонку с номером телефона"));
+      if (previewError) throw previewError;
+      if (previewing || completedPreviewKey !== importPreviewKey || !importPreview)
+        throw new Error(t("Дождитесь проверки номеров"));
+      if (!importPreview.valid_count)
+        throw new Error(t("Нет корректных номеров для создания рассылки"));
+      if (importPreview.invalid_count && !excludeInvalid)
+        throw new Error(t("Исправьте номера или разрешите пропустить строки с ошибками"));
     }
     if (index === 1 && !row && !String(values.msg_template || "").trim())
       throw new Error(t("Укажите шаблон сообщения"));
@@ -380,7 +448,7 @@ export function CampaignForm({
       )
         throw new Error(t("Дата завершения должна быть позже даты начала"));
     }
-    if (index === 3 && values.clicker_url) {
+    if (index === 3 && values.clicker_url && !(importMode && values.split_by_geo)) {
       if (
         values.clicker_goal !== undefined &&
         values.clicker_goal !== "" &&
@@ -457,6 +525,12 @@ export function CampaignForm({
           body.data_text = rows.join(values.data_text_row_sep);
           body.data_text_row_sep = values.data_text_row_sep;
           body.data_text_col_sep = values.data_text_col_sep;
+        } else if (importMode) {
+          body.import_id = uploaded!.import_id;
+          body.mappings = importMappings;
+          body.default_region = defaultRegion || null;
+          body.exclude_invalid = excludeInvalid;
+          body.split_by_geo = Boolean(values.split_by_geo);
         } else {
           body.data_file_name = uploaded!.filename;
         }
@@ -494,13 +568,13 @@ export function CampaignForm({
           )
             body.model = values.model || null;
         }
-        if (values.clicker_url) {
+        if (values.clicker_url && !(importMode && values.split_by_geo)) {
           for (const field of clickerFields)
             if (values[field.key] !== undefined && values[field.key] !== "")
               body[field.key] = values[field.key];
         }
       }
-      const result = await api(`/campaigns/${row ? row.id : ""}`, {
+      const result = await api(importMode ? "/campaigns/from-import" : `/campaigns/${row ? row.id : ""}`, {
         method: row ? "PUT" : "POST",
         body: JSON.stringify(body),
       });
@@ -511,11 +585,17 @@ export function CampaignForm({
       ]);
       toast.success(
         row
-          ? t("Кампания обновлена")
-          : t("Кампания создана. Запустите её, когда будете готовы."),
+          ? t("Рассылка обновлена")
+          : importMode
+            ? t("Создано рассылок: {count}", { count: result.created_count })
+          : t("Рассылка создана. Запустите её, когда будете готовы."),
       );
-      onClose();
-      if (!row) onCreated?.(result.id);
+      if (importMode) {
+        setCreated(result as CreatedCampaigns);
+      } else {
+        onClose();
+        if (!row) onCreated?.(result.id);
+      }
     } catch (err) {
       setError(err);
     } finally {
@@ -543,7 +623,7 @@ export function CampaignForm({
   );
   type FormItem = [string | Field, (4 | 6 | 12)?, boolean?];
   const controls = (items: FormItem[], onChange = change) => (
-    <div className="campaign-form-group grid min-w-0 grid-cols-1 gap-4 md:grid-cols-12">
+    <div className="campaign-form-group form-flow">
       {items.map(([item, span = 6, disabled = false]) => {
         const field =
           typeof item === "string"
@@ -554,7 +634,7 @@ export function CampaignForm({
           <fieldset
             key={field.key}
             disabled={disabled}
-            className={`min-w-0 border-0 p-0 ${span === 12 ? "md:col-span-12" : span === 4 ? "md:col-span-4" : "md:col-span-6"}`}
+            className={`min-w-0 border-0 p-0 ${span === 12 ? "form-full" : span === 4 ? "form-third" : ""}`}
           >
             <FieldControl
               field={
@@ -591,9 +671,9 @@ export function CampaignForm({
     ),
   );
   const assignments = controls([
-    ["api_keys", 12],
-    ["androids", 12],
-    ["tags", 12],
+    ["api_keys", 4],
+    ["androids", 4],
+    ["tags", 4],
   ]);
   const timing = (
     <>
@@ -639,12 +719,12 @@ export function CampaignForm({
             {t("По порядку")}
           </Button>
         </div>
-        <p className="text-xs leading-relaxed text-muted-foreground">
+        <p className="text-xs leading-relaxed text-form-caption">
           {t(
             "Выберите колонку телефона и поля для подстановки в сообщение. Нумерация начинается с 1.",
           )}
         </p>
-        <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="form-flow form-flow-thirds">
           {contactFields.map((key, index) => (
             <label key={key} className="form-field min-w-0">
               <span>
@@ -690,13 +770,13 @@ export function CampaignForm({
       </section>
       {sampleRows.length > 0 && (
         <section className="min-w-0 max-w-full space-y-2">
-          <h3 className="text-xs font-medium text-muted-foreground">
+          <h3 className="text-xs font-medium text-form-caption">
             {source === "file"
               ? t("Образец из файла")
               : t("Первые строки после обработки")}
           </h3>
           <div
-            className="w-full min-w-0 max-w-full overflow-x-auto border"
+            className="form-table-scroll w-full min-w-0 max-w-full overflow-x-auto border"
             tabIndex={0}
             aria-label={t("Предпросмотр колонок получателей")}
           >
@@ -736,8 +816,8 @@ export function CampaignForm({
     <>
       {controls([["msg_template", 12]])}
       {!row && (
-        <div className="campaign-preview min-w-0 border bg-background p-3">
-          <div className="mb-2 text-xs font-medium text-muted-foreground">
+        <div className="campaign-preview min-w-0 border p-3">
+          <div className="mb-2 text-xs font-medium text-form-caption">
             {source === "file"
               ? t("Предпросмотр по образцу из файла")
               : t("Предпросмотр первого получателя")}
@@ -745,7 +825,7 @@ export function CampaignForm({
           <p className="break-words whitespace-pre-wrap text-sm leading-relaxed">
             {preview || t("Текст сообщения появится здесь")}
           </p>
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-2 text-xs text-form-caption">
             {t(
               "Символов: {count}. Сокращение ссылок и AI-рерайт выполняются после создания.",
               { count: preview.length },
@@ -756,21 +836,72 @@ export function CampaignForm({
     </>
   );
 
+  const importSummary = importMode ? (
+    <CampaignImportSummary
+      preview={importPreview}
+      loading={previewing || completedPreviewKey !== importPreviewKey}
+      error={previewError}
+      split={Boolean(values.split_by_geo)}
+      name={values.name}
+      excludeInvalid={excludeInvalid}
+      onExcludeInvalidChange={setExcludeInvalid}
+    />
+  ) : null;
+
+  if (created) {
+    return (
+      <Modal className="form-surface"
+        open
+        title={t("Рассылки созданы")}
+        description={t("Все рассылки созданы без запуска. Скачайте общую сводку по ссылкам этой загрузки.")}
+        onOpenChange={(open) => !open && onClose()}
+        bodyClassName="min-w-0 overflow-x-hidden"
+        footer={<Button variant="outline" onClick={onClose}>{t("Перейти к рассылкам")}</Button>}
+      >
+        <div className="min-w-0 space-y-4">
+          <p className="text-sm font-medium">{t("Создано рассылок: {count}", { count: created.created_count })}</p>
+          <ul className="form-summary-list divide-y border-y">
+            {created.campaigns.map((campaign) => (
+              <li key={campaign.id} className="flex min-w-0 items-start justify-between gap-3 py-3 text-sm">
+                <Link href={`/campaigns/${campaign.id}`} onClick={onClose} className="min-w-0 break-words text-primary underline-offset-4 hover:underline">
+                  {campaign.name}
+                </Link>
+                <span className="shrink-0 tabular-nums">{campaign.msg_total.toLocaleString(locale)}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs leading-relaxed text-form-caption">{t("Один Excel для всех созданных рассылок: страна, исходная ссылка и количество уникальных номеров.")}</p>
+          {error != null && <ErrorBox error={error} />}
+          <Button className="h-auto min-h-10 max-w-full whitespace-normal text-left" disabled={downloading} onClick={async () => {
+            setDownloading(true);
+            setError(null);
+            try { await downloadGeoLinksReport(created.import_id); }
+            catch (error) { setError(error); }
+            finally { setDownloading(false); }
+          }}>
+            {downloading ? <LoaderCircle size={16} className="shrink-0 animate-spin" /> : <Download size={16} className="shrink-0" />}
+            {t("Ссылки по GEO — Excel")}
+          </Button>
+        </div>
+      </Modal>
+    );
+  }
+
   return (
-    <Modal
+    <Modal className="form-surface"
       open
       onOpenChange={(open) => !open && close()}
       bodyClassName="campaign-form-body min-w-0 overflow-x-hidden"
       title={
         row
-          ? t("Настройки кампании #{id}", { id: row.id })
-          : t("Новая кампания")
+          ? t("Настройки рассылки #{id}", { id: row.id })
+          : t("Новая рассылка")
       }
       description={
         row
           ? t("Настройки отправки, шаблон сообщения и расписание.")
           : t(
-              "Подготовьте аудиторию и сообщение. Запустить кампанию можно после создания.",
+              "Подготовьте аудиторию и сообщение. Запустить рассылку можно после создания.",
             )
       }
       footer={
@@ -797,7 +928,7 @@ export function CampaignForm({
               <ChevronRight size={16} />
             </Button>
           ) : (
-            <Button disabled={busy} onClick={save}>
+            <Button disabled={busy || !importReady} onClick={save}>
               {pending ? (
                 <LoaderCircle className="animate-spin" size={16} />
               ) : (
@@ -807,18 +938,20 @@ export function CampaignForm({
                 ? t("Сохранение…")
                 : row
                   ? t("Сохранить")
-                  : t("Создать кампанию")}
+                  : importMode && values.split_by_geo && importPreview
+                    ? t("Создать {count}", { count: importPreview.geo_groups.length })
+                  : t("Создать")}
             </Button>
           )}
         </>
       }
     >
-      <div className="campaign-form w-full min-w-0 max-w-full">
+      <div className="campaign-form form-sections w-full max-w-full">
         {!row && (
           <div
-            className="mb-5 grid min-w-0 grid-cols-4 gap-2"
+            className="grid min-w-0 grid-cols-2 gap-2 min-[360px]:grid-cols-4"
             role="tablist"
-            aria-label={t("Шаги кампании")}
+            aria-label={t("Шаги рассылки")}
           >
             {names.map((name, index) => (
               <button
@@ -844,15 +977,13 @@ export function CampaignForm({
           </div>
         )}
         {error != null && (
-          <div className="mb-4">
-            <ErrorBox error={error} />
-          </div>
+          <ErrorBox error={error} />
         )}
         <div
           id={`${panelId}-panel`}
           role={row ? undefined : "tabpanel"}
           aria-labelledby={row ? undefined : `${panelId}-tab-${step}`}
-          className="min-w-0 max-w-full space-y-4"
+          className="form-sections max-w-full"
         >
           {row ? (
             <>
@@ -886,7 +1017,7 @@ export function CampaignForm({
                     </>
                   )}
                   {divider("sep3")}
-                  <div className="campaign-form-group grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="campaign-form-group form-flow">
                     <label className="form-field min-w-0">
                       <span>{t("Источник данных")}</span>
                       <select
@@ -901,7 +1032,7 @@ export function CampaignForm({
                         }}
                       >
                         <option value="text">{t("Вставить текст")}</option>
-                        <option value="file">CSV / Excel</option>
+                        <option value="file">CSV / TXT / Excel / ZIP</option>
                       </select>
                     </label>
                     <fieldset
@@ -971,7 +1102,7 @@ export function CampaignForm({
                           12,
                         ],
                       ])}
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-form-caption">
                         {t(
                           "Получателей: {count}. Пустые строки пропускаются.",
                           { count: rows.length.toLocaleString(locale) },
@@ -979,13 +1110,13 @@ export function CampaignForm({
                       </p>
                     </>
                   ) : (
-                    <div className="min-w-0 space-y-3 border border-dashed bg-background p-3">
+                    <div className="field-group-surface min-w-0 space-y-3 border border-dashed p-3">
                       <input
                         ref={fileInputRef}
                         className="sr-only"
                         aria-label={t("Файл получателей")}
                         type="file"
-                        accept=".csv,.txt,.xlsx,.xls"
+                        accept=".csv,.txt,.xlsx,.xls,.zip"
                         disabled={uploading}
                         onChange={selectFile}
                       />
@@ -1004,13 +1135,13 @@ export function CampaignForm({
                           <UploadCloud size={15} />
                           {t("Выбрать файл")}
                         </Button>
-                        <span className="min-w-0 break-all text-xs text-muted-foreground">
+                        <span className="min-w-0 break-all text-xs text-form-caption">
                           {file?.name || t("Файл не выбран")}
                         </span>
                       </div>
-                      <p className="text-xs leading-relaxed text-muted-foreground">
+                      <p className="text-xs leading-relaxed text-form-caption">
                         {t(
-                          "CSV, TXT, XLS, XLSX. Файл загружается сразу, чтобы показать образцы колонок. Первая строка также считается получателем: подготовьте файл без заголовка.",
+                          "Один файл: CSV, TXT, XLS, XLSX или ZIP. В ZIP — text.txt с общим сообщением и остальные TXT с одним телефоном на строке.",
                         )}
                       </p>
                       <div
@@ -1033,7 +1164,10 @@ export function CampaignForm({
                               className="shrink-0 text-primary"
                             />
                             <span className="min-w-0 break-all">
-                              {t("{name} · {count} колонок", {
+                              {uploaded.import_id ? t("{name} · {count} строк", {
+                                name: file?.name || "",
+                                count: uploaded.total_rows || 0,
+                              }) : t("{name} · {count} колонок", {
                                 name: file?.name || "",
                                 count: uploaded.fields.length,
                               })}
@@ -1055,14 +1189,39 @@ export function CampaignForm({
                       12,
                     ],
                   ])}
-                  {divider("sep6")}
                 </>
               )}
               {step === 1 && (
                 <>
-                  {mapping}
+                  {importMode && uploaded ? <>
+                    {divider("sep7")}
+                    <CampaignImportFields
+                      upload={uploaded}
+                      mappings={importMappings}
+                      onChange={(mappings) => {
+                        setImportMappings(mappings);
+                        setExcludeInvalid(false);
+                        if (mappings[0]) change("data_fields", mappings[0].data_fields);
+                      }}
+                      defaultRegion={defaultRegion}
+                      onDefaultRegionChange={(region) => {
+                        setDefaultRegion(region);
+                        setExcludeInvalid(false);
+                      }}
+                    />
+                  </> : mapping}
                   {divider("sep8")}
                   {template}
+                  {importMode && <>
+                    {divider("sep8-geo")}
+                    {controls([[{
+                      key: "split_by_geo",
+                      label: t("Разделить по GEO"),
+                      type: "boolean",
+                    }, 12]])}
+                    <p className="text-xs leading-relaxed text-form-caption">{t("Для каждой страны будет создана отдельная рассылка с префиксом [ru], [kz] и т. д.")}</p>
+                    {importSummary}
+                  </>}
                   {canUseField(aiFields[0], session?.user) && (
                     <>
                       {divider("sep9")}
@@ -1114,7 +1273,6 @@ export function CampaignForm({
                       change(key, value);
                     },
                   )}
-                  {divider("sep14")}
                 </>
               )}
               {step === 2 && (
@@ -1131,6 +1289,8 @@ export function CampaignForm({
               {step === 3 && (
                 <>
                   {divider("sep19")}
+                  {importMode && values.split_by_geo && <p className="text-sm leading-relaxed text-form-caption">{t("Clicker доступен при создании одной рассылки без разделения по GEO.")}</p>}
+                  <fieldset disabled={Boolean(importMode && values.split_by_geo)} className="form-sections border-0 p-0 disabled:opacity-50">
                   {controls([
                     [clickerFields[0], 12],
                     [clickerFields[1], 6],
@@ -1142,15 +1302,16 @@ export function CampaignForm({
                   ])}
                   {divider("sep20")}
                   {controls([[clickerFields[7], 12]])}
+                  </fieldset>
                   {divider("sep21")}
-                  <div className="campaign-preview min-w-0 border bg-background p-3">
+                  {importMode ? importSummary : <div className="campaign-preview min-w-0 border p-3">
                     <h3 className="mb-2 text-sm font-medium">
                       {t("Готово к созданию")}
                     </h3>
                     <p className="break-words text-sm">
                       {values.name || t("Без названия")}
                     </p>
-                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    <p className="mt-2 text-xs leading-relaxed text-form-caption">
                       {source === "file"
                         ? t("Аудитория: {name}", {
                             name: file?.name || t("файл не выбран"),
@@ -1164,7 +1325,7 @@ export function CampaignForm({
                         : t("Исходный текст")}{" "}
                       {t("· Создаётся в статусе «Создана»")}
                     </p>
-                  </div>
+                  </div>}
                 </>
               )}
             </>

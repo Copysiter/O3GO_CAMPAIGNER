@@ -128,7 +128,7 @@ async function setup(
 async function openForm(page: Page, name: string) {
   await page.goto("/campaigns");
   await page
-    .getByRole("button", { name: "Новая кампания", exact: true })
+    .getByRole("button", { name: "Новая рассылка", exact: true })
     .click();
   await page
     .getByRole("dialog")
@@ -140,10 +140,10 @@ async function openCampaignSettings(page: Page) {
     await page.getByRole("button", { name: "Настройки", exact: true }).click();
   } else {
     await page
-      .getByRole("button", { name: "Все действия кампании", exact: true })
+      .getByRole("button", { name: "Все действия рассылки", exact: true })
       .click();
     await page
-      .getByRole("menuitem", { name: "Настройки кампании", exact: true })
+      .getByRole("menuitem", { name: "Настройки рассылки", exact: true })
       .click();
   }
 }
@@ -156,9 +156,77 @@ async function next(page: Page) {
 async function create(page: Page) {
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Создать кампанию", exact: false })
+    .getByRole("button", { name: "Создать", exact: true })
     .click();
 }
+
+test("GEO import requires explicit invalid-row exclusion and offers one combined report", async ({ page }) => {
+  const requests = await setup(page);
+  const importId = "c4bab61b-aa08-483d-95a5-c5fa8cfcdcee";
+  const fields = { dst_addr: 0, field_1: 1, field_2: null, field_3: null, field_4: null, field_5: null };
+  let createdBody: Record<string, any> | undefined;
+  let reportRequests = 0;
+  await page.route("**/api/v1/upload/", (route) => route.fulfill({ json: {
+    filename: "geo.csv", import_id: importId, format: "csv", fields: ["phone", "name"],
+    sources: [{ id: "file", name: "geo.csv", row_count: 5, column_count: 2,
+      sample_rows: [["phone", "name"], ["+79161234567", "Alex"], ["invalid", "Error"]],
+      suggested_skip_rows: 1, suggested_fields: fields }],
+    total_rows: 5, message: null, warnings: [],
+  } }));
+  await page.route(`**/api/v1/upload/${importId}/preview`, (route) => route.fulfill({ json: {
+    total_rows: 4, valid_count: 3, invalid_count: 1,
+    geo_groups: [{ geo: "KZ", count: 1 }, { geo: "RU", count: 2 }],
+    errors: [{ source: "geo.csv", row: 3, message: "Некорректный номер" }], warnings: [],
+  } }));
+  await page.route("**/api/v1/campaigns/from-import", (route) => {
+    createdBody = route.request().postDataJSON();
+    return route.fulfill({ status: 201, json: {
+      import_id: importId, created_count: 2,
+      campaigns: [{ id: 101, name: "[kz] GEO fixture", geo: "KZ", msg_total: 1, status: 0 },
+        { id: 102, name: "[ru] GEO fixture", geo: "RU", msg_total: 2, status: 0 }],
+    } });
+  });
+  await page.route(`**/api/v1/campaigns/imports/${importId}/geo-links-report`, (route) => {
+    reportRequests++;
+    return route.fulfill({ contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", body: "combined-report" });
+  });
+
+  await openForm(page, "GEO fixture");
+  await page.getByLabel("Источник данных", { exact: true }).selectOption("file");
+  await page.getByLabel("Файл получателей", { exact: true }).setInputFiles({
+    name: "geo.csv", mimeType: "text/csv", buffer: Buffer.from("phone,name\n+79161234567,Alex"),
+  });
+  await expect(page.getByText("geo.csv · 5 строк", { exact: true })).toBeVisible();
+  await next(page);
+  await expect(page.getByRole("checkbox", { name: "Первая строка — названия колонок", exact: true })).toBeChecked();
+  await page.getByLabel("Шаблон сообщения", { exact: false }).fill("Здравствуйте, {field_1}. https://example.com/geo");
+  await page.getByRole("switch", { name: "Разделить по GEO", exact: true }).check();
+  await expect(page.getByRole("region", { name: "Предпросмотр создаваемых рассылок" })).toContainText("[ru] GEO fixture");
+  await next(page);
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("разрешите пропустить строки с ошибками");
+  expect(createdBody).toBeUndefined();
+  await page.getByRole("checkbox", { name: "Пропустить строки с ошибками (1)", exact: true }).check();
+  await next(page);
+  await next(page);
+  await expect(page.getByLabel("Целевой URL", { exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Создать 2", exact: true }).click();
+
+  const result = page.getByRole("dialog", { name: "Рассылки созданы", exact: true });
+  await expect(result).toBeVisible();
+  expect(createdBody).toMatchObject({ import_id: importId, split_by_geo: true, exclude_invalid: true, status: 0,
+    mappings: [{ source_id: "file", data_fields: fields, skip_rows: 1 }] });
+  expect(createdBody).not.toHaveProperty("data_file_name");
+  expect(createdBody).not.toHaveProperty("clicker_url");
+  await expect(result.getByRole("link")).toHaveCount(2);
+  await expect(result.getByRole("button", { name: "Ссылки по GEO — Excel", exact: true })).toHaveCount(1);
+  const downloaded = page.waitForEvent("download");
+  await result.getByRole("button", { name: "Ссылки по GEO — Excel", exact: true }).click();
+  expect((await downloaded).suggestedFilename()).toBe(`links-geo-${importId}.xlsx`);
+  expect(reportRequests).toBe(1);
+  expect(requests.some((request) => request.path.endsWith("/start"))).toBe(false);
+  await result.getByRole("button", { name: "Перейти к рассылкам", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
 
 // These tests intercept the API and verify the exact contract used by the existing Python backend.
 test("uploaded CSV previews real columns and sends mapped indexes with an unchanged UTC schedule", async ({
@@ -246,6 +314,61 @@ test("uploaded CSV previews real columns and sends mapped indexes with an unchan
   expect(requests.some((request) => request.path.endsWith("/start"))).toBe(
     false,
   );
+});
+
+test("visible AI fields fill each row when model permissions or form width change", async ({ page }) => {
+  await setup(page, { admin: false });
+  await openForm(page, "Responsive fields");
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("tab", { name: /Сообщение/ }).click();
+  await expect(dialog.locator("#field-model")).toHaveCount(0);
+  const group = dialog.locator(".campaign-form-group").filter({ has: page.locator("#field-provider") });
+  for (const width of [320, 540, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const rows = await group.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      const edges = new Map<number, { left: number; right: number }>();
+      for (const field of element.children) {
+        const box = field.getBoundingClientRect();
+        const row = edges.get(box.top);
+        edges.set(box.top, { left: row?.left ?? box.left, right: box.right });
+      }
+      return [...edges.values()].map((row) =>
+        Math.max(Math.abs(row.left - bounds.left), Math.abs(row.right - bounds.right))
+      );
+    });
+    expect(Math.max(...rows)).toBeLessThan(1);
+  }
+});
+
+test("the model selector treats an unconfigured OpenRouter as an empty catalog", async ({ page }) => {
+  await setup(page);
+  const path = "**/api/v1/options/openrouter/models";
+  let detail = "Catalog temporarily unavailable";
+  await page.route(path, (route) => route.fulfill({ status: 503, json: { detail } }));
+  await openForm(page, "Optional OpenRouter");
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("tab", { name: /Сообщение/ }).click();
+  await dialog.locator("#field-rewrite").selectOption("1");
+  const alert = dialog.getByRole("alert");
+  await expect(alert).toHaveText(/Catalog temporarily unavailable/);
+
+  detail = "OpenRouter is not configured";
+  const response = page.waitForResponse(path);
+  await alert.getByRole("button", { name: "Повторить" }).click();
+  await (await response).finished();
+  await expect(alert).toHaveCount(0);
+  await expect(dialog.locator("#field-model option")).toHaveCount(1);
+
+  // Returning to the step reuses the empty catalog just like a successful options response.
+  let requestsAfterRetry = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/options/openrouter/models")) requestsAfterRetry++;
+  });
+  await dialog.getByRole("tab", { name: /Аудитория/ }).click();
+  await dialog.getByRole("tab", { name: /Сообщение/ }).click();
+  await expect(dialog.locator("#field-model")).toBeVisible();
+  expect(requestsAfterRetry).toBe(0);
 });
 
 test("text header removal is performed locally and unauthorized relation fields are omitted", async ({
@@ -801,7 +924,7 @@ test("English wizard and original scheduler are localized while keeping UTC and 
     .click();
   await page.getByRole("button", { name: "Next", exact: false }).click();
   await page
-    .getByRole("button", { name: "Create campaign", exact: true })
+    .getByRole("button", { name: "Create", exact: true })
     .click();
   await expect
     .poll(() =>
@@ -919,7 +1042,7 @@ test("campaign toolbar uses one control height and does not display the campaign
   await page.goto("/campaigns/91");
   const toolbar = page.locator(".campaign-actions");
   await expect(
-    toolbar.getByRole("link", { name: "Все кампании", exact: true }),
+    toolbar.getByRole("link", { name: "Все рассылки", exact: true }),
   ).toBeVisible();
   await expect(toolbar.getByText("#91", { exact: true })).toHaveCount(0);
   const heights = await toolbar.evaluate((element) =>

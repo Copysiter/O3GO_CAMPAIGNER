@@ -129,12 +129,15 @@ test('only campaigns show the numeric statistics widgets', async ({ page }) => {
   await expect(page.locator('.resource-stats .resource-stat')).toHaveCount(3)
 })
 
-test('data columns pack to the left before the empty filler and action column', async ({
+test('full table data columns pack to the left before the empty filler and action column', async ({
   page,
   isMobile,
 }) => {
   await setup(page)
   await page.goto('/tags')
+  await page.getByRole('button', { name: 'Настроить колонки', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Горизонтальная прокрутка', exact: true }).click()
+  await expect(page.locator('.full-table')).toBeVisible()
   await expect(page.locator('.table-loading-overlay')).toHaveCount(0)
   const firstRow = page.locator('.data-table tbody tr').first()
   await expect(firstRow).toBeVisible()
@@ -373,7 +376,7 @@ test('compact column priorities keep localized numbers intact and give names ava
   await page.getByRole('button', { name: 'Настроить колонки', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Компактный', exact: true }).click()
   await page.getByRole('button', { name: 'Настроить колонки', exact: true }).click()
-  for (const name of ['Всего', 'Кампания']) {
+  for (const name of ['Всего', 'Название']) {
     const checkbox = page.getByRole('menuitemcheckbox', { name, exact: true })
     await checkbox.click()
     await checkbox.click()

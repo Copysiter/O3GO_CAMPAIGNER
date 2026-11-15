@@ -9,7 +9,9 @@ from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from typing import Any, List, Dict
 from datetime import datetime, timedelta
 from io import BytesIO
+from uuid import UUID
 from celery import group
+from starlette.concurrency import run_in_threadpool
 
 from fastapi import (
     APIRouter, BackgroundTasks, Body, Depends, Request, HTTPException, status
@@ -17,6 +19,7 @@ from fastapi import (
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.encoders import jsonable_encoder
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
@@ -29,6 +32,56 @@ from services.android import AndroidService
 from services.link import create_clicker_task
 
 router = APIRouter()
+
+
+@router.post("/from-import", response_model=schemas.CampaignImportResult, status_code=201)
+async def create_import_campaigns(
+    *,
+    campaign_in: schemas.CampaignFromImportRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_user),
+):
+    from services.campaign_creation import create_from_import, dispatch_import_jobs
+    from services.campaign_import import CampaignImportError
+    try:
+        result, jobs = await create_from_import(db, current_user, campaign_in)
+    except CampaignImportError as exc:
+        raise HTTPException(exc.status_code, exc.detail) from exc
+    if jobs:
+        background_tasks.add_task(dispatch_import_jobs, jobs, campaign_in, current_user.ext_api_key)
+        if campaign_in.clicker_url:
+            background_tasks.add_task(
+                create_clicker_task, campaign_id=result["campaigns"][0]["id"],
+                url=campaign_in.clicker_url, x_api_key=current_user.ext_api_key,
+                clicks_goal=campaign_in.clicker_goal, start_time=campaign_in.clicker_start_ts,
+                end_time=campaign_in.clicker_stop_ts, geo=campaign_in.clicker_geo,
+                click_type=campaign_in.clicker_type, split_713=campaign_in.clicker_split,
+                utm_source=campaign_in.clicker_utm_source,
+            )
+    return result
+
+
+@router.get("/imports/{import_id}/geo-links-report")
+async def download_import_geo_report(
+    import_id: UUID,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_user),
+):
+    from services.campaign_geo_report import get_import_report_rows, build_geo_workbook
+    if not current_user.is_superuser and not any(
+        permission in current_user.permissions for permission in ("campaign.read", "campaign.manage")
+    ):
+        raise HTTPException(403, "Недостаточно прав для просмотра отчёта")
+    rows = await get_import_report_rows(db, import_id, current_user)
+    if rows is None:
+        raise HTTPException(404, "Кампании загрузки не найдены")
+    content = await run_in_threadpool(build_geo_workbook, rows)
+    return StreamingResponse(
+        BytesIO(content),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="links-geo-{import_id}.xlsx"'},
+    )
 
 AUTO_SHORTEN_TOKEN_RE = re.compile(
     r"\[short\].*?\[/short\]|https?://[^\s<>\[\]\"']+",
@@ -101,6 +154,45 @@ def extract_links(msg_template: str, dst_data: Dict) -> List[str]:
     return unique_urls
 
 
+def campaign_list_filters(filters: list, user: models.User) -> list:
+    grouped = {"tags": [], "status": [], "api_keys": []}
+    result = []
+    for group in filters:
+        for entry in group.get("filters") or [group]:
+            field = entry["field"]
+            if field == "api_keys":
+                operator = entry.get("operator")
+                if operator not in ("eq", "in", "overlaps"):
+                    raise HTTPException(status_code=422, detail="Unsupported API key filter operator")
+                value = entry.get("value")
+                key_ids = [value] if operator == "eq" else value
+                if not isinstance(key_ids, list) or not key_ids or not all(
+                    type(key_id) is int and -(2**63) <= key_id < 2**63 for key_id in key_ids
+                ):
+                    raise HTTPException(status_code=422, detail="Expected numeric API key IDs")
+                grouped[field].extend(key_ids)
+            elif field in grouped:
+                grouped[field].append(entry["value"])
+            else:
+                result.append(entry)
+
+    if grouped["tags"]:
+        result.append({
+            "relationship": models.Campaign.campaign_tags,
+            "field": models.CampaignTags.tag_id,
+            "operator": "overlaps",
+            "value": grouped["tags"],
+        })
+    if grouped["status"]:
+        result.append({"field": "status", "operator": "overlaps", "value": grouped["status"]})
+    if key_ids := grouped["api_keys"]:
+        key_values = select(models.ApiKey.value).where(models.ApiKey.id.in_(key_ids))
+        if not user.is_superuser:
+            key_values = key_values.where(models.ApiKey.user_id == user.id)
+        result.append({"field": "api_keys", "operator": "in", "value": key_values})
+    return result
+
+
 @router.get("/", response_model=schemas.CampaignRows)
 async def read_campaigns(
     db: AsyncSession = Depends(deps.get_db),
@@ -115,45 +207,7 @@ async def read_campaigns(
     """
     if not orders:
         orders = [{"field": "id", "dir": "desc"}]
-    filters_modified = []
-    tags_idx = None
-    status_idx = None
-
-    for filter in filters:
-        if sub_filters := filter.get("filters"):
-            for filter in sub_filters:
-                filters_modified.append(filter)
-        else:
-            filters_modified.append(filter)
-    filters = []
-    for i in range(len(filters_modified)):
-        if filters_modified[i]["field"] == "tags":
-            if tags_idx is None:
-                tags_idx = len(filters)
-                filters.append(
-                    {
-                        "relationship": models.Campaign.campaign_tags,
-                        "field": models.CampaignTags.tag_id,
-                        "operator": "overlaps",
-                        "value": [filters_modified[i]["value"]],
-                    }
-                )
-            else:
-                filters[tags_idx]["value"].append(filters_modified[i]["value"])
-        elif filters_modified[i]["field"] == "status":
-            if status_idx is None:
-                status_idx = len(filters)
-                filters.append(
-                    {
-                        "field": "status",
-                        "operator": "overlaps",
-                        "value": [filters_modified[i]["value"]],
-                    }
-                )
-            else:
-                filters[status_idx]["value"].append(filters_modified[i]["value"])
-        else:
-            filters.append(filters_modified[i])
+    filters = campaign_list_filters(filters, current_user)
 
     if current_user.is_superuser:
         campaigns = await crud.campaign.get_rows(

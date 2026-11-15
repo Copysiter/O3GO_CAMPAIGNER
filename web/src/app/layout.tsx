@@ -6,7 +6,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Campaigner — O3GO",
   description:
-    messages.ru["Управление кампаниями, сообщениями и устройствами O3GO"],
+    messages.ru["Управление рассылками, сообщениями и устройствами O3GO"],
   icons: { icon: "/favicon.svg" },
 };
 export const viewport: Viewport = {

@@ -79,35 +79,16 @@ function mix(from: string, to: string, ratio: number) {
       .join('')
   )
 }
-function luminance(hex: string) {
-  const [r, g, b] = rgb(hex).map((channel) => {
-    const value = channel / 255
-    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
-  })
-  return r * 0.2126 + g * 0.7152 + b * 0.0722
-}
-function contrast(first: string, second: string) {
-  const x = luminance(first)
-  const y = luminance(second)
-  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
-}
-function readableAccent(raw: string, background: string, text: string) {
-  for (let step = 0; step <= 20; step++) {
-    const ink = mix(raw, text, step / 20)
-    if (contrast(ink, background) >= 4.5) return ink
-  }
-  return text
-}
 export function accentTokens(color: Color, theme: MaterialTheme) {
   const material = materialThemes[theme].colors
   const primary = palette[color][theme === 'dark' ? 0 : 1]
   return {
     primary,
-    foreground:
-      contrast(primary, '#eff2f4') >= contrast(primary, '#172128')
-        ? '#eff2f4'
-        : '#172128',
-    ink: readableAccent(primary, material.sidebar, material.text),
+    // Light accents use white labels; pastel dark accents use dark labels.
+    // Keep branding, links and selection outlines identical to the swatch,
+    // rather than silently mixing the chosen accent with the material text.
+    foreground: theme === 'light' ? '#ffffff' : '#172128',
+    ink: primary,
     selected: mix(material.sidebar, primary, theme === 'dark' ? 0.22 : 0.24),
     hover: neutralHover[theme],
   }

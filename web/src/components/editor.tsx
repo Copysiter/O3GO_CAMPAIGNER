@@ -160,7 +160,7 @@ export function Editor({
         ? t('Загрузка файла {index} из {count}…', progress)
         : ''
   return (
-    <Modal
+    <Modal className="form-surface"
       open
       onOpenChange={(v) => !v && !pending && onClose()}
       title={`${row ? t('Редактировать') : t('Создать')}: ${t(resource.singular)}`}
@@ -204,7 +204,7 @@ export function Editor({
           />
         </fieldset>
         {pending && (
-          <p role="status" className="text-xs text-muted-foreground">
+          <p role="status" className="text-xs text-form-caption">
             {progressText}
           </p>
         )}

@@ -129,7 +129,7 @@ test('automatic table view follows viewport size and reserves ID subtitles for c
         'Обновить таблицу',
         'Настроить колонки',
         'Переключить режим таблицы',
-        'Новая кампания',
+        'Новая рассылка',
       ].map((name) =>
         page.locator('.table-controls').getByRole('button', { name, exact: true }).boundingBox(),
       ),
@@ -144,11 +144,11 @@ test('automatic table view follows viewport size and reserves ID subtitles for c
   const order = await controls
     .getByRole('button')
     .evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label')))
-  expect(order.indexOf('Новая кампания')).toBe(order.indexOf('Переключить режим таблицы') + 1)
+  expect(order.indexOf('Новая рассылка')).toBe(order.indexOf('Переключить режим таблицы') + 1)
   if (isMobile) {
     await expect(controls.getByText('Обновить', { exact: true })).not.toBeVisible()
-    await expect(controls.getByText('Новая кампания', { exact: true })).not.toBeVisible()
-    for (const name of ['Обновить таблицу', 'Новая кампания']) {
+    await expect(controls.getByText('Новая рассылка', { exact: true })).not.toBeVisible()
+    for (const name of ['Обновить таблицу', 'Новая рассылка']) {
       const box = (await controls.getByRole('button', { name, exact: true }).boundingBox())!
       expect(box.width).toBeGreaterThanOrEqual(44)
       expect(box.height).toBeGreaterThanOrEqual(44)
@@ -339,7 +339,7 @@ test('opening a column filter keeps initial focus away from native selectors', a
   expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('SELECT')
 })
 
-test('short landscape screens keep table controls, rows and pagination inside the viewport', async ({
+test('short landscape screens keep card heights and allow scrolling to pagination', async ({
   page,
 }, testInfo) => {
   await setup(page)
@@ -347,18 +347,20 @@ test('short landscape screens keep table controls, rows and pagination inside th
     { width: 667, height: 375 },
     { width: 568, height: 320 },
   ]) {
-    await page.setViewportSize(viewport)
+    await page.setViewportSize({ ...viewport, height: 760 })
     await page.goto('/campaigns/101')
     await settled(page)
+    const cardHeights = () => page.locator('.campaign-stat').evaluateAll(
+      (cards) => cards.map((card) => card.getBoundingClientRect().height),
+    )
+    const originalHeights = await cardHeights()
+    await page.setViewportSize(viewport)
+    await expect.poll(cardHeights).toEqual(originalHeights)
     const scroller = (await page.locator('.table-scroll').boundingBox())!
-    const pagination = (await page.locator('.table-pagination').boundingBox())!
     expect(scroller.height).toBeGreaterThanOrEqual(80)
-    expect(pagination.y + pagination.height).toBeLessThanOrEqual(viewport.height)
-    expect(
-      await page
-        .locator('.resource-body')
-        .evaluate((node) => node.scrollHeight - node.clientHeight),
-    ).toBeLessThanOrEqual(1)
+    const pagination = page.locator('.table-pagination')
+    await pagination.scrollIntoViewIfNeeded()
+    await expect(pagination).toBeInViewport()
     await expect(
       page.getByRole('checkbox', { name: 'Выбрать строку 501', exact: true }),
     ).toBeVisible()

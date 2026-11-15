@@ -50,7 +50,7 @@ export function CampaignDetail({ id }: { id: number }) {
   if (!readable)
     return (
       <div className="p-4 text-sm text-muted-foreground">
-        {t("Недостаточно прав для просмотра кампаний.")}
+        {t("Недостаточно прав для просмотра рассылок.")}
       </div>
     );
   if (query.isPending) return <Loading />;
@@ -67,7 +67,7 @@ export function CampaignDetail({ id }: { id: number }) {
         <div
           className="campaign-header-stack flex min-w-0 shrink-0 flex-col gap-2"
           role="region"
-          aria-label={t("Сводка кампании")}
+          aria-label={t("Сводка рассылки")}
         >
           <div className="campaign-actions flex min-w-0 shrink-0 items-center justify-between gap-2 border-b bg-card p-2">
             <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
@@ -79,8 +79,8 @@ export function CampaignDetail({ id }: { id: number }) {
               >
                 <Link
                   href="/campaigns"
-                  aria-label={t("Все кампании")}
-                  title={t("Все кампании")}
+                  aria-label={t("Все рассылки")}
+                  title={t("Все рассылки")}
                 >
                   <ArrowLeft size={15} />
                 </Link>
@@ -88,23 +88,10 @@ export function CampaignDetail({ id }: { id: number }) {
               <span className="campaign-toolbar-status min-w-0 shrink-0 [&_.status-badge]:h-full">
                 <Value value={row.status} choices={campaignStatuses} />
               </span>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {canManage && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="campaign-toolbar-control hidden md:inline-flex"
-                  onClick={() => campaign.onAction("edit", [row])}
-                >
-                  <Settings2 size={14} />
-                  <span>{t("Настройки")}</span>
-                </Button>
-              )}
               {canStartStop && (
                 <Button
                   size="sm"
-                  className="campaign-toolbar-control"
+                  className="campaign-toolbar-control campaign-toolbar-start"
                   aria-label={t(row.status === 1 ? "Пауза" : "Запустить")}
                   onClick={() =>
                     campaign.onAction(row.status === 1 ? "pause" : "start", [
@@ -118,11 +105,24 @@ export function CampaignDetail({ id }: { id: number }) {
                   </span>
                 </Button>
               )}
+              {canManage && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="campaign-toolbar-control hidden md:inline-flex"
+                  onClick={() => campaign.onAction("edit", [row])}
+                >
+                  <Settings2 size={14} />
+                  <span>{t("Настройки")}</span>
+                </Button>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 className="campaign-toolbar-control hidden md:inline-flex"
-                aria-label={t("Обновить статистику кампании")}
+                aria-label={t("Обновить статистику рассылки")}
                 disabled={query.isFetching}
                 onClick={() => query.refetch()}
               >
@@ -147,7 +147,7 @@ export function CampaignDetail({ id }: { id: number }) {
                     variant="outline"
                     size="icon"
                     className="campaign-toolbar-control"
-                    aria-label={t("Все действия кампании")}
+                    aria-label={t("Все действия рассылки")}
                   >
                     <Ellipsis size={17} />
                   </Button>

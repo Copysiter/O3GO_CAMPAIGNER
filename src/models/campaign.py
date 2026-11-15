@@ -4,7 +4,7 @@ from sqlalchemy import (
     Column, ForeignKey, Integer, BigInteger, String, DateTime, Index, text
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.ext.associationproxy import AssociationProxy
 
 from db.base_class import Base
@@ -73,6 +73,8 @@ class Campaign(Base):
         autoincrement=True, unique=True
     )
     name = Column(String, index=True)
+    import_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    geo = Column(String(2), nullable=True)
     user_id = Column(
         BigInteger, ForeignKey(
             'user.id', ondelete='CASCADE'

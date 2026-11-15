@@ -380,7 +380,7 @@ export function DateTimePicker({
           <Dialog.Overlay className="datetime-mobile-overlay" />
           <Dialog.Content
             id={contentId}
-            className="datetime-popover datetime-mobile-dialog"
+            className="form-surface datetime-popover datetime-mobile-dialog"
             aria-describedby={undefined}
             onOpenAutoFocus={focusCalendar}
             onCloseAutoFocus={restoreTriggerFocus}
@@ -400,7 +400,7 @@ export function DateTimePicker({
       <Popover.Portal>
         <Popover.Content
           id={contentId}
-          className="datetime-popover"
+          className="form-surface datetime-popover"
           align="end"
           sideOffset={6}
           collisionPadding={8}
